@@ -12,7 +12,10 @@ param(
     [AllowEmptyString()][string]$ResponseText = '',
     [string]$BoundaryName,
     [ValidateSet('auto', 'boundary-handoff', 'narration')][string]$ResponseScope = 'auto',
-    [ValidateSet('soft-warning', 'validation-fail')][string]$BarePathBoundaryHandoffSeverity
+    [ValidateSet('soft-warning', 'validation-fail')][string]$BarePathBoundaryHandoffSeverity,
+    # FR-009: write the run's findings (iteration id, rule, severity; each message only as a hash)
+    # to this JSON file, for the nightly's tracking-issue notifier.
+    [string]$FindingsJsonPath
 )
 
 Set-StrictMode -Version Latest
@@ -31,6 +34,137 @@ $script:ValidatorStartTime = [System.Diagnostics.Stopwatch]::StartNew()
 $script:ValidatorMode = 'unscoped'
 $script:ValidatorIterationsValidated = 0
 $script:ValidatorTriggerSource = if ($env:CI) { 'ci' } else { 'local' }
+$script:ValidatorFindingRecords = New-Object System.Collections.Generic.List[object]
+
+function Add-ValidatorFindingRecord {
+    # FR-009: one finding for the findings file. The iteration is "<feature>/<NNN>" for a path under
+    # specs/<feature>/iterations/<NNN>, else "(repository)". The rule is the failure's category; a message
+    # with no category is "uncategorized". Every message contributes only a hash of its normalized text, never the text.
+    param(
+        [AllowNull()][string]$TargetPath,
+        [AllowNull()][string]$ProjectRoot,
+        [AllowNull()][string]$Message,
+        [string]$Rule = ''
+    )
+    $iteration = '(repository)'
+    if (-not [string]::IsNullOrWhiteSpace($TargetPath)) {
+        $normalizedTarget = ([string]$TargetPath) -replace '\\', '/'
+        if ($normalizedTarget -match 'specs/([^/]+)/iterations/([^/]+?)/?$') {
+            $iteration = '{0}/{1}' -f $Matches[1], (Normalize-SpecrewIterationNumber -IterationNumber $Matches[2])
+        }
+    }
+    $text = if ($null -eq $Message) { '' } else { [string]$Message }
+    if ([string]::IsNullOrWhiteSpace($Rule) -and $text -match '\bcategory=([^\s|]+)') {
+        $Rule = $Matches[1]
+    }
+    $Rule = (([string]$Rule).ToLowerInvariant() -replace '[^a-z0-9-]+', '-').Trim('-')
+    $record = [ordered]@{ iteration = $iteration; rule = $Rule; severity = 'error' }
+    if ([string]::IsNullOrWhiteSpace($Rule)) {
+        $record['rule'] = 'uncategorized'
+    }
+    # Every error with a message carries a hash of its normalized text (project root
+    # removed, separators and whitespace normalized), never the text, so two different failures in one category
+    # and iteration are two different findings.
+    if (-not [string]::IsNullOrWhiteSpace($text) -or [string]::IsNullOrWhiteSpace($Rule)) {
+        $normalized = $text
+        if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
+            $normalized = $normalized.Replace([string]$ProjectRoot, '').Replace((([string]$ProjectRoot) -replace '\\', '/'), '')
+        }
+        $normalized = (($normalized -replace '\\', '/') -replace '\s+', ' ').Trim()
+        $hashBytes = [System.Security.Cryptography.SHA256]::HashData([System.Text.Encoding]::UTF8.GetBytes($normalized))
+        $record['message_hash'] = ([System.BitConverter]::ToString($hashBytes) -replace '-', '').Substring(0, 16).ToLowerInvariant()
+    }
+    $script:ValidatorFindingRecords.Add([pscustomobject]$record) | Out-Null
+}
+
+function Write-ValidatorFindingsFile {
+    # FR-009: a red run is never written as an empty list; a stop with no recorded finding is written as one
+    # repository finding named by -FailureRule.
+    param([int]$ExitCode, [string]$FailureRule)
+    if ([string]::IsNullOrWhiteSpace($FindingsJsonPath)) {
+        return
+    }
+    try {
+        $records = @()
+        if ($ExitCode -ne 0) {
+            if ($script:ValidatorFindingRecords.Count -eq 0) {
+                $rule = if ([string]::IsNullOrWhiteSpace($FailureRule)) { 'validator-failed' } else { $FailureRule }
+                Add-ValidatorFindingRecord -TargetPath $null -ProjectRoot $null -Message $null -Rule $rule
+            }
+            $records = @($script:ValidatorFindingRecords.ToArray())
+        }
+        $directory = Split-Path -Parent ([System.IO.Path]::GetFullPath($FindingsJsonPath))
+        if (-not [string]::IsNullOrWhiteSpace($directory) -and -not (Test-Path -LiteralPath $directory -PathType Container)) {
+            $null = New-Item -ItemType Directory -Path $directory -Force
+        }
+        $json = [ordered]@{ schema = 'v1'; findings = @($records) } | ConvertTo-Json -Depth 5
+        [System.IO.File]::WriteAllText([System.IO.Path]::GetFullPath($FindingsJsonPath), $json, [System.Text.UTF8Encoding]::new($false))
+    }
+    catch {
+        Write-Host ("WARN [findings-file] could not write the findings file: {0}" -f $_.Exception.Message)
+    }
+}
+
+# Feature 206 T030 (FR-009, bug list items 30 and 34): the repository-level checks that return only a count hand the
+# messages they print to this list, so their stop writes each as a hash under its rule and a different failure in the
+# same category is a different nightly finding.
+$script:ValidatorStopMessages = [System.Collections.Generic.List[string]]::new()
+
+function Add-ValidatorStopMessage {
+    param([AllowNull()][AllowEmptyString()][string]$Message)
+    if (-not [string]::IsNullOrWhiteSpace($Message)) { $script:ValidatorStopMessages.Add($Message) | Out-Null }
+}
+
+function Get-SpecrewRecordApprovalState {
+    # Feature 206 T034 (FR-016, design D2-a): whether the boundary a record belongs to (review-signoff for review.md,
+    # retro for retro.md) is still waiting for the human's verdict. 'pending': the last authorized boundary is the one right
+    # before it, so the record is a normal state. 'decided': that verdict is recorded (or the start context is about another feature
+    # or iteration, or cannot be read), so the plan-status check applies as before. 'unknown': .specrew/start-context.json
+    # is absent - it is ignored by git, so CI and a fresh clone have none - and the record is accepted with a warning; the
+    # local check and the boundary sync's mirror check still hold the line where the file exists.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$IterationDirectory,
+        [Parameter(Mandatory = $true)][ValidateSet('review-signoff', 'retro')][string]$Boundary
+    )
+
+    $recordName = if ($Boundary -eq 'retro') { 'retro.md' } else { 'review.md' }
+    try { $enforcement = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot } catch { return 'decided' }
+    if (-not [bool]$enforcement.Exists) {
+        Write-TrustHardeningWarning -Category 'record-before-approval-unverified' -Detail ("{0} beside plan.md's status is accepted, but .specrew/start-context.json is absent (it is not committed), so whether the {1} approval is still pending cannot be read here." -f $recordName, $Boundary)
+        return 'unknown'
+    }
+
+    $iterationName = Split-Path -Leaf $IterationDirectory
+    $featureRef = Split-Path -Leaf (Split-Path -Parent (Split-Path -Parent $IterationDirectory))
+    $context = $enforcement.Context
+    $session = if ($null -ne $context -and $context.Contains('session_state')) { $context['session_state'] } else { $null }
+    if ($null -eq $session) { return 'decided' }
+    $sessionFeature = [string]$session['feature_ref']
+    $sessionIteration = [string]$session['iteration_number']
+    if ($sessionFeature -cne $featureRef) { return 'decided' }
+    if (-not [string]::IsNullOrWhiteSpace($sessionIteration) -and $sessionIteration -cne $iterationName) { return 'decided' }
+    if ([string]::IsNullOrWhiteSpace($sessionIteration)) {
+        # Iteration 002 review round 2, finding 5: a session that names no iteration can be waiting only on the feature's
+        # newest iteration; an older iteration's record is judged as decided.
+        $iterationsRoot = Split-Path -Parent $IterationDirectory
+        $newest = @(Get-ChildItem -LiteralPath $iterationsRoot -Directory -ErrorAction SilentlyContinue |
+                Where-Object { $_.Name -match '^\d+$' } | Sort-Object { [int]$_.Name } | Select-Object -Last 1)
+        if ($newest.Count -eq 0 -or $newest[0].Name -cne $iterationName) { return 'decided' }
+    }
+
+    $effective = $enforcement.EffectiveState
+    if ($null -eq $effective) { return 'decided' }
+    $last = [string]$effective['last_authorized_boundary']
+    $order = @(Get-SpecrewBoundaryOrder)
+    $boundaryIndex = [array]::IndexOf($order, $Boundary)
+    if ($boundaryIndex -lt 1) { return 'decided' }
+    # Iteration 002 review round 2, finding 5: only the approval that comes next is pending - the last authorized boundary
+    # is the one right before the record's (before-implement for review.md, review-signoff for retro.md). Any earlier one
+    # means the record was written before the work it records was authorized.
+    if ($last -ceq $order[$boundaryIndex - 1]) { return 'pending' }
+    return 'decided'
+}
 
 function Write-ValidatorSummaryAndExit {
     param(
@@ -40,8 +174,25 @@ function Write-ValidatorSummaryAndExit {
         [Parameter(Mandatory = $true)]
         [int]$ExitCode,
 
-        [int]$HardWarnings = 0
+        [int]$HardWarnings = 0,
+
+        # FR-009: the rule a stop with no per-iteration finding is written under in the findings file.
+        [string]$FailureRule = '',
+
+        # FR-009: a repository-level stop's own errors. Each is written under -FailureRule as a hash of its
+        # normalized text, never the text, so a different failure in the same category is a different finding.
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [string[]]$FailureMessages = @()
     )
+
+    if ($ExitCode -ne 0) {
+        foreach ($failureMessage in @($FailureMessages)) {
+            if ([string]::IsNullOrWhiteSpace($failureMessage)) { continue }
+            Add-ValidatorFindingRecord -TargetPath $null -ProjectRoot $ProjectRoot -Message $failureMessage -Rule $FailureRule
+        }
+    }
+    Write-ValidatorFindingsFile -ExitCode $ExitCode -FailureRule $FailureRule
 
     $durationMs = if ($null -ne $script:ValidatorStartTime) {
         [int]$script:ValidatorStartTime.ElapsedMilliseconds
@@ -167,7 +318,10 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
 $allowedIterationStatuses = @('planning', 'executing', 'reviewing', 'retro', 'complete', 'abandoned')
 $allowedTaskStatuses = @('planned', 'in-progress', 'done', 'needs-rework', 'deferred', 'blocked')
 $terminalTaskStatuses = @('done', 'needs-rework', 'deferred', 'blocked')
-$allowedReviewTaskVerdicts = @('pass', 'needs-work', 'blocked')
+# Feature 206 T033 (FR-015, design D1-a): `deferred` is a task deferred by a recorded decision; its row names that
+# decision (`decision <id>`, an entry in .squad/decisions.md), and it does not count as non-passing.
+$allowedReviewTaskVerdicts = @('pass', 'needs-work', 'blocked', 'deferred')
+$script:ReviewLedgerDecisionIds = $null
 $allowedQualityGateStatuses = @('planned', 'passed', 'failed', 'excepted', 'not-applicable')
 $allowedProposalStatuses = @('candidate', 'draft', 'active', 'promoted', 'shipped', 'partially-shipped', 'superseded', 'withdrawn')
 $postShipProposalStatuses = @('shipped', 'partially-shipped', 'superseded')
@@ -1817,6 +1971,7 @@ function Test-HandoffEvidenceGovernance {
                         $label = "$label at $boundary"
                     }
                     Write-Host ("FAIL [trust-hardening] handoff-evidence-packet-invalid: Boundary packet evidence for {0} failed handoff governance validation." -f $label) -ForegroundColor Red
+                    Add-ValidatorStopMessage -Message ("handoff-evidence-packet-invalid: Boundary packet evidence for {0} failed handoff governance validation." -f $label)
                     foreach ($line in $packetOutput) {
                         Write-Host ("  {0}" -f $line) -ForegroundColor Red
                     }
@@ -2134,7 +2289,9 @@ function Test-SourceWithoutImplementAuthorization {
 
     $shown = @($committed | Select-Object -First 5) -join ', '
     if ($committed.Count -gt 5) { $shown = "$shown (+$($committed.Count - 5) more)" }
-    Write-Host ("FAIL [trust-hardening] source-without-implement-authorization: {0} product source file(s) changed since the '{1}' authorization ({2}), but implementation has not been approved - verdict_history holds no 'approved for before-implement'. Code written without that verdict is outside the process this project follows, whoever wrote it and however good it is. Either obtain the verdict - complete the hardening gate, run the boundary sync, present the packet, and record the human's 'approved for before-implement' - or revert the source changes: {3}" -f $committed.Count, [string]$drift.authorized_boundary, ([string]$drift.anchor_commit).Substring(0, [Math]::Min(8, ([string]$drift.anchor_commit).Length)), $shown) -ForegroundColor Red
+    $sourceAuthorizationMessage = "source-without-implement-authorization: {0} product source file(s) changed since the '{1}' authorization ({2}), but implementation has not been approved - verdict_history holds no 'approved for before-implement'. Code written without that verdict is outside the process this project follows, whoever wrote it and however good it is. Either obtain the verdict - complete the hardening gate, run the boundary sync, present the packet, and record the human's 'approved for before-implement' - or revert the source changes: {3}" -f $committed.Count, [string]$drift.authorized_boundary, ([string]$drift.anchor_commit).Substring(0, [Math]::Min(8, ([string]$drift.anchor_commit).Length)), $shown
+    Write-Host ("FAIL [trust-hardening] " + $sourceAuthorizationMessage) -ForegroundColor Red
+    Add-ValidatorStopMessage -Message $sourceAuthorizationMessage
     return 1
 }
 
@@ -2197,6 +2354,7 @@ function Test-ApprovedFeatureStatusVerdictEvidence {
 
     if (-not $hasVerdictHistoryEvidence -and -not $hasDecisionEvidence) {
         Write-TrustHardeningWarning -Category 'approved-status-without-verdict' -Detail ("Feature spec declares Status: Approved without matching human verdict evidence in boundary_enforcement.verdict_history or .squad/decisions.md: {0}" -f (Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $specPath))
+        Add-ValidatorStopMessage -Message ("Feature spec declares Status: Approved without matching human verdict evidence in boundary_enforcement.verdict_history or .squad/decisions.md: {0}" -f (Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $specPath))
         return 1
     }
 
@@ -2371,6 +2529,7 @@ function Test-SessionStateBoundaryCanonical {
         Write-Host 'FAIL Test-SessionStateBoundaryCanonical' -ForegroundColor Red
         foreach ($failure in $failures) {
             Write-Host "  - $failure" -ForegroundColor Red
+        Add-ValidatorStopMessage -Message ([string]$failure)
         }
         return $failures.Count
     }
@@ -2545,6 +2704,11 @@ function Test-DashboardGovernanceSurfaces {
         return
     }
 
+    # FR-008 (T009): read the closed index with this validator's own reader, before the renderer is loaded.
+    # A renderer from an installed Specrew module dot-sources that module's shared-governance.ps1, which may
+    # be older and replace the reader with one that drops the closure stamp.
+    $dashboardClosedIndex = Get-SpecrewClosedIterationIndex -ProjectRoot $ProjectRoot
+
     . $rendererPath
 
     $features = @(Get-SpecrewFeatureRecords -ProjectRoot $ProjectRoot)
@@ -2561,20 +2725,30 @@ function Test-DashboardGovernanceSurfaces {
         }
     }
 
+    # The feature-closeout dashboard check below keeps its feature-number cut-off (features 017 and later).
     $dashboardRolloutFeatureOrdinal = 17
     $dashboardRolloutIterationFloor = 2
 
+    # FR-008 (T009): the closed-iteration dashboard check declares the date it shipped (d4284c8a) and the
+    # status it applies to. It judges an iteration only when iteration closeout stamped it on or after that
+    # date (Test-SpecrewClosedCheckApplies); this replaces its feature-number cut-off. Earlier history is
+    # covered by the frozen list (FR-007).
+    $closedDashboardCheck = @{
+        name              = 'missing-dashboard-auto-render-regression'
+        since             = [datetime]::new(2026, 5, 26)
+        applies_to_status = 'complete'
+    }
+
     foreach ($feature in $features) {
         $featureOrdinal = Get-FeatureOrdinalFromRef -FeatureRef $feature.feature_ref
-        if ($null -eq $featureOrdinal -or $featureOrdinal -lt $dashboardRolloutFeatureOrdinal) {
-            continue
-        }
 
         foreach ($iteration in @($feature.closed_iterations)) {
-            $iterationOrdinal = Get-IterationOrdinalFromRef -IterationRef $iteration.iteration_ref
-            $requiresDashboard = ($featureOrdinal -gt $dashboardRolloutFeatureOrdinal) -or `
-                ($featureOrdinal -eq $dashboardRolloutFeatureOrdinal -and $null -ne $iterationOrdinal -and $iterationOrdinal -ge $dashboardRolloutIterationFloor)
-            if (-not $requiresDashboard) {
+            if (-not (Test-SpecrewClosedCheckApplies -ClosedIndex $dashboardClosedIndex -Feature ([string]$feature.feature_ref) -Iteration ([string]$iteration.iteration_ref) -Since $closedDashboardCheck.since)) {
+                continue
+            }
+            # applies_to_status (FR-007, plan verdict): complete iterations only. An abandoned iteration was
+            # never closed out, so no dashboard was rendered for it, and it owes none.
+            if ((Get-SpecrewIterationStatusValue -StatePath (Join-Path $iteration.iteration_directory 'state.md')) -eq 'abandoned') {
                 continue
             }
 
@@ -2592,6 +2766,10 @@ function Test-DashboardGovernanceSurfaces {
                     Write-DashboardGovernanceWarning -Category 'dashboard-artifact-ansi' -Detail ("Iteration dashboard '{0}' still contains ANSI escape sequences; stored snapshots must strip ANSI while preserving Unicode." -f $dashboardPath)
                 }
             }
+        }
+
+        if ($null -eq $featureOrdinal -or $featureOrdinal -lt $dashboardRolloutFeatureOrdinal) {
+            continue
         }
 
         $hasFeatureCloseout = $false
@@ -3699,7 +3877,10 @@ function Test-ReviewArtifact {
         $Errors.Add('review.md must record a valid overall verdict (accepted | needs-rework | blocked)')
     }
     elseif ($RequireAcceptedVerdict -and $overallVerdict -ne 'accepted') {
-        $Errors.Add("Complete iterations require review.md overall verdict 'accepted' (found '$overallVerdict')")
+        # FR-010: name the iteration's actual status (retro or complete), not always "Complete".
+        $statusName = ([string]$IterationStatus).Trim()
+        $statusLabel = if ([string]::IsNullOrWhiteSpace($statusName)) { 'Closed' } else { $statusName.Substring(0, 1).ToUpperInvariant() + $statusName.Substring(1) }
+        $Errors.Add("$statusLabel iterations require review.md overall verdict 'accepted' (found '$overallVerdict')")
     }
 
     # A REVIEW VERDICT IS CROSS-CHECKED AGAINST ITS ACTIVE CAMPAIGN, NOT ONLY AGAINST ITSELF.
@@ -3754,7 +3935,55 @@ function Test-ReviewArtifact {
             $Errors.Add("review.md is missing a verdict for task '$taskId'")
         }
         elseif ($normalizedVerdict -notin $allowedReviewTaskVerdicts) {
-            $Errors.Add("review.md contains invalid verdict '$($row.Verdict)' for task '$taskId' (expected pass | needs-work | blocked)")
+            $Errors.Add("review.md contains invalid verdict '$($row.Verdict)' for task '$taskId' (expected pass | needs-work | blocked | deferred)")
+        }
+        elseif ($normalizedVerdict -eq 'deferred') {
+            # Feature 206 T033 (FR-015): the row names the decision that deferred the task, and the ledger holds it.
+            $rowText = (@($row.PSObject.Properties | Where-Object { $_.Name -ne 'Task' -and $_.Name -ne 'Verdict' } | ForEach-Object { [string]$_.Value }) -join ' ')
+            $decisionMatch = [regex]::Match($rowText, '(?i)\bdecision(?:\s+id)?\s*:?\s*`?(?<id>[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9])`?')
+            # Iteration 002 review round 2, finding 6: the plan must record the task as deferred too, and a decision the row
+            # denies or makes conditional ("not covered by", "without", "if ... is approved", "once ... is recorded") is
+            # not the decision that deferred it.
+            # Iteration 002 review round 3, finding-f194651984ecf15e: the lookup compares as the verdict-row check does
+            # (case-insensitively, like $reviewedTaskIds), and a deferred row that matches no plan task fails.
+            $planTask = @($PlanTasks | Where-Object { [string]$_.Task -eq [string]$taskId } | Select-Object -First 1)
+            $planStatus = if ($planTask.Count -gt 0) { (Normalize-MarkdownCell ([string]$planTask[0].Status)).ToLowerInvariant() } else { '' }
+            if ($planTask.Count -eq 0) {
+                $Errors.Add("review.md task '$taskId' is deferred, but plan.md has no task '$taskId'; a deferral is recorded in both")
+            }
+            elseif ($planStatus -notin @('deferred', 'deferred-with-approval')) {
+                $Errors.Add("review.md task '$taskId' is deferred, but plan.md records its status as '$planStatus'; a deferral is recorded in both")
+            }
+            # Read in the clause before the decision the row names, so a word inside the id itself is never read.
+            $beforeDecision = if ($decisionMatch.Success) { $rowText.Substring(0, $decisionMatch.Index) } else { '' }
+            $deniedDecision = [regex]::Match($beforeDecision, '(?i)\b(?:not|no|never|without|if|once|unless|until|pending|awaiting|proposed|subject\s+to)\b[^.;:]*$')
+            if (-not $decisionMatch.Success) {
+                $Errors.Add("review.md task '$taskId' is deferred but names no decision (expected 'decision <id>' on the row, naming an entry in .squad/decisions.md)")
+            }
+            elseif ($deniedDecision.Success) {
+                $Errors.Add("review.md task '$taskId' is deferred, but the row denies or conditions the decision it names ('$($deniedDecision.Value)'); name the decision that deferred it")
+            }
+            else {
+                $deferringDecision = $decisionMatch.Groups['id'].Value
+                if ($null -eq $script:ReviewLedgerDecisionIds) {
+                    $script:ReviewLedgerDecisionIds = @{}
+                    $ledgerPath = if (-not (Test-IsNullish $ProjectRoot)) { Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot } else { $null }
+                    if ($ledgerPath -and (Test-Path -LiteralPath $ledgerPath -PathType Leaf)) {
+                        # Iteration 002 review round 2, finding 6: an id inside an HTML comment or a code fence is not an entry.
+                        # Iteration 002 review round 3, finding-877eda7300798107: line endings are made LF first, so the
+                        # fence pattern's '$' matches a closing fence line in a CRLF file too.
+                        $ledgerText = (Get-Content -LiteralPath $ledgerPath -Raw -Encoding UTF8) -replace "`r`n?", "`n"
+                        $ledgerText = [regex]::Replace($ledgerText, '(?s)<!--.*?-->', '')
+                        $ledgerText = [regex]::Replace($ledgerText, '(?ms)^[ ]{0,3}(```+|~~~+).*?^[ ]{0,3}\1[ \t]*$', '')
+                        foreach ($idMatch in [regex]::Matches($ledgerText, '(?m)^\s*-\s+\*\*Decision ID\*\*:\s*`?(?<id>[^`\r\n]+?)`?\s*$')) {
+                            $script:ReviewLedgerDecisionIds[$idMatch.Groups['id'].Value.Trim()] = $true
+                        }
+                    }
+                }
+                if (-not $script:ReviewLedgerDecisionIds.ContainsKey($deferringDecision)) {
+                    $Errors.Add("review.md task '$taskId' is deferred by decision '$deferringDecision', which .squad/decisions.md does not hold")
+                }
+            }
         }
         elseif ($normalizedVerdict -ne 'pass') {
             $null = $nonPassingVerdictTaskIds.Add([string]$taskId)
@@ -3871,7 +4100,8 @@ function Get-IterationDirtyCanonicalArtifacts {
             $normalizedPath = $Matches[1].Trim()
         }
 
-        $normalizedPath = $normalizedPath -replace '/', '\'
+        # git reports forward slashes on every platform, and the canonical list uses them too: keep one separator.
+        $normalizedPath = $normalizedPath -replace '\\', '/'
         if ($normalizedPath.ToLowerInvariant() -notin $canonicalPaths) {
             continue
         }
@@ -4365,7 +4595,10 @@ function Test-PlanEffortModel {
         try {
             $relIterationPath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '\\', '/'
             if ($relIterationPath -match 'specs/([^/]+)/iterations/([^/]+)/?$') {
-                if (Test-SpecrewIterationClosed -ProjectRoot $ProjectRoot -Feature $Matches[1] -Iteration $Matches[2]) {
+                # Index membership only, as before the single closed definition: this grandfathering keys on the durable index entry,
+                # not on the closed definition (Test-SpecrewIterationClosed), which also reads state.md.
+                $capacityIndexKey = '{0}/{1}' -f $Matches[1], (Normalize-SpecrewIterationNumber -IterationNumber $Matches[2])
+                if ((Get-SpecrewClosedIterationIndex -ProjectRoot $ProjectRoot).ContainsKey($capacityIndexKey)) {
                     $isClosedIteration = $true
                 }
             }
@@ -5071,13 +5304,24 @@ function Test-IterationGovernance {
     $hasReviewArtifact = $reviewLines.Count -gt 0
     $hasRetroArtifact = $retroLines.Count -gt 0
     $hasCompleteEvidence = $status -eq 'complete'
+    # FR-008 (T009; maintainer, 2026-11-11): state.md says `abandoned` and records the maintainer's ruling.
+    # Not held to the plan-status rule (retro.md exists) or the review-verdict rule; `abandoned` with no
+    # recorded ruling still gets both.
+    $abandonedByRuling = Test-SpecrewIterationAbandonedByRuling -StatePath $statePath
 
+    # Feature 206 T034 (FR-016, bug list item 39, design D2-a): a record written while its boundary approval is still
+    # pending is a normal state, since the phase line moves only at the sync after the verdict. Once that approval is
+    # recorded and the line has not moved, the check fails as before.
     if ($hasReviewArtifact -and $status -in @('planning', 'executing')) {
-        $errors.Add("plan.md status '$status' is stale: review.md exists, so the iteration must be in reviewing, retro, or complete")
+        if ((Get-SpecrewRecordApprovalState -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -Boundary 'review-signoff') -eq 'decided') {
+            $errors.Add("plan.md status '$status' is stale: review.md exists, so the iteration must be in reviewing, retro, or complete")
+        }
     }
 
-    if ($hasRetroArtifact -and $status -notin @('retro', 'complete')) {
-        $errors.Add("plan.md status '$status' is stale: retro.md exists, so the iteration must be in retro or complete")
+    if ($hasRetroArtifact -and $status -notin @('retro', 'complete') -and -not $abandonedByRuling) {
+        if ($status -ne 'reviewing' -or (Get-SpecrewRecordApprovalState -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -Boundary 'retro') -eq 'decided') {
+            $errors.Add("plan.md status '$status' is stale: retro.md exists, so the iteration must be in retro or complete")
+        }
     }
 
     Test-GovernanceGateConsistency -PlanLines $planLines -HasCompletionEvidence ($hasAcceptedReview -or $hasCompleteEvidence) -Errors $errors
@@ -5155,7 +5399,7 @@ function Test-IterationGovernance {
             if ($hasNonTerminalTasks) {
                 $errors.Add('Retro iterations require all tasks to be in terminal states')
             }
-            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
+            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict:(-not $abandonedByRuling)
             Test-ReviewerCloseoutArtifacts -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -StateLines $stateLines -EnforceReviewerCloseout $EnforceReviewerCloseout -Errors $errors
         }
         'complete' {
@@ -5166,7 +5410,7 @@ function Test-IterationGovernance {
             if ($hasNonTerminalTasks) {
                 $errors.Add('Complete iterations require all tasks to be in terminal states')
             }
-            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
+            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict:(-not $abandonedByRuling)
             Test-RetroArtifact -RetroPath $retroPath -Errors $errors
             Test-ReviewerCloseoutArtifacts -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -StateLines $stateLines -EnforceReviewerCloseout $EnforceReviewerCloseout -Errors $errors
         }
@@ -5590,7 +5834,7 @@ try {
 
     if (-not [string]::IsNullOrWhiteSpace($ResponseText)) {
         $responseValidationExitCode = Invoke-InteractionModelResponseValidation -ProjectRoot $resolvedProjectPath -ResponseText $ResponseText -IterationTargets @() -BoundaryName $BoundaryName -ResponseScope $ResponseScope -BarePathBoundaryHandoffSeverity $BarePathBoundaryHandoffSeverity
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode $responseValidationExitCode -HardWarnings $(if ($responseValidationExitCode -eq 0) { 0 } else { 1 })
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode $responseValidationExitCode -HardWarnings $(if ($responseValidationExitCode -eq 0) { 0 } else { 1 }) -FailureRule 'response-validation'
     }
 
     # Proposal 086 Pillar 5: repetition detector. Log the invocation; if the
@@ -5633,9 +5877,15 @@ try {
     }
 
     # Proposal 085: -RebuildClosedIndex is a special early-exit mode. Walks every
-    # specs/<feature>/iterations/<iter>/state.md, detects closed iterations, and
-    # regenerates .specrew/closed-iterations.yml from scratch. Use after the index
-    # is deleted or appears stale.
+    # specs/<feature>/iterations/<iter>/state.md and adds to .specrew/closed-iterations.yml each iteration
+    # the canonical definition reads as closed by its state.md (FR-008a: Iteration Status complete, abandoned
+    # with the maintainer's ruling recorded in its Disposition section (T026), or a status that claims closure in an
+    # affirmative form; never a frozen entry, never the old state.md text heuristic). An abandoned iteration with no
+    # recorded ruling is open, and is not indexed: an entry would make it closed for good. Use after the index is
+    # deleted or appears incomplete.
+    # The index is append-only: every existing entry is kept as it is, with its
+    # closed_at and any closeout stamp, so a rebuild never turns a closed iteration open. New entries carry no
+    # stamp: closed_at is the rebuild time, not a closure time.
     #
     # Per Copilot review on PR #661: the rebuild must hold the same file lock that
     # Add-SpecrewClosedIterationEntry uses, otherwise a concurrent iteration-closeout
@@ -5654,37 +5904,68 @@ try {
         else { @() }
 
         # Build entries in memory (read-only state.md walk; no lock needed for reads).
+        $frozenKeys = @(Get-SpecrewLegacyFrozenIterationKeys -ProjectRoot $resolvedProjectPath)
+        $rebuildClosedAt = Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ'
         $entries = New-Object System.Collections.Generic.List[hashtable]
         foreach ($sf in $stateFiles) {
-            $entry = Get-SpecrewClosedIterationFromStateFile -StatePath $sf.FullName
-            if ($null -ne $entry) {
-                $null = $entries.Add(@{
-                    feature   = $entry.feature
-                    iteration = $entry.iteration
-                    closed_at = $entry.closed_at
-                })
-            }
+            $normalizedStatePath = $sf.FullName -replace '\\', '/'
+            if ($normalizedStatePath -notmatch 'specs/([^/]+)/iterations/([^/]+)/state\.md$') { continue }
+            $entryFeature = $Matches[1]
+            $entryIteration = Normalize-SpecrewIterationNumber -IterationNumber $Matches[2]
+            if ($frozenKeys -contains ('{0}/{1}' -f $entryFeature, $entryIteration)) { continue }
+            $entryStatus = Get-SpecrewIterationStatusValue -StatePath $sf.FullName
+            if (($entryStatus -notin @('complete', 'abandoned')) -and -not (Test-SpecrewClosureClaimStatus -IterationStatus $entryStatus)) { continue }
+            if ($entryStatus -eq 'abandoned' -and -not (Test-SpecrewIterationRulingRecorded -StatePath $sf.FullName)) { continue }
+            $null = $entries.Add(@{
+                feature   = $entryFeature
+                iteration = $entryIteration
+                closed_at = $rebuildClosedAt
+            })
         }
 
         # Acquire the same file lock Add-SpecrewClosedIterationEntry uses, then
         # write the complete YAML in one atomic operation. No interleaving possible.
         Invoke-WithFileLock -Path $indexPath -ScriptBlock {
+            # Every existing entry is kept first, unchanged (FR-008: a closeout stamp is the durable record of a
+            # real closure; an unstamped entry is still what makes its iteration closed today). Then each
+            # iteration the walk selected that the index does not hold yet.
+            $existingIndex = Get-SpecrewClosedIterationIndex -ProjectRoot $resolvedProjectPath
+            $written = @{}
+            $indexedCount = 0
             $lines = @(
                 '# Specrew closed-iteration index (Proposal 085).',
                 '# Append-only. Append at iteration-closeout boundary via Add-SpecrewClosedIterationEntry.',
                 '# Regenerate from state.md walk via: validate-governance.ps1 -RebuildClosedIndex',
                 'closed:'
             )
+            foreach ($key in @($existingIndex.Keys | Sort-Object)) {
+                $kept = $existingIndex[$key]
+                $slash = $key.LastIndexOf('/')
+                $written[$key] = $true
+                $indexedCount++
+                $lines += "  - feature: $($key.Substring(0, $slash))"
+                $lines += "    iteration: $($key.Substring($slash + 1))"
+                $keptClosedAt = if ($kept -is [System.Collections.IDictionary] -and $kept.Contains('closed_at')) { [string]$kept['closed_at'] } else { '' }
+                $lines += "    closed_at: $(if ([string]::IsNullOrWhiteSpace($keptClosedAt)) { $rebuildClosedAt } else { $keptClosedAt })"
+                if ($kept -is [System.Collections.IDictionary] -and $kept.Contains('closed_at_source') -and [string]$kept['closed_at_source'] -eq 'closeout' -and -not [string]::IsNullOrWhiteSpace($keptClosedAt)) {
+                    $lines += '    closed_at_source: closeout'
+                }
+            }
             foreach ($e in $entries) {
+                $key = '{0}/{1}' -f $e.feature, $e.iteration
+                if ($written.ContainsKey($key)) { continue }
+                $written[$key] = $true
+                $indexedCount++
                 $lines += "  - feature: $($e.feature)"
                 $lines += "    iteration: $($e.iteration)"
                 $lines += "    closed_at: $($e.closed_at)"
             }
             $combined = $lines -join [Environment]::NewLine
             Set-Content -LiteralPath $indexPath -Value $combined -Encoding UTF8
+            $script:RebuildIndexedCount = $indexedCount
         }
 
-        Write-Host ("[closed-iteration-index] rebuilt: {0} closed iterations indexed at {1}" -f $entries.Count, $indexPath)
+        Write-Host ("[closed-iteration-index] rebuilt: {0} closed iterations indexed at {1}" -f $script:RebuildIndexedCount, $indexPath)
         exit 0
     }
 
@@ -5757,6 +6038,33 @@ try {
         }
     }
 
+    # FR-007: an entry of .specrew/legacy-frozen.yml is judged by no check, in every mode: full-repo,
+    # -IncludeClosed, changed-only and explicit targets. Frozen is not closed history; it is outside
+    # validation altogether, and the list is closed (no entry after its closed_on date).
+    if ($targets.Count -gt 0) {
+        $frozenTargetKeys = @(Get-SpecrewLegacyFrozenIterationKeys -ProjectRoot $resolvedProjectPath)
+        if ($frozenTargetKeys.Count -gt 0) {
+            $frozenSkippedCount = 0
+            $unfrozen = New-Object System.Collections.Generic.List[string]
+            foreach ($tp in $targets) {
+                $normalized = ([string]$tp) -replace '\\', '/'
+                if ($normalized -match 'specs/([^/]+)/iterations/([^/]+?)/?$') {
+                    $frozenKey = '{0}/{1}' -f $Matches[1], (Normalize-SpecrewIterationNumber -IterationNumber $Matches[2])
+                    if ($frozenTargetKeys -contains $frozenKey) {
+                        $frozenSkippedCount++
+                        continue
+                    }
+                }
+                $null = $unfrozen.Add($tp)
+            }
+            $targets = @($unfrozen.ToArray())
+            if ($frozenSkippedCount -gt 0) {
+                $frozenNoun = if ($frozenSkippedCount -eq 1) { 'iteration' } else { 'iterations' }
+                Write-Host ("[validator-scope] frozen filter: {0} frozen legacy {1} skipped (.specrew/legacy-frozen.yml: judged by no check)" -f $frozenSkippedCount, $frozenNoun)
+            }
+        }
+    }
+
     # Proposal 085: on full-repo paths, filter out closed iterations unless
     # -IncludeClosed. Scoped paths (changed-only / auto-scoped / explicit-targets)
     # are unaffected — closed iterations naturally aren't in those sets.
@@ -5768,20 +6076,15 @@ try {
         # the index - an iteration whose own state.md says closed but which never made the index was
         # validated as if live. The index stays the fast path; each unindexed candidate now answers
         # from its OWN state.md, so closed is closed whether or not the index heard about it.
+        # FR-008a: one definition of closed, Test-SpecrewIterationClosed (index, or Iteration Status
+        # complete/abandoned; frozen entries never closed). The state.md text heuristic no longer decides.
         $closedIndex = Get-SpecrewClosedIterationIndex -ProjectRoot $resolvedProjectPath
+        $frozenKeys = @(Get-SpecrewLegacyFrozenIterationKeys -ProjectRoot $resolvedProjectPath)
         $filtered = New-Object System.Collections.Generic.List[string]
         foreach ($tp in $targets) {
             $normalized = $tp -replace '\\', '/'
             if ($normalized -match 'specs/([^/]+)/iterations/([^/]+)$') {
-                $feature = $Matches[1]
-                $iteration = $Matches[2]
-                if ($closedIndex.ContainsKey("$feature/$iteration")) {
-                    $closedSkippedCount++
-                    continue
-                }
-                $stateProbe = Join-Path $tp 'state.md'
-                if ((Get-Command -Name 'Get-SpecrewClosedIterationFromStateFile' -ErrorAction SilentlyContinue) -and
-                    ($null -ne (Get-SpecrewClosedIterationFromStateFile -StatePath $stateProbe))) {
+                if (Test-SpecrewIterationClosed -ProjectRoot $resolvedProjectPath -Feature $Matches[1] -Iteration $Matches[2] -ClosedIndex $closedIndex -FrozenKeys $frozenKeys) {
                     $closedSkippedCount++
                     continue
                 }
@@ -5806,13 +6109,13 @@ try {
     Test-ClosedIterationSeals -ProjectRoot $resolvedProjectPath -Errors $closedSealErrors
     if ($closedSealErrors.Count -gt 0) {
         foreach ($sealError in $closedSealErrors) { Write-Host ("FAIL [trust-hardening] closed-iteration-edited: {0}" -f $sealError) -ForegroundColor Red }
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $closedSealErrors.Count
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $closedSealErrors.Count -FailureRule 'closed-iteration-edited' -FailureMessages @($closedSealErrors)
     }
     # W47: the tree-vs-ledger cross-check - source written where the state STOOD, not where it moved.
     # Runs BEFORE the team-composition exit: unauthorized code must not hide behind a config failure.
     $sourceAuthorizationFailureCount = Test-SourceWithoutImplementAuthorization -ProjectRoot $resolvedProjectPath
     if ($sourceAuthorizationFailureCount -gt 0) {
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $sourceAuthorizationFailureCount
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $sourceAuthorizationFailureCount -FailureRule 'source-without-implement-authorization' -FailureMessages @($script:ValidatorStopMessages)
     }
     Test-BaselineTeamMembers -TeamRoles $teamRoles -Errors $teamValidationErrors
 
@@ -5821,7 +6124,7 @@ try {
         foreach ($errorMessage in $teamValidationErrors) {
             Write-Host "  - $errorMessage" -ForegroundColor Red
         }
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $teamValidationErrors.Count
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $teamValidationErrors.Count -FailureRule 'squad-team' -FailureMessages @($teamValidationErrors)
     }
 
     $classifierCompatibilityErrors = New-Object System.Collections.Generic.List[string]
@@ -5831,7 +6134,7 @@ try {
         foreach ($errorMessage in $classifierCompatibilityErrors) {
             Write-Host "  - $errorMessage" -ForegroundColor Red
         }
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $classifierCompatibilityErrors.Count
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $classifierCompatibilityErrors.Count -FailureRule 'classifier-compatibility' -FailureMessages @($classifierCompatibilityErrors)
     }
 
     Test-PublicReadinessSurfaces -ProjectRoot $resolvedProjectPath
@@ -5839,14 +6142,14 @@ try {
     Test-PostShipProposalAmendmentGovernance -ProjectRoot $resolvedProjectPath
     $handoffEvidenceFailureCount = Test-HandoffEvidenceGovernance -ProjectRoot $resolvedProjectPath
     if ($handoffEvidenceFailureCount -gt 0) {
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $handoffEvidenceFailureCount
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $handoffEvidenceFailureCount -FailureRule 'handoff-evidence' -FailureMessages @($script:ValidatorStopMessages)
     }
     Test-WrongLocationCanonicalArtifacts -ProjectRoot $resolvedProjectPath
     # Pillar 4 (FR-021): live state-advance-without-verdict cross-check.
     Test-BoundaryStateAdvanceVerdict -ProjectRoot $resolvedProjectPath
     $approvedStatusFailureCount = Test-ApprovedFeatureStatusVerdictEvidence -ProjectRoot $resolvedProjectPath
     if ($approvedStatusFailureCount -gt 0) {
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $approvedStatusFailureCount
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $approvedStatusFailureCount -FailureRule 'approved-status' -FailureMessages @($script:ValidatorStopMessages)
     }
     Test-HandoffInternalReferenceSurfaces -ProjectRoot $resolvedProjectPath
 
@@ -5856,7 +6159,7 @@ try {
     # active=true post-closeout, etc.).
     $boundaryCanonicalFailureCount = Test-SessionStateBoundaryCanonical -ProjectRoot $resolvedProjectPath
     if ($boundaryCanonicalFailureCount -gt 0) {
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $boundaryCanonicalFailureCount
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $boundaryCanonicalFailureCount -FailureRule 'boundary-canonical' -FailureMessages @($script:ValidatorStopMessages)
     }
 
     if (-not [string]::IsNullOrWhiteSpace($scopeFallbackVerboseMessage)) {
@@ -5864,7 +6167,7 @@ try {
     }
     if (-not [string]::IsNullOrWhiteSpace($ResponseText)) {
         $responseValidationExitCode = Invoke-InteractionModelResponseValidation -ProjectRoot $resolvedProjectPath -ResponseText $ResponseText -IterationTargets $targets -BoundaryName $BoundaryName -ResponseScope $ResponseScope -BarePathBoundaryHandoffSeverity $BarePathBoundaryHandoffSeverity
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode $responseValidationExitCode -HardWarnings $(if ($responseValidationExitCode -eq 0) { 0 } else { 1 })
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode $responseValidationExitCode -HardWarnings $(if ($responseValidationExitCode -eq 0) { 0 } else { 1 }) -FailureRule 'response-validation'
     }
     $iterationConfig = if ($targets.Count -gt 0) { Get-IterationConfigForValidation -IterationDirectory $targets[0] } else { @{ closeout_packet_required_since_iteration = '' } }
     $reviewerCloseoutEnforcement = Get-ReviewerCloseoutEnforcementMap -Targets $targets -ExplicitTargetsProvided $explicitIterationPathsProvided -RequiredSinceIteration $iterationConfig.closeout_packet_required_since_iteration
@@ -6046,6 +6349,7 @@ try {
         Write-Host "FAIL $($result.Path)" -ForegroundColor Red
         foreach ($errorMessage in $result.Errors) {
             Write-Host "  - $errorMessage" -ForegroundColor Red
+            Add-ValidatorFindingRecord -TargetPath ([string]$result.Path) -ProjectRoot $resolvedProjectPath -Message ([string]$errorMessage)
         }
     }
 
@@ -6083,6 +6387,8 @@ try {
     Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 0 -HardWarnings 0
 }
 catch {
+    # Feature 206 T030 (item 34): the exception's text is passed on, so only its hash reaches the findings file.
+    $unexpectedMessage = [string]$_.Exception.Message
     Write-Host 'FAIL validate-governance' -ForegroundColor Red
     Write-Host ('  - {0}' -f (New-StructuredValidationFailureText -FilePath '(none)' -LineNumber $null -Category 'unexpected-validator-error' -Message $_.Exception.Message -RemediationHint 'Repair the validator inputs or configuration and rerun validate-governance.ps1.')) -ForegroundColor Red
     $summaryProjectRoot = $null
@@ -6091,6 +6397,6 @@ catch {
     }
     catch {
     }
-    Write-ValidatorSummaryAndExit -ProjectRoot $summaryProjectRoot -ExitCode 1 -HardWarnings 1
+    Write-ValidatorSummaryAndExit -ProjectRoot $summaryProjectRoot -ExitCode 1 -HardWarnings 1 -FailureRule 'unexpected-validator-error' -FailureMessages @($unexpectedMessage)
 }
 # specrew-self-provenance-ok: DRIFT-198-I009-033,DRIFT-199-I001-122,DRIFT-199-I001-126,F-025,F-028,F-030,F-033,F-040,F-047,F-049,DRIFT-199-I001-134; implementation history is recorded for maintainers and is never emitted as consumer instruction

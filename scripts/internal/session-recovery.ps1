@@ -53,7 +53,33 @@ function Get-SpecrewIdentitySessionState {
     }
 
     $parsed = ConvertFrom-SpecrewFrontmatter -Content (Get-Content -LiteralPath $paths.IdentityPath -Raw -Encoding UTF8)
-    return Get-SpecrewSessionStateFromFrontmatter -Frontmatter $parsed.Frontmatter
+    $state = Get-SpecrewSessionStateFromFrontmatter -Frontmatter $parsed.Frontmatter
+    # F-206 T023 (bug list item 23): the tracked identity file records the feature path relative to the project;
+    # it is resolved against this project's root. An absolute path inside the project, written before that, is returned
+    # as written. An absolute path outside it - another checkout, or another machine's path such as C:\x read on Linux -
+    # a relative path that leads outside it, and a drive-relative path are not used: the file is tracked and travels between machines, so such a path names a
+    # folder this checkout does not have. The reader does not change the file; the next boundary sync rewrites it.
+    if ($null -ne $state -and -not [string]::IsNullOrWhiteSpace([string]$state.feature_path)) {
+        $savedPath = [string]$state.feature_path
+        $kind = Get-SpecrewPathRootKind -Path $savedPath
+        # Iteration 002 review round 2, finding 4: a relative path is resolved under the project root and then held to the
+        # same inside check, so one that climbs out with ../ is not used either.
+        $resolved = if ($kind -eq 'relative') { [System.IO.Path]::GetFullPath((Join-Path (Resolve-ProjectPath -Path $ProjectRoot) $savedPath)) } else { $null }
+        if ($kind -eq 'relative' -and (Test-SpecrewPathInsideProject -ProjectRoot $ProjectRoot -Path $resolved)) {
+            $state.feature_path = $resolved
+        }
+        elseif ($kind -eq 'relative' -or $kind -eq 'drive-relative' -or -not (Test-SpecrewPathInsideProject -ProjectRoot $ProjectRoot -Path $savedPath)) {
+            $why = if ($kind -eq 'relative') { 'a relative path that leads outside this project' } elseif ($kind -eq 'drive-relative') { 'a drive-relative path, which names no fixed folder' } else { 'an absolute path outside this project, written in another checkout or on another machine' }
+            $warnKey = '{0}|{1}' -f $ProjectRoot, $savedPath
+            if (-not (Get-Variable -Name SpecrewIdentityPathWarned -Scope Script -ErrorAction SilentlyContinue)) { $script:SpecrewIdentityPathWarned = @{} }
+            if (-not $script:SpecrewIdentityPathWarned.ContainsKey($warnKey)) {
+                $script:SpecrewIdentityPathWarned[$warnKey] = $true
+                Write-Warning ("The feature path in .squad/identity/now.md ('{0}') is {1}, so it is not used. The file was not changed; the next boundary sync writes the feature path relative to the project." -f $savedPath, $why)
+            }
+            $state.feature_path = $null
+        }
+    }
+    return $state
 }
 
 function Get-SpecrewStartContextSessionState {
@@ -236,9 +262,21 @@ function Test-SpecrewSessionStateConsistency {
         @{ Name = 'identity/now.md';      State = $Snapshot.identity; Path = $Snapshot.identity_path }
     )
 
+    # F-206 T022 (FR-001, SC-001, bug list item 22, design D6-a): last-start-prompt.md and start-context.json are
+    # per-machine and ignored by git, so a fresh clone of a governed project has neither while it carries the tracked
+    # identity file. With BOTH absent from disk this is a first start on this machine, not stale state: their absence
+    # is not reported. A file that is present but unreadable is still reported, and so is one missing beside the other.
+    $perMachineEntries = @($namedStates | Where-Object { $_.Name -in @('last-start-prompt.md', 'start-context.json') })
+    $noPerMachineFiles = @($perMachineEntries | Where-Object {
+            -not [string]::IsNullOrWhiteSpace([string]$_.Path) -and (Test-Path -LiteralPath ([string]$_.Path) -PathType Leaf)
+        }).Count -eq 0
+
     $existingCount = @($namedStates | Where-Object { $null -ne $_.State }).Count
     if ($existingCount -gt 0) {
         foreach ($entry in $namedStates) {
+            if ($noPerMachineFiles -and $entry.Name -in @('last-start-prompt.md', 'start-context.json')) {
+                continue
+            }
             if ($null -eq $entry.State) {
                 $fileOnDisk = $false
                 if (-not [string]::IsNullOrWhiteSpace([string]$entry.Path)) {
@@ -427,15 +465,54 @@ function Test-SpecrewStaleSessionState {
     }
 }
 
+function Test-SpecrewConsoleInputAvailable {
+    # A human can answer only when stdin is a console and the host is interactive. A redirected or closed
+    # stdin (CI, a pipe, an agent's shell) or a -NonInteractive host has no one to answer Read-Host.
+    try {
+        if ([Console]::IsInputRedirected) { return $false }
+    }
+    catch {
+        return $false
+    }
+
+    foreach ($argument in [Environment]::GetCommandLineArgs()) {
+        if ($argument -match '^-noni(nteractive)?$') { return $false }
+    }
+
+    return $true
+}
+
+function Get-SpecrewRecoveryRefusalMessage {
+    return @(
+        'specrew start could not continue: this project has stale session state, and no recovery path was chosen.'
+        'Your work is safe; no recovery path was applied.'
+        'To continue, run specrew start again with a choice, for example: specrew start --recovery-choice A'
+        '(A re-anchors to the correct feature, B creates a new feature, C exits so you can fix the state by hand.)'
+    ) -join [Environment]::NewLine
+}
+
 function Read-SpecrewRecoveryChoice {
+    # Returns A, B or C, or $null when no choice can be made: no console input, or three invalid answers.
+    # The caller refuses on $null; this function never loops without bound.
     param([AllowNull()][string]$PreferredChoice)
 
     if (-not [string]::IsNullOrWhiteSpace($PreferredChoice)) {
         return $PreferredChoice.Trim().ToUpperInvariant()
     }
 
-    while ($true) {
-        $selection = Read-Host 'Choose recovery path [A/B/C]'
+    if (-not (Test-SpecrewConsoleInputAvailable)) {
+        return $null
+    }
+
+    $maximumAttempts = 3
+    for ($attempt = 1; $attempt -le $maximumAttempts; $attempt++) {
+        try {
+            $selection = Read-Host 'Choose recovery path [A/B/C]'
+        }
+        catch {
+            return $null
+        }
+
         if (-not [string]::IsNullOrWhiteSpace($selection)) {
             $normalizedSelection = $selection.Trim().ToUpperInvariant()
             if ($normalizedSelection -in @('A', 'B', 'C')) {
@@ -443,8 +520,12 @@ function Read-SpecrewRecoveryChoice {
             }
         }
 
-        Write-Output "WARN: Invalid recovery choice. Enter A, B, or C." | Out-Host
+        if ($attempt -lt $maximumAttempts) {
+            Write-Output "WARN: Invalid recovery choice. Enter A, B, or C." | Out-Host
+        }
     }
+
+    return $null
 }
 
 function New-SpecrewRecoverySession {

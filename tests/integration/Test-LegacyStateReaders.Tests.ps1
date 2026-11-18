@@ -181,8 +181,15 @@ if (Test-Path -LiteralPath $scratchRoot) {
 Import-FunctionsFromFile -Path $syncBoundaryStatePath -Names @(
     'Get-SpecrewSessionStatePaths',
     'ConvertFrom-SpecrewFrontmatter',
-    'Get-SpecrewSessionStateFromFrontmatter'
+    'Get-SpecrewSessionStateFromFrontmatter',
+    # Feature 206 T023: the identity reader decides absolute, relative and inside through these two.
+    'Get-SpecrewPathRootKind',
+    'Test-SpecrewPathInsideProject'
 )
+# Test-SpecrewPathInsideProject loads its two helpers from beside its own file when they are not loaded yet; an imported
+# copy has no file, so they are loaded here first (read and called, not changed).
+. (Join-Path $repoRoot 'scripts\internal\continuous-co-review\path-identity.ps1')
+. (Join-Path $repoRoot 'scripts\internal\continuous-co-review\reparse-tag-policy.ps1')
 # Feature 141 / FR-024 extracted these session-state readers from specrew-start.ps1
 # into the session-recovery helper (specrew-start.ps1 now dot-sources it); the readers
 # themselves are unchanged, so this test follows them to their new file.

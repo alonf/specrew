@@ -1,0 +1,447 @@
+# Feature 206, T009 (FR-008; maintainer rulings 2026-11-11 and 2026-11-12, option 1):
+#   - The dashboard check declares `since: 2026-05-26` and judges a closed iteration only when its
+#     .specrew/closed-iterations.yml entry carries `closed_at_source: closeout` with closed_at on or after
+#     that date. An entry without the stamp (the 2026-08-06 rebuild and every older one), or no entry at
+#     all, has no trusted closure date and is not judged. The date replaces the feature-number cut-off.
+#   - Iteration closeout writes the stamp (Add-SpecrewClosedIterationEntry), and the index reader returns it.
+#   - A recorded ruling is a `## Disposition` section in state.md naming a maintainer ruling or decision
+#     with its date. The tests pin 174/007 (2026-06-14), 197/006 and 198/011 (2026-11-10) and 198/010
+#     (2026-11-11). The four group B iterations recorded none until the maintainer ruled them abandoned on
+#     2026-11-16 (T026); each now records that ruling.
+#   - An iteration whose state.md says `abandoned` with a recorded ruling is not held to the plan-status
+#     rule (retro.md exists) or the review-verdict rule; `abandoned` with no recorded ruling still gets both.
+#   - Not here: "abandoned is closed only with a recorded ruling" (T026) is in iteration-closed-definition.tests.ps1.
+#
+# The fixture tests run the validator on a temp-folder project; the last test runs it read-only on this
+# repository's 198/011 (its memoization cache is under .specrew/.cache, gitignored).
+# No specrew start, update or init; no hooks; nothing written to the home folder.
+
+BeforeAll {
+    $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+    $script:SharedGovernance = Join-Path $script:RepoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1'
+    $script:Validator = Join-Path $script:RepoRoot 'extensions\specrew-speckit\scripts\validate-governance.ps1'
+    . $script:SharedGovernance
+
+    $script:Root = Join-Path ([System.IO.Path]::GetTempPath()) ('since-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+    $null = New-Item -ItemType Directory -Path (Join-Path $script:Root '.specrew') -Force
+    # The dev-tree renderer and its shared library, so the dashboard check reads this tree's code and never
+    # falls back to an installed Specrew module.
+    $null = New-Item -ItemType Directory -Path (Join-Path $script:Root 'scripts\internal') -Force
+    $null = New-Item -ItemType Directory -Path (Join-Path $script:Root 'extensions\specrew-speckit\scripts') -Force
+    Copy-Item -LiteralPath (Join-Path $script:RepoRoot 'scripts\internal\dashboard-renderer.ps1') -Destination (Join-Path $script:Root 'scripts\internal\dashboard-renderer.ps1')
+    Copy-Item -LiteralPath $script:SharedGovernance -Destination (Join-Path $script:Root 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+    # This repository's team file, so the validator passes its team check and reaches the dashboard check.
+    $null = New-Item -ItemType Directory -Path (Join-Path $script:Root '.squad') -Force
+    Copy-Item -LiteralPath (Join-Path $script:RepoRoot '.squad\team.md') -Destination (Join-Path $script:Root '.squad\team.md')
+
+    function New-FixtureIteration {
+        param(
+            [string]$Feature,
+            [string]$Iteration,
+            [string]$PlanStatus,
+            [string]$IterationStatus,
+            [string]$StateBody = '',
+            [string]$ReviewVerdict = '',
+            [switch]$Retro
+        )
+        $featureDir = Join-Path $script:Root ('specs\{0}' -f $Feature)
+        $dir = Join-Path $featureDir (Join-Path 'iterations' $Iteration)
+        $null = New-Item -ItemType Directory -Path $dir -Force
+        $spec = Join-Path $featureDir 'spec.md'
+        if (-not (Test-Path -LiteralPath $spec)) { Set-Content -LiteralPath $spec -Value "# Feature Specification: $Feature" -Encoding UTF8 }
+        Set-Content -LiteralPath (Join-Path $dir 'plan.md') -Value ("# Plan`n`n**Status**: $PlanStatus`n") -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $dir 'state.md') -Value ("# Iteration State: $Iteration`n`n**Schema**: v2`n**Iteration Status**: $IterationStatus`n`n$StateBody") -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $dir 'drift-log.md') -Value "# Drift Log`n" -Encoding UTF8
+        if ($Retro) { Set-Content -LiteralPath (Join-Path $dir 'retro.md') -Value "# Retro`n" -Encoding UTF8 }
+        if ($ReviewVerdict) { Set-Content -LiteralPath (Join-Path $dir 'review.md') -Value ("# Review`n`n**Overall Verdict**: $ReviewVerdict`n") -Encoding UTF8 }
+        return $dir
+    }
+
+    # Dashboard fixture: every iteration is complete, has a retro.md and no dashboard.md.
+    $null = New-FixtureIteration -Feature '901-fixture' -Iteration '001' -PlanStatus 'complete' -IterationStatus 'complete' -Retro
+    $null = New-FixtureIteration -Feature '901-fixture' -Iteration '002' -PlanStatus 'complete' -IterationStatus 'complete' -Retro
+    $null = New-FixtureIteration -Feature '901-fixture' -Iteration '003' -PlanStatus 'complete' -IterationStatus 'complete' -Retro
+    $null = New-FixtureIteration -Feature '901-fixture' -Iteration '004' -PlanStatus 'complete' -IterationStatus 'complete' -Retro
+    $null = New-FixtureIteration -Feature '005-early' -Iteration '001' -PlanStatus 'complete' -IterationStatus 'complete' -Retro
+
+    Set-Content -LiteralPath (Join-Path $script:Root '.specrew\closed-iterations.yml') -Encoding UTF8 -Value @'
+closed:
+  - feature: 901-fixture
+    iteration: 001
+    closed_at: 2026-11-01T10:00:00Z
+    closed_at_source: closeout
+  - feature: 901-fixture
+    iteration: 002
+    closed_at: 2026-08-06T00:00:00Z
+  - feature: 901-fixture
+    iteration: 003
+    closed_at: 2026-05-01T10:00:00Z
+    closed_at_source: closeout
+  - feature: 005-early
+    iteration: 001
+    closed_at: 2026-11-01T10:00:00Z
+    closed_at_source: closeout
+'@
+
+    # Exemption fixture: abandoned iterations with a retro.md, with and without a recorded ruling.
+    $script:RulingText = @'
+## Disposition (2026-11-11, fixture)
+
+**Abandoned, by the maintainer's ruling of 2026-11-10.** Closed as abandoned; review.md unchanged.
+'@
+    $script:RulingRetroDir = New-FixtureIteration -Feature '902-exempt' -Iteration '001' -PlanStatus 'retro' -IterationStatus 'abandoned' -StateBody $script:RulingText -ReviewVerdict 'needs-rework' -Retro
+    $script:RulingAbandonedDir = New-FixtureIteration -Feature '902-exempt' -Iteration '002' -PlanStatus 'abandoned' -IterationStatus 'abandoned' -StateBody $script:RulingText -Retro
+    $script:BareRetroDir = New-FixtureIteration -Feature '902-exempt' -Iteration '003' -PlanStatus 'retro' -IterationStatus 'abandoned' -ReviewVerdict 'needs-rework' -Retro
+    $script:BareAbandonedDir = New-FixtureIteration -Feature '902-exempt' -Iteration '004' -PlanStatus 'abandoned' -IterationStatus 'abandoned' -Retro
+
+    function Invoke-FixtureValidator {
+        param([string[]]$Arguments)
+        return (@(& pwsh -NoProfile -File $script:Validator -ProjectPath $script:Root @Arguments 2>&1 | ForEach-Object { [string]$_ }) -join "`n")
+    }
+
+    $script:StaleRetroPattern = "is stale: retro\.md exists"
+    $script:ReviewVerdictPattern = "require review\.md overall verdict 'accepted'"
+}
+
+AfterAll {
+    if ($script:Root -and (Test-Path -LiteralPath $script:Root)) {
+        Remove-Item -LiteralPath $script:Root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+Describe 'T009: the dashboard check judges only iterations closed by closeout on or after 2026-05-26' {
+    BeforeAll {
+        $script:DashboardOutput = Invoke-FixtureValidator -Arguments @()
+    }
+
+    It 'judges an iteration stamped closed_at_source: closeout after the since date' {
+        $script:DashboardOutput | Should -Match "missing-dashboard[^`n]*901-fixture 001"
+    }
+
+    It 'does not judge an index entry without the closeout stamp' {
+        $script:DashboardOutput | Should -Not -Match "missing-dashboard[^`n]*901-fixture 002" -Because 'an unstamped entry has no trusted closure date'
+    }
+
+    It 'does not judge an iteration stamped by closeout before the since date' {
+        $script:DashboardOutput | Should -Not -Match "missing-dashboard[^`n]*901-fixture 003" -Because 'it closed before the check shipped (2026-05-26)'
+    }
+
+    It 'does not judge an iteration closed by its status alone, with no index entry' {
+        $script:DashboardOutput | Should -Not -Match "missing-dashboard[^`n]*901-fixture 004" -Because 'no closeout stamp, no trusted closure date'
+    }
+
+    It 'judges by date, not by feature number: a feature before 017 closed by closeout after the date is judged' {
+        $script:DashboardOutput | Should -Match "missing-dashboard[^`n]*005-early 001" -Because 'the since date replaces the feature-number cut-off'
+    }
+}
+
+Describe 'T009: iteration closeout writes the closure stamp, and the index reader returns it' {
+    BeforeAll {
+        $script:IndexRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('stamp-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+        $null = New-Item -ItemType Directory -Path (Join-Path $script:IndexRoot '.specrew') -Force
+        Set-Content -LiteralPath (Join-Path $script:IndexRoot '.specrew\closed-iterations.yml') -Encoding UTF8 -Value @'
+closed:
+  - feature: 034-old
+    iteration: 001
+    closed_at: 2026-08-06T00:00:00Z
+'@
+        Add-SpecrewClosedIterationEntry -ProjectRoot $script:IndexRoot -Feature '206-sample' -Iteration '1' -ClosedAt '2026-11-12T10:04:00Z'
+        $script:IndexText = Get-Content -LiteralPath (Join-Path $script:IndexRoot '.specrew\closed-iterations.yml') -Raw -Encoding UTF8
+        $script:Index = Get-SpecrewClosedIterationIndex -ProjectRoot $script:IndexRoot
+    }
+
+    AfterAll {
+        if ($script:IndexRoot -and (Test-Path -LiteralPath $script:IndexRoot)) {
+            Remove-Item -LiteralPath $script:IndexRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'the new entry carries closed_at_source: closeout' {
+        $script:IndexText | Should -Match "(?m)^\s*iteration: 001\s*\r?\n\s*closed_at: 2026-11-12T10:04:00Z\s*\r?\n\s*closed_at_source: closeout\s*$"
+    }
+
+    It 'the reader returns the stamp for the new entry and none for the old one' {
+        $script:Index['206-sample/001'].closed_at_source | Should -Be 'closeout'
+        $script:Index['034-old/001'].closed_at_source | Should -BeNullOrEmpty
+        $script:Index['034-old/001'].closed_at | Should -Be '2026-08-06T00:00:00Z'
+    }
+}
+
+Describe '-RebuildClosedIndex keeps the closeout stamps (FR-008; review round 2, finding 5)' {
+    # The rebuild regenerated every entry from the state.md heuristic and wrote only feature, iteration and a
+    # new closed_at: an iteration closed by closeout after the since date lost its stamp and its closure time,
+    # and the dashboard check stopped judging it.
+    BeforeAll {
+        $script:RebuildRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('rebuild-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+        $null = New-Item -ItemType Directory -Path (Join-Path $script:RebuildRoot '.specrew') -Force
+        $null = New-Item -ItemType Directory -Path (Join-Path $script:RebuildRoot '.squad') -Force
+        Copy-Item -LiteralPath (Join-Path $script:RepoRoot '.squad\team.md') -Destination (Join-Path $script:RebuildRoot '.squad\team.md')
+        foreach ($n in '001', '002', '003') {
+            $dir = Join-Path $script:RebuildRoot ('specs\910-rebuild\iterations\{0}' -f $n)
+            $null = New-Item -ItemType Directory -Path $dir -Force
+            $status = if ($n -eq '003') { 'abandoned' } else { 'complete' }
+            Set-Content -LiteralPath (Join-Path $dir 'state.md') -Encoding UTF8 -Value ("# Iteration State: $n`n`n**Schema**: v2`n**Iteration Status**: $status`n")
+        }
+        # Review round 3, finding 3: 004 has the shape the state.md text heuristic reads as closed and the canonical
+        # definition reads as open (phase iteration-closeout and closure words in the body, status reviewing, no
+        # index entry). 005 is open by its status but already in the index without a stamp.
+        $dir = Join-Path $script:RebuildRoot 'specs\910-rebuild\iterations\004'
+        $null = New-Item -ItemType Directory -Path $dir -Force
+        Set-Content -LiteralPath (Join-Path $dir 'state.md') -Encoding UTF8 -Value "# Iteration State: 004`n`n**Schema**: v2`n**Current Phase**: iteration-closeout`n**Iteration Status**: reviewing`n`nRETRO COMPLETE; iteration closed.`n"
+        $dir = Join-Path $script:RebuildRoot 'specs\910-rebuild\iterations\005'
+        $null = New-Item -ItemType Directory -Path $dir -Force
+        Set-Content -LiteralPath (Join-Path $dir 'state.md') -Encoding UTF8 -Value "# Iteration State: 005`n`n**Schema**: v2`n**Iteration Status**: executing`n"
+        # Review iteration 002 round 2, finding 1: 006 is abandoned with no recorded ruling and no index entry, so the
+        # canonical definition (T026) reads it as open. 007 is abandoned with the ruling recorded, so it is closed.
+        $dir = Join-Path $script:RebuildRoot 'specs\910-rebuild\iterations\006'
+        $null = New-Item -ItemType Directory -Path $dir -Force
+        Set-Content -LiteralPath (Join-Path $dir 'state.md') -Encoding UTF8 -Value "# Iteration State: 006`n`n**Schema**: v2`n**Iteration Status**: abandoned`n**Abandonment Reason**: superseded`n"
+        $dir = Join-Path $script:RebuildRoot 'specs\910-rebuild\iterations\007'
+        $null = New-Item -ItemType Directory -Path $dir -Force
+        Set-Content -LiteralPath (Join-Path $dir 'state.md') -Encoding UTF8 -Value "# Iteration State: 007`n`n**Schema**: v2`n**Iteration Status**: abandoned`n`n## Disposition`n`n**Abandoned by the maintainer's ruling of 2026-11-16.**`n"
+        Set-Content -LiteralPath (Join-Path $script:RebuildRoot 'specs\910-rebuild\spec.md') -Value '# Feature Specification: 910-rebuild' -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $script:RebuildRoot '.specrew\closed-iterations.yml') -Encoding UTF8 -Value @'
+closed:
+  - feature: 910-rebuild
+    iteration: 001
+    closed_at: 2026-11-01T10:00:00Z
+    closed_at_source: closeout
+  - feature: 910-rebuild
+    iteration: 002
+    closed_at: 2026-08-06T14:49:04Z
+  - feature: 910-rebuild
+    iteration: 003
+    closed_at: 2026-11-05T09:30:00Z
+    closed_at_source: closeout
+  - feature: 910-rebuild
+    iteration: 005
+    closed_at: 2026-08-06T14:49:04Z
+'@
+        $script:Since = [datetime]::new(2026, 5, 26)
+        $script:BeforeRebuild = Get-SpecrewClosedIterationIndex -ProjectRoot $script:RebuildRoot
+        $script:RebuildOutput = (@(& pwsh -NoProfile -File $script:Validator -ProjectPath $script:RebuildRoot -RebuildClosedIndex 2>&1 | ForEach-Object { [string]$_ }) -join "`n")
+        $script:RebuildExit = $LASTEXITCODE
+        $script:AfterRebuild = Get-SpecrewClosedIterationIndex -ProjectRoot $script:RebuildRoot
+    }
+
+    AfterAll {
+        if ($script:RebuildRoot -and (Test-Path -LiteralPath $script:RebuildRoot)) {
+            Remove-Item -LiteralPath $script:RebuildRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'the rebuild runs' {
+        $script:RebuildExit | Should -Be 0 -Because $script:RebuildOutput
+    }
+
+    It 'keeps a closeout-stamped entry''s closure time and stamp' {
+        $script:AfterRebuild['910-rebuild/001'].closed_at | Should -Be '2026-11-01T10:00:00Z'
+        $script:AfterRebuild['910-rebuild/001'].closed_at_source | Should -Be 'closeout'
+    }
+
+    It 'keeps a closeout-stamped entry the state.md walk does not detect' {
+        $script:AfterRebuild.ContainsKey('910-rebuild/003') | Should -BeTrue
+        $script:AfterRebuild['910-rebuild/003'].closed_at | Should -Be '2026-11-05T09:30:00Z'
+        $script:AfterRebuild['910-rebuild/003'].closed_at_source | Should -Be 'closeout'
+    }
+
+    It 'leaves an unstamped entry unstamped' {
+        $script:AfterRebuild['910-rebuild/002'].closed_at_source | Should -BeNullOrEmpty
+    }
+
+    It 'does not index an iteration the canonical definition reads as open (review round 3, finding 3)' {
+        $script:AfterRebuild.ContainsKey('910-rebuild/004') | Should -BeFalse
+        Test-SpecrewIterationClosed -ProjectRoot $script:RebuildRoot -Feature '910-rebuild' -Iteration '004' | Should -BeFalse
+    }
+
+    It 'does not index an abandoned iteration with no recorded ruling (T026; iteration 002 round 2, finding 1)' {
+        Test-SpecrewIterationClosed -ProjectRoot $script:RebuildRoot -Feature '910-rebuild' -Iteration '006' -ClosedIndex $script:BeforeRebuild | Should -BeFalse
+        $script:AfterRebuild.ContainsKey('910-rebuild/006') | Should -BeFalse -Because 'an entry would make it closed for good'
+    }
+
+    It 'indexes an abandoned iteration whose ruling is recorded (T026; iteration 002 round 2, finding 1)' {
+        $script:AfterRebuild.ContainsKey('910-rebuild/007') | Should -BeTrue
+    }
+
+    It 'never removes an entry: the index is append-only, so every iteration closed before the rebuild is closed after it (review round 3, finding 3)' {
+        foreach ($key in @($script:BeforeRebuild.Keys)) {
+            $script:AfterRebuild.ContainsKey($key) | Should -BeTrue -Because $key
+        }
+        $script:AfterRebuild['910-rebuild/005'].closed_at | Should -Be '2026-08-06T14:49:04Z'
+        $script:AfterRebuild['910-rebuild/005'].closed_at_source | Should -BeNullOrEmpty
+    }
+
+    It 'the dashboard check''s applicability is the same before and after the rebuild' {
+        foreach ($n in '001', '002', '003') {
+            $before = Test-SpecrewClosedCheckApplies -ClosedIndex $script:BeforeRebuild -Feature '910-rebuild' -Iteration $n -Since $script:Since
+            $after = Test-SpecrewClosedCheckApplies -ClosedIndex $script:AfterRebuild -Feature '910-rebuild' -Iteration $n -Since $script:Since
+            $after | Should -Be $before -Because "iteration $n"
+        }
+    }
+}
+
+Describe 'T009: a recorded ruling is read from the Disposition section of state.md' {
+    It 'finds the recorded ruling of <Key>' -ForEach @(
+        @{ Key = '174-hook-driven-session-bootstrap/007' }
+        @{ Key = '197-continuous-co-review/006' }
+        @{ Key = '198-beta2-hardening/010' }
+        @{ Key = '198-beta2-hardening/011' }
+    ) {
+        $parts = $Key -split '/'
+        $statePath = Join-Path $script:RepoRoot ('specs\{0}\iterations\{1}\state.md' -f $parts[0], $parts[1])
+        Test-SpecrewIterationRulingRecorded -StatePath $statePath | Should -BeTrue
+    }
+
+    It 'finds no recorded ruling in a Disposition that does not record the abandonment decision: <Name> (review round 2, finding 3)' -ForEach @(
+        @{ Name = 'awaiting, dated in the heading'; Body = "## Disposition (2026-11-12)`n`nAwaiting the maintainer's ruling; abandonment has not been approved.`n" }
+        @{ Name = 'pending ruling with a date'; Body = "## Disposition`n`nThe maintainer's ruling of 2026-11-12 on abandonment is pending.`n" }
+        @{ Name = 'abandonment refused'; Body = "## Disposition`n`nAbandonment was not approved: the maintainer's decision of 2026-11-12 keeps it open.`n" }
+        @{ Name = 'a ruling on something else'; Body = "## Disposition`n`nThe maintainer's ruling of 2026-11-12 moved T004 to iteration 002.`n`nThe iteration may be abandoned later.`n" }
+        @{ Name = 'abandonment proposed'; Body = "## Disposition`n`nAbandonment proposed for the maintainer's decision on 2026-11-12.`n" }
+        # Review round 3, finding 1: words that reverse the decision without a negation word.
+        @{ Name = 'abandonment rejected'; Body = "## Disposition`n`nAbandonment was rejected by the maintainer's decision of 2026-11-12.`n" }
+        @{ Name = 'abandonment declined'; Body = "## Disposition`n`nThe maintainer's ruling of 2026-11-12 declined the abandonment.`n" }
+        @{ Name = 'abandonment overturned'; Body = "## Disposition`n`nAbandoned on 2026-11-01, overturned by the maintainer's ruling of 2026-11-12.`n" }
+        @{ Name = 'abandonment reversed'; Body = "## Disposition`n`nThe abandonment was reversed by the maintainer's decision of 2026-11-12.`n" }
+        @{ Name = 'abandonment that may follow'; Body = "## Disposition`n`nAbandoned, by the maintainer's ruling of 2026-11-12, may follow.`n" }
+        # Iteration 002 review round 2, finding 3: a trailing note that denies the ruling, a sentence inside an HTML
+        # comment or a code fence, text under a deeper heading, and a date that has not come yet.
+        @{ Name = 'a trailing note that says it is not confirmed'; Body = "## Disposition`n`nAbandoned by the maintainer's ruling of 2026-11-14 (not yet confirmed).`n" }
+        @{ Name = 'a trailing note that withdraws it'; Body = "## Disposition`n`nAbandoned by the maintainer's ruling of 2026-11-14 (withdrawn 2026-11-15).`n" }
+        @{ Name = 'a sentence inside a multi-line HTML comment'; Body = "## Disposition`n`n<!-- draft, for the maintainer.`nAbandoned by the maintainer's ruling of 2026-11-14.`n-->`n" }
+        @{ Name = 'a sentence inside a code fence'; Body = "## Disposition`n`nThe form to use:`n`n``````text`nAbandoned by the maintainer's ruling of 2026-11-14.`n```````n" }
+        @{ Name = 'a sentence under a level 3 heading that says it is not ruled'; Body = "## Disposition`n`nNo ruling yet.`n`n### Proposed, not ruled.`n`nAbandoned by the maintainer's ruling of 2026-11-14.`n" }
+        @{ Name = 'a ruling dated in the future'; Body = "## Disposition`n`nAbandoned by the maintainer's ruling of 2099-01-01.`n" }
+        # Invented for this round (iteration 001 retro: every text rule's RED set carries a conditioned phrasing too).
+        @{ Name = 'a trailing note that makes it conditional'; Body = "## Disposition`n`nAbandoned by the maintainer's ruling of 2026-11-14 (if feature 203 merges first).`n" }
+        # Iteration 002 review round 3, finding-a9d93413b59ece33: a whole Disposition section inside an HTML comment.
+        @{ Name = 'a Disposition section commented out with its heading'; Body = "<!--`n## Disposition`n`nAbandoned by the maintainer's ruling of 2026-11-14.`n-->`n" }
+    ) {
+        $dir = Join-Path $script:Root ('ruling-negative-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+        $null = New-Item -ItemType Directory -Path $dir -Force
+        $statePath = Join-Path $dir 'state.md'
+        Set-Content -LiteralPath $statePath -Encoding UTF8 -Value ("# Iteration State: 001`n`n**Schema**: v2`n**Iteration Status**: abandoned`n`n" + $Body)
+        Test-SpecrewIterationRulingRecorded -StatePath $statePath | Should -BeFalse
+        Test-SpecrewIterationAbandonedByRuling -StatePath $statePath | Should -BeFalse
+    }
+
+    It 'finds the recorded ruling in each affirmative form: <Name> (review round 3, finding 1)' -ForEach @(
+        @{ Name = 'abandoned, by ruling'; Body = "## Disposition`n`n**Abandoned, by the maintainer's ruling of 2026-11-12.** Its work moves to iteration 002.`n" }
+        @{ Name = 'abandoned and superseded, with a note'; Body = "## Disposition`n`nAbandoned and superseded, by the maintainer's ruling of 2026-11-12 (at the T005 stop).`n" }
+        @{ Name = 'abandoned, superseded by an iteration, curly apostrophe'; Body = "## Disposition`n`nAbandoned, superseded by iteration 004, by the maintainer$([char]0x2019)s decision on 2026-11-12.`n" }
+        @{ Name = 'closed as abandoned, dated decision in brackets'; Body = "## Disposition`n`n**CLOSED as ABANDONED-superseded (2026-11-12, maintainer decision).**`n" }
+    ) {
+        $dir = Join-Path $script:Root ('ruling-positive-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+        $null = New-Item -ItemType Directory -Path $dir -Force
+        $statePath = Join-Path $dir 'state.md'
+        Set-Content -LiteralPath $statePath -Encoding UTF8 -Value ("# Iteration State: 001`n`n**Schema**: v2`n**Iteration Status**: abandoned`n`n" + $Body)
+        Test-SpecrewIterationRulingRecorded -StatePath $statePath | Should -BeTrue
+        Test-SpecrewIterationAbandonedByRuling -StatePath $statePath | Should -BeTrue
+    }
+
+    It 'finds the maintainer''s 2026-11-16 ruling recorded for group B iteration <Key> (T026)' -ForEach @(
+        @{ Key = '197-continuous-co-review/002' }
+        @{ Key = '197-continuous-co-review/007' }
+        @{ Key = '197-continuous-co-review/008' }
+        @{ Key = '198-beta2-hardening/005' }
+    ) {
+        $parts = $Key -split '/'
+        $statePath = Join-Path $script:RepoRoot ('specs\{0}\iterations\{1}\state.md' -f $parts[0], $parts[1])
+        Test-SpecrewIterationRulingRecorded -StatePath $statePath | Should -BeTrue
+        Get-Content -LiteralPath $statePath -Raw | Should -Match "(?m)^\*\*Abandoned by the maintainer's ruling of 2026-11-16\.\*\*"
+    }
+}
+
+Describe 'T009: abandoned by recorded ruling is exempt from the plan-status and review-verdict rules' {
+    It 'abandoned with a ruling, plan at retro, review not accepted: no review-verdict finding' {
+        $output = Invoke-FixtureValidator -Arguments @('-IterationPath', $script:RulingRetroDir)
+        $output | Should -Not -Match $script:ReviewVerdictPattern
+    }
+
+    It 'abandoned with a ruling, plan at abandoned, retro.md present: no stale-status finding' {
+        $output = Invoke-FixtureValidator -Arguments @('-IterationPath', $script:RulingAbandonedDir)
+        $output | Should -Not -Match $script:StaleRetroPattern
+    }
+
+    It 'abandoned with no ruling, plan at retro, review not accepted: the review-verdict finding stays' {
+        $output = Invoke-FixtureValidator -Arguments @('-IterationPath', $script:BareRetroDir)
+        $output | Should -Match $script:ReviewVerdictPattern
+    }
+
+    It 'abandoned with no ruling, plan at abandoned, retro.md present: the stale-status finding stays' {
+        $output = Invoke-FixtureValidator -Arguments @('-IterationPath', $script:BareAbandonedDir)
+        $output | Should -Match $script:StaleRetroPattern
+    }
+}
+
+Describe 'T009: the stamp is read with the validator''s own index reader, whatever renderer is loaded' {
+    BeforeAll {
+        # A renderer from an older installed Specrew module dot-sources its own shared-governance.ps1, whose
+        # Get-SpecrewClosedIterationIndex returns entries with no closed_at_source key. The validator runs
+        # under strict mode, where reading a missing key throws.
+        $script:OldRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('oldreader-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+        $null = New-Item -ItemType Directory -Path (Join-Path $script:OldRoot '.specrew') -Force
+        $null = New-Item -ItemType Directory -Path (Join-Path $script:OldRoot 'scripts\internal') -Force
+        $null = New-Item -ItemType Directory -Path (Join-Path $script:OldRoot '.squad') -Force
+        Copy-Item -LiteralPath (Join-Path $script:RepoRoot '.squad\team.md') -Destination (Join-Path $script:OldRoot '.squad\team.md')
+        $oldDir = Join-Path $script:OldRoot 'specs\903-old-reader\iterations\001'
+        $null = New-Item -ItemType Directory -Path $oldDir -Force
+        Set-Content -LiteralPath (Join-Path $script:OldRoot 'specs\903-old-reader\spec.md') -Value '# Feature Specification: 903-old-reader' -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $oldDir 'plan.md') -Value "# Plan`n`n**Status**: complete`n" -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $oldDir 'state.md') -Value "# Iteration State: 001`n`n**Schema**: v2`n**Iteration Status**: complete`n" -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $script:OldRoot '.specrew\closed-iterations.yml') -Encoding UTF8 -Value @'
+closed:
+  - feature: 903-old-reader
+    iteration: 001
+    closed_at: 2026-11-01T10:00:00Z
+    closed_at_source: closeout
+'@
+        @"
+function Get-SpecrewFeatureRecords {
+    param([string]`$ProjectRoot)
+    @([pscustomobject]@{
+        feature_ref = '903-old-reader'; feature_status = 'active'; has_feature_closeout = `$false; closeout_dashboard_path = ''
+        closed_iterations = @([pscustomobject]@{ iteration_ref = '001'; iteration_directory = '$($oldDir -replace "'", "''")' })
+    })
+}
+function Read-SpecrewRoadmapDefinition { param([string]`$ProjectRoot) [pscustomobject]@{ exists = `$false; warnings = @() } }
+function Get-SpecrewRoadmapProgress { param([object]`$RoadmapDefinition, [object[]]`$FeatureRecords) [pscustomobject]@{ warnings = @() } }
+# The older reader: entries carry closed_at only.
+function Get-SpecrewClosedIterationIndex {
+    param([string]`$ProjectRoot)
+    return @{ '903-old-reader/001' = @{ closed_at = '2026-11-01T10:00:00Z' } }
+}
+"@ | Set-Content -LiteralPath (Join-Path $script:OldRoot 'scripts\internal\dashboard-renderer.ps1') -Encoding UTF8
+        $script:OldReaderOutput = (@(& pwsh -NoProfile -File $script:Validator -ProjectPath $script:OldRoot 2>&1 | ForEach-Object { [string]$_ }) -join "`n")
+    }
+
+    AfterAll {
+        if ($script:OldRoot -and (Test-Path -LiteralPath $script:OldRoot)) {
+            Remove-Item -LiteralPath $script:OldRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'the validator does not fail on an index entry with no closed_at_source key' {
+        $script:OldReaderOutput | Should -Not -Match 'unexpected-validator-error'
+        $script:OldReaderOutput | Should -Not -Match "closed_at_source' cannot be found"
+    }
+
+    It 'the dashboard check still sees the stamp in .specrew/closed-iterations.yml' {
+        $script:OldReaderOutput | Should -Match "missing-dashboard[^`n]*903-old-reader 001"
+    }
+
+    It 'Test-SpecrewClosedCheckApplies under strict mode treats an entry with no stamp key as unstamped' {
+        Set-StrictMode -Version Latest
+        $index = @{ '903-old-reader/001' = @{ closed_at = '2026-11-01T10:00:00Z' } }
+        Test-SpecrewClosedCheckApplies -ClosedIndex $index -Feature '903-old-reader' -Iteration '001' -Since ([datetime]::new(2026, 5, 26)) | Should -BeFalse
+    }
+}
+
+Describe 'T009 acceptance: 198/011 in this repository' {
+    It 'the validator on 198/011 reports neither the review-verdict nor the stale-status finding' {
+        $iterationDir = Join-Path $script:RepoRoot 'specs\198-beta2-hardening\iterations\011'
+        $output = (@(& pwsh -NoProfile -File $script:Validator -ProjectPath $script:RepoRoot -IterationPath $iterationDir 2>&1 | ForEach-Object { [string]$_ }) -join "`n")
+        $output | Should -Not -Match $script:ReviewVerdictPattern
+        $output | Should -Not -Match $script:StaleRetroPattern
+    }
+}

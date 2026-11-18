@@ -49,9 +49,10 @@ function Test-FixtureAgainstSchema {
         [string]$SchemaPath
     )
 
+    # Test-Json's own result decides (feature 206, bug list item 26): depending on the PowerShell version, a schema
+    # mismatch either throws or returns $false, and a helper that only counted an exception passed invalid documents.
     try {
-        $null = Test-Json -Path $Path -SchemaFile $SchemaPath -WarningAction SilentlyContinue
-        return $true
+        return [bool](Test-Json -Path $Path -SchemaFile $SchemaPath -ErrorAction SilentlyContinue -WarningAction SilentlyContinue)
     }
     catch {
         return $false

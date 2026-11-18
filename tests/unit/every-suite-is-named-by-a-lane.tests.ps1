@@ -4,7 +4,21 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Every assertion runs and is counted; the run fails at the end if any failed, so a red run names every
+# failing check, not only the first. A prerequisite (a file the rest cannot run without) still stops at once.
+$script:AssertionCount = 0
+$script:Failures = [Collections.Generic.List[string]]::new()
 function Assert-True {
+    param([bool] $Condition, [string] $Message)
+    $script:AssertionCount++
+    if (-not $Condition) {
+        $script:Failures.Add($Message)
+        Write-Host "FAIL: $Message" -ForegroundColor Red
+        return
+    }
+    Write-Host "PASS: $Message" -ForegroundColor Green
+}
+function Assert-Prerequisite {
     param([bool] $Condition, [string] $Message)
     if (-not $Condition) { throw "FAIL: $Message" }
     Write-Host "PASS: $Message" -ForegroundColor Green
@@ -26,88 +40,755 @@ function Assert-True {
 # WHY A FILE-NAME COMPARISON IS THE RIGHT CHECK: a lane names its suites literally in the command it
 # runs, so membership is decidable by reading the plan. Nothing here asserts that a suite PASSES;
 # that is the lanes' own job. This asserts only that some lane would notice.
+#
+# FR-011 (feature 206): WHAT COUNTS AS A TEST IS ONE DEFINITION, NOT A FILE-NAME PATTERN. This guard counted
+# only files named *test.ps1 or *tests.ps1, so 35 script-style suites ran in no lane, no CI step and no
+# release manifest, and the guard that exists to notice that shared the blind spot. The census in
+# tests/support/test-census.ps1 is the one definition, read by this guard and by the release full sweep.
+# SC-004 is proved below on temp fixtures, both ways: an unregistered script of any file name fails the
+# comparison, and removing it makes the comparison pass.
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $repoRoot 'tests/support/test-census.ps1')
 
-# --- What the lanes name -------------------------------------------------------------------------
-$planPath = Join-Path $repoRoot '.specrew/verification-plan.json'
-Assert-True (Test-Path -LiteralPath $planPath -PathType Leaf) 'the verification plan exists to be read'
-$plan = Get-Content -LiteralPath $planPath -Raw -Encoding UTF8 | ConvertFrom-Json
-
-# Signoff-cadence lanes (maintainer ruling 2026-10-14, 202 DRIFT-013): mid-iteration checkpoint rounds
-# verify only the active feature's lanes, and the carried-forward lanes are parked here until the
-# signoff round restores them to the plan. A parked lane still runs before signoff, so its suites
-# count as named; a lane in neither file is the state this guard exists to catch.
-$parkedPath = Join-Path $repoRoot '.specrew/verification-plan.signoff-lanes.json'
-$parkedCommands = @()
-if (Test-Path -LiteralPath $parkedPath -PathType Leaf) {
-    $parkedCommands = @((Get-Content -LiteralPath $parkedPath -Raw -Encoding UTF8 | ConvertFrom-Json).commands)
-    Assert-True ($parkedCommands.Count -ge 1) 'the parked signoff lanes file names at least one lane'
+# --- The census: every test under tests/ ---------------------------------------------------------
+function Get-CensusTests {
+    param([Parameter(Mandatory)][string] $Root)
+    @(Get-SpecrewTestCensus -RepoRoot $Root | Where-Object { $_.Included } | ForEach-Object { [pscustomobject]@{ Path = $_.Path; Kind = $_.Kind } })
 }
 
-$named = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-foreach ($command in @(@($plan.commands) + $parkedCommands)) {
-    foreach ($argument in @($command.arguments)) {
-        foreach ($hit in [regex]::Matches([string]$argument, '(?i)tests/[A-Za-z0-9/._-]+?\.tests\.ps1')) {
-            [void]$named.Add(($hit.Value -replace '\\', '/'))
+function Get-CensusExclusions { Get-SpecrewTestCensusExclusions }
+function Get-CensusHeld { Get-SpecrewTestCensusHeld }
+function Get-CensusRegistries { @(Get-SpecrewTestCensusRegistries) }
+
+# A literal test path in a command, a workflow or a registry: tests/<anything>.ps1, either separator.
+$script:TestPathPattern = '(?i)(?<![A-Za-z0-9_.-])tests/[A-Za-z0-9/._-]+?\.ps1(?![A-Za-z0-9])'
+function Get-TestPathsIn {
+    param([string] $Text)
+    @([regex]::Matches(($Text -replace '\\', '/'), $script:TestPathPattern) | ForEach-Object { $_.Value })
+}
+# Comment lines name files without running them, so they name nothing.
+function Get-UncommentedText {
+    param([string] $Path)
+    (@(Get-Content -LiteralPath $Path -Encoding UTF8) | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
+}
+
+# Review round 2, finding 6: the lines of one run: value with their shell comments removed. A '#' starts a line
+# comment at the line start or after whitespace, outside quotes (PowerShell and bash agree on that much).
+# Review round 3, finding 6: one left-to-right pass over the lines, so a PowerShell block comment is recognised
+# before line comments are: "<#" outside quotes opens it, and it ends at the next "#>", on that line or a later
+# one. Quotes do not carry over a line end; a string spanning lines is read as code, which can only leave a
+# suite unnamed, never count one that is commented out.
+function Remove-ShellComment {
+    param([string[]] $Lines)
+    $out = [Collections.Generic.List[string]]::new()
+    $inBlock = $false
+    foreach ($line in @($Lines)) {
+        $text = [Text.StringBuilder]::new()
+        $quote = [char]0
+        $i = 0
+        while ($i -lt $line.Length) {
+            $c = $line[$i]
+            $next = if ($i + 1 -lt $line.Length) { $line[$i + 1] } else { [char]0 }
+            if ($inBlock) {
+                if ($c -eq '#' -and $next -eq '>') { $inBlock = $false; $i += 2 } else { $i++ }
+                continue
+            }
+            if ($quote -ne [char]0) {
+                [void]$text.Append($c)
+                if ($c -eq $quote) { $quote = [char]0 }
+                $i++
+                continue
+            }
+            if ($c -eq "'" -or $c -eq '"') { $quote = $c; [void]$text.Append($c); $i++; continue }
+            if ($c -eq '<' -and $next -eq '#') { $inBlock = $true; $i += 2; continue }
+            # Feature 206 T031 (bug list item 32): '#' starts a comment at the start of a word, which is also right after
+            # a statement delimiter or pipe (';', '|', '&', '('), not only after whitespace.
+            if ($c -eq '#' -and ($i -eq 0 -or [char]::IsWhiteSpace($line[$i - 1]) -or ';|&('.Contains([string]$line[$i - 1]))) { break }
+            [void]$text.Append($c)
+            $i++
+        }
+        $out.Add($text.ToString())
+    }
+    return @($out)
+}
+
+# Iteration 002 review round 2, finding 2: a step or job with an if: runs only when its condition holds. Two suites in
+# specrew-ci.yml sat under if: runner.os != 'Linux' inside an ubuntu-latest job and never ran, while this guard read
+# them as named. A condition counts as running only when every '&&' term is on this declared list, or is a runner.os
+# comparison that holds for the job's literal runs-on. A runs-on expression (a matrix) may match on some leg, so a
+# runner.os term is taken to hold there. Any other condition, and any '||', names nothing.
+$script:WorkflowConditionsThatRun = [ordered]@{
+    'always()'                            = 'runs whenever the job runs'
+    'success()'                           = 'the default condition: runs when the earlier steps passed'
+    '!cancelled()'                        = 'runs unless the run was cancelled'
+    "github.event_name != 'pull_request'" = 'runs on every push'
+}
+
+function Test-WorkflowConditionRuns {
+    param([AllowNull()][string] $Condition, [AllowNull()][string] $RunnerOs)
+    if ([string]::IsNullOrWhiteSpace($Condition)) { return $true }
+    $c = $Condition.Trim()
+    if ($c.Length -ge 2 -and $c[0] -eq '"' -and $c[-1] -eq '"') { $c = $c.Substring(1, $c.Length - 2).Trim() }
+    if ($c -match '^\$\{\{\s*(?<inner>.*?)\s*\}\}$') { $c = $Matches['inner'] }
+    if ($c -match '\|\|') { return $false }
+    foreach ($term in @($c -split '&&')) {
+        $t = ($term.Trim() -replace '\s+', ' ')
+        if ($script:WorkflowConditionsThatRun.Contains($t)) { continue }
+        if ($t -match "^runner\.os (?<op>==|!=) '(?<os>[A-Za-z]+)'$") {
+            if ([string]::IsNullOrWhiteSpace($RunnerOs)) { continue }
+            $same = $RunnerOs -eq $Matches['os']
+            if (($Matches['op'] -eq '==') -ne $same) { return $false }
+            continue
+        }
+        return $false
+    }
+    return $true
+}
+
+function Get-WorkflowRunnerOs {
+    param([AllowNull()][string] $RunsOn)
+    $r = ([string]$RunsOn).Trim().Trim("'", '"')
+    if ($r -match '^ubuntu-') { return 'Linux' }
+    if ($r -match '^windows-') { return 'Windows' }
+    if ($r -match '^macos-') { return 'macOS' }
+    return $null
+}
+
+# Iteration 002 review round 2, finding 2: "per push" means a workflow a push to a feature branch starts: an on: push
+# trigger with no tags-only and no paths: filter (publish-module runs on tags, specrew-project-sync on some paths of
+# main, the nightly and the confidence lane on a schedule).
+function Test-WorkflowRunsPerPush {
+    param([string] $Path)
+    $lines = @(Get-Content -LiteralPath $Path -Encoding UTF8)
+    $inOn = $false; $inPush = $false; $pushIndent = -1; $hasPush = $false; $hasBranches = $false; $hasTags = $false; $hasPaths = $false
+    foreach ($line in $lines) {
+        if ([string]::IsNullOrWhiteSpace($line) -or $line -match '^\s*#') { continue }
+        $indent = $line.Length - $line.TrimStart().Length
+        if ($indent -eq 0) {
+            $inOn = ($line -match '^(?:on|"on"|''on''):')
+            if ($inOn -and $line -match '^on:\s*\[?.*\bpush\b') { $hasPush = $true; $hasBranches = $true }
+            $inPush = $false
+            continue
+        }
+        if (-not $inOn) { continue }
+        if ($line -match '^\s*push:\s*(?:#.*)?$') { $inPush = $true; $pushIndent = $indent; $hasPush = $true; continue }
+        if ($inPush -and $indent -le $pushIndent) { $inPush = $false }
+        if ($inPush) {
+            if ($line -match '^\s*branches(?:-ignore)?:') { $hasBranches = $true }
+            if ($line -match '^\s*tags:') { $hasTags = $true }
+            if ($line -match '^\s*paths(?:-ignore)?:') { $hasPaths = $true }
         }
     }
+    return ($hasPush -and -not $hasPaths -and ($hasBranches -or -not $hasTags))
 }
-Assert-True ($named.Count -ge 40) ("the per-round lanes name suites to compare against (found {0})" -f $named.Count)
 
-# --- What the RELEASE GATE names ------------------------------------------------------------------
-# The ruling splits cadence by cost, so a suite may legitimately run only before a tag. That is a
-# DECISION, and a decision has to be readable: the release-cadence suites are listed in the open,
-# one per line, and this guard treats that list as the second lane. A suite in neither list is in
-# neither cadence, which is the state that hid twelve failures.
-$manifestPath = Join-Path $repoRoot '.specrew/release-gate-suites.txt'
-Assert-True (Test-Path -LiteralPath $manifestPath -PathType Leaf) 'the release-cadence manifest exists'
-$releaseNamed = @(Get-Content -LiteralPath $manifestPath -Encoding UTF8 |
-        ForEach-Object { $_.Trim() } |
-        Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and -not $_.StartsWith('#') })
-foreach ($entry in $releaseNamed) { [void]$named.Add(($entry -replace '\\', '/')) }
-Assert-True ($releaseNamed.Count -ge 1) ("the release gate names suites too (found {0})" -f $releaseNamed.Count)
+# Review round 2, finding 6: what a workflow's steps execute - the text of each run: key (one line, or the
+# indented block after "run: |" / "run: >"), with shell comments removed. A step name, a trigger paths: filter,
+# an env: value and any comment name a file without running it, so they name nothing.
+# Review round 3, finding 5: only a step's own run: key counts - a key of a list item under steps:, at that
+# item's key indent. A run: key under with: (an action input) or env: (a variable) is deeper and names nothing.
+function Get-WorkflowRunText {
+    param([string] $Path)
+    $lines = @(Get-Content -LiteralPath $Path -Encoding UTF8)
+    $run = [Collections.Generic.List[string]]::new()
+    # Feature 206 T031 (bug list item 31): the real structure, not any line that reads "steps:". Only a job's own
+    # steps: key (a key of a job under the top-level jobs: map) starts a step list, and a block scalar's lines
+    # ("key: |" or "key: >" and everything deeper) are its text, never workflow structure.
+    $inJobs = $false     # inside the top-level jobs: map
+    $jobIdIndent = -1    # indent of the job ids under jobs:
+    $jobKeyIndent = -1   # indent of the current job's keys
+    $scalarIndent = -1   # a block scalar's key column; deeper lines are its text
+    $stepsIndent = -1    # indent of the current job's "steps:" key; -1 outside a steps list
+    $itemIndent = -1     # indent of that list's "- " items
+    $stepKeyIndent = -1  # indent of the current step's keys
+    # Iteration 002 round 2, finding 2: a step's run text is held until the step ends, and a job's until the job ends,
+    # because an if: may come after the run: key. Each is kept only when its condition runs.
+    $stepRun = [Collections.Generic.List[string]]::new(); $stepIf = $null
+    # Iteration 002 review round 3, finding-c79fd0045cfa0bb1: a job's runs-on may come after its steps:, so each step's
+    # condition is judged when the job ends, with the job's runner as finally read, not as it stood when the step ended.
+    $jobSteps = [Collections.Generic.List[object]]::new(); $jobIf = $null; $jobOs = $null
+    $flushStep = {
+        if ($stepRun.Count -gt 0) { $jobSteps.Add([pscustomobject]@{ Run = @($stepRun); If = $stepIf }) }
+        $stepRun.Clear(); $stepIf = $null
+    }
+    $flushJob = {
+        . $flushStep
+        if ($jobSteps.Count -gt 0 -and (Test-WorkflowConditionRuns -Condition $jobIf -RunnerOs $jobOs)) {
+            foreach ($step in $jobSteps) {
+                if (Test-WorkflowConditionRuns -Condition $step.If -RunnerOs $jobOs) { foreach ($kept in $step.Run) { $run.Add($kept) } }
+            }
+        }
+        $jobSteps.Clear(); $jobIf = $null; $jobOs = $null
+    }
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $line = $lines[$i]
+        if ([string]::IsNullOrWhiteSpace($line) -or $line -match '^\s*#') { continue }
+        $indent = $line.Length - $line.TrimStart().Length
+        if ($scalarIndent -ge 0) {
+            if ($indent -gt $scalarIndent) { continue }
+            $scalarIndent = -1
+        }
+        $item = [regex]::Match($line, '^\s*-(?:\s+|$)')
+        $keyColumn = if ($item.Success) { $item.Length } else { $indent }
+        $keyText = if ($item.Success) { $line.Substring($item.Length) } else { $line.TrimStart() }
+        $opensScalar = $keyText -match '^[^\s#''"][^:]*:\s*[|>][-+0-9]*\s*(?:#.*)?$'
+        if ($indent -eq 0 -and -not $item.Success) {
+            . $flushJob
+            $inJobs = ($line -match '^jobs:\s*(?:#.*)?$')
+            $jobIdIndent = -1; $jobKeyIndent = -1; $stepsIndent = -1
+            if ($opensScalar) { $scalarIndent = 0 }
+            continue
+        }
+        if (-not $inJobs) { if ($opensScalar) { $scalarIndent = $keyColumn }; continue }
+        if ($jobIdIndent -lt 0) { $jobIdIndent = $indent }
+        if ($indent -le $jobIdIndent) {
+            . $flushJob
+            $jobIdIndent = $indent; $jobKeyIndent = -1; $stepsIndent = -1
+            if ($opensScalar) { $scalarIndent = $keyColumn }
+            continue
+        }
+        if ($jobKeyIndent -lt 0) { $jobKeyIndent = $indent }
+        if ($indent -eq $jobKeyIndent -and -not $item.Success) {
+            . $flushStep
+            if ($line -match '^\s*if:\s*(?<cond>.*?)\s*$') { $jobIf = $Matches['cond'] }
+            if ($line -match '^\s*runs-on:\s*(?<on>[^#]*?)\s*(?:#.*)?$') { $jobOs = Get-WorkflowRunnerOs -RunsOn $Matches['on'] }
+            if ($line -match '^\s*steps:\s*(?:#.*)?$') { $stepsIndent = $indent; $itemIndent = -1; $stepKeyIndent = -1 }
+            else { $stepsIndent = -1; if ($opensScalar) { $scalarIndent = $keyColumn } }
+            continue
+        }
+        if ($stepsIndent -lt 0) { if ($opensScalar) { $scalarIndent = $keyColumn }; continue }
+        if ($item.Success -and ($itemIndent -lt 0 -or $indent -eq $itemIndent)) {
+            . $flushStep
+            $itemIndent = $indent
+            # "-" alone on its line: the step's keys start on the next line, one level deeper.
+            $stepKeyIndent = if ([string]::IsNullOrWhiteSpace($keyText)) { -2 } else { $item.Length }
+        }
+        elseif ($stepKeyIndent -eq -2 -and $indent -gt $itemIndent) { $stepKeyIndent = $indent; $keyText = $line.TrimStart() }
+        elseif ($indent -eq $stepKeyIndent) { $keyText = $line.TrimStart() }
+        else { if ($opensScalar) { $scalarIndent = $keyColumn }; continue }
+        if ($keyText -match '^if:\s*(?<cond>.*?)\s*$') { $stepIf = $Matches['cond']; continue }
+        if ($keyText -notmatch '^run:\s*(?<rest>.*)$') { if ($opensScalar) { $scalarIndent = $keyColumn }; continue }
+        $keyIndent = $stepKeyIndent
+        $rest = $Matches['rest'].Trim()
+        if ($rest -match '^[|>][-+0-9]*\s*(?:#.*)?$') {
+            $body = [Collections.Generic.List[string]]::new()
+            for ($j = $i + 1; $j -lt $lines.Count; $j++) {
+                if (-not [string]::IsNullOrWhiteSpace($lines[$j]) -and ($lines[$j].Length - $lines[$j].TrimStart().Length) -le $keyIndent) { break }
+                $body.Add($lines[$j])
+            }
+            foreach ($kept in @(Remove-ShellComment -Lines @($body))) { $stepRun.Add($kept) }
+            $i = $j - 1
+            continue
+        }
+        if ($rest.Length -ge 2 -and (($rest[0] -eq '"' -and $rest[-1] -eq '"') -or ($rest[0] -eq "'" -and $rest[-1] -eq "'"))) {
+            $rest = $rest.Substring(1, $rest.Length - 2)
+        }
+        foreach ($kept in @(Remove-ShellComment -Lines @($rest))) { $stepRun.Add($kept) }
+    }
+    . $flushJob
+    return ($run -join "`n")
+}
 
-# --- What exists on disk -------------------------------------------------------------------------
-# The same definition the disk-wide census uses: a test file is one whose name ends in test.ps1 or
-# tests.ps1. Fixtures, probes and support scripts under tests/ are not tests and are not required to
-# be in a lane - that distinction is the census's, and this check inherits it rather than inventing
-# a second one.
-$onDisk = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'tests') -Recurse -File -Filter '*.ps1' |
-        Where-Object { $_.Name -match '(?i)tests?\.ps1$' } |
-        ForEach-Object { ((Resolve-Path -LiteralPath $_.FullName -Relative) -replace '^\.[\\/]', '' -replace '\\', '/') })
-Assert-True ($onDisk.Count -ge $named.Count) 'the disk census found at least as many suites as the plan names'
+# --- What the lanes, the release manifest and CI name ---------------------------------------------
+function Get-NamedTests {
+    param([Parameter(Mandatory)][string] $Root)
+    $named = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $laneNamed = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $pushNamed = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $ciNamed = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $registriesRead = [Collections.Generic.List[string]]::new()
+    $planCommands = @()
+    $planPath = Join-Path $Root '.specrew/verification-plan.json'
+    if (Test-Path -LiteralPath $planPath -PathType Leaf) {
+        $planCommands = @((Get-Content -LiteralPath $planPath -Raw -Encoding UTF8 | ConvertFrom-Json).commands)
+    }
+    # Signoff-cadence lanes (maintainer ruling 2026-10-14, 202 DRIFT-013): mid-iteration checkpoint rounds
+    # verify only the active feature's lanes, and the carried-forward lanes are parked here until the
+    # signoff round restores them to the plan. A parked lane still runs before signoff, so its suites
+    # count as named; a lane in neither file is the state this guard exists to catch.
+    $parkedCommands = @()
+    $parkedPath = Join-Path $Root '.specrew/verification-plan.signoff-lanes.json'
+    if (Test-Path -LiteralPath $parkedPath -PathType Leaf) {
+        $parkedCommands = @((Get-Content -LiteralPath $parkedPath -Raw -Encoding UTF8 | ConvertFrom-Json).commands)
+    }
+    foreach ($command in @($planCommands + $parkedCommands)) {
+        foreach ($argument in @($command.arguments)) {
+            foreach ($hit in @(Get-TestPathsIn -Text ([string]$argument))) {
+                [void]$named.Add($hit)
+                [void]$laneNamed.Add($hit)
+            }
+        }
+    }
+    # The ruling splits cadence by cost, so a suite may legitimately run only before a tag. That is a
+    # DECISION, and a decision has to be readable: the release-cadence suites are listed in the open,
+    # one per line, and this guard treats that list as the second lane.
+    $releaseNamed = @()
+    $manifestPath = Join-Path $Root '.specrew/release-gate-suites.txt'
+    if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
+        $releaseNamed = @(Get-Content -LiteralPath $manifestPath -Encoding UTF8 |
+                ForEach-Object { $_.Trim() } |
+                Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and -not $_.StartsWith('#') } |
+                ForEach-Object { $_ -replace '\\', '/' })
+    }
+    foreach ($entry in $releaseNamed) { [void]$named.Add($entry); [void]$laneNamed.Add($entry) }
+    # A CI step runs what it names (FR-011: "no lane, CI step or release manifest").
+    $workflowRoot = Join-Path $Root '.github/workflows'
+    if (Test-Path -LiteralPath $workflowRoot -PathType Container) {
+        foreach ($workflow in @(Get-ChildItem -LiteralPath $workflowRoot -File | Where-Object { $_.Extension -in @('.yml', '.yaml') })) {
+            $perPushWorkflow = Test-WorkflowRunsPerPush -Path $workflow.FullName
+            foreach ($hit in @(Get-TestPathsIn -Text (Get-WorkflowRunText -Path $workflow.FullName))) {
+                [void]$ciNamed.Add($hit); [void]$named.Add($hit)
+                if ($perPushWorkflow) { [void]$pushNamed.Add($hit) }
+            }
+        }
+    }
+    # A registry runner that a CI step runs runs every script it lists (tests/support/test-census.ps1).
+    foreach ($registry in @(Get-CensusRegistries)) {
+        $registryPath = Join-Path $Root $registry
+        if (-not $ciNamed.Contains($registry) -or -not (Test-Path -LiteralPath $registryPath -PathType Leaf)) { continue }
+        $registriesRead.Add($registry)
+        foreach ($hit in @(Get-TestPathsIn -Text (Get-UncommentedText -Path $registryPath))) { [void]$named.Add($hit) }
+    }
+    return [pscustomobject]@{
+        Named = $named; LaneNamed = $laneNamed; PlanCommands = $planCommands.Count; ParkedCommands = $parkedCommands.Count
+        ReleaseCount = $releaseNamed.Count; CiNamed = $ciNamed; PushNamed = $pushNamed; RegistriesRead = @($registriesRead)
+    }
+}
 
-# --- Every suite on disk is named by at least one lane -------------------------------------------
-# Exemptions are DECLARED HERE, in the open, each with a reason. An exemption is a decision someone
-# can read and argue with; silence is not.
-$exempt = @(
-    # The census runner itself and the curated registry are RUNNERS, not suites: they execute other
-    # files. Naming them in a lane would nest the whole tree inside one lane command.
-    'tests/full-powershell-test-sweep.ps1'
-    'tests/f198-regression-suite.ps1'
-    'tests/f198-iteration006-foundation.ps1'
-    'tests/cross-platform-verify.ps1'
-)
-$unnamed = @($onDisk | Where-Object { -not $named.Contains($_) -and $exempt -notcontains $_ })
+function Get-UnnamedTests {
+    param([Parameter(Mandatory)][string] $Root)
+    $names = Get-NamedTests -Root $Root
+    @(Get-CensusTests -Root $Root | Where-Object { -not $names.Named.Contains($_.Path) } | ForEach-Object { $_.Path })
+}
 
-Assert-True (@($unnamed).Count -eq 0) ("every test file on disk is named by at least one verification lane{0}" -f $(
-    if (@($unnamed).Count -gt 0) {
-        "`n  UNNAMED (" + @($unnamed).Count + "): they run in no lane, so nothing would notice them failing:`n    " + (@($unnamed) -join "`n    ") +
-        "`n  Add each to a command in .specrew/verification-plan.json, or declare it exempt in this file with a reason."
-    } else { '' }))
+# --- This repository -------------------------------------------------------------------------------
+Assert-Prerequisite (Test-Path -LiteralPath (Join-Path $repoRoot '.specrew/verification-plan.json') -PathType Leaf) 'the verification plan exists to be read'
+Assert-Prerequisite (Test-Path -LiteralPath (Join-Path $repoRoot '.specrew/release-gate-suites.txt') -PathType Leaf) 'the release-cadence manifest exists'
+$names = Get-NamedTests -Root $repoRoot
+if (Test-Path -LiteralPath (Join-Path $repoRoot '.specrew/verification-plan.signoff-lanes.json') -PathType Leaf) {
+    Assert-True ($names.ParkedCommands -ge 1) 'the parked signoff lanes file names at least one lane'
+}
+Assert-True ($names.LaneNamed.Count -ge 40) ("the per-round lanes and the release manifest name suites to compare against (found {0})" -f $names.LaneNamed.Count)
+Assert-True ($names.ReleaseCount -ge 1) ("the release gate names suites too (found {0})" -f $names.ReleaseCount)
 
-# --- MUTATION PROOF: a suite written into no lane is detected -------------------------------------
-# Without this, the check above could pass because the comparison is broken rather than because the
-# lanes are complete - the exact failure mode this whole ruling is about.
-$phantom = 'tests/unit/a-suite-nobody-put-in-a-lane.tests.ps1'
-$phantomUnnamed = @(@($onDisk + $phantom) | Where-Object { -not $named.Contains($_) -and $exempt -notcontains $_ })
-Assert-True (@($phantomUnnamed).Count -eq 1 -and $phantomUnnamed[0] -eq $phantom) 'mutation proof: a suite in no lane is caught by this comparison'
+$registries = @(Get-CensusRegistries)
+Assert-True (@($names.RegistriesRead).Count -eq $registries.Count) ("every census registry is still run by a CI step, so the scripts it lists count as named (read: {0} of {1})" -f @($names.RegistriesRead).Count, $registries.Count)
 
-# --- And the plan may not name suites that do not exist ------------------------------------------
+$census = @(Get-CensusTests -Root $repoRoot)
+Assert-True ($census.Count -ge 400) ("the census finds the repository's tests (found {0})" -f $census.Count)
+
+# Exclusions are DECLARED, in the open, each with a reason, and each must still name a file: an
+# exclusion is a decision someone can read and argue with; silence is not.
+$exclusions = Get-CensusExclusions
+$staleExclusions = @($exclusions.Keys | Where-Object { -not (Test-Path -LiteralPath (Join-Path $repoRoot $_) -PathType Leaf) })
+$unreasoned = @($exclusions.Keys | Where-Object { [string]::IsNullOrWhiteSpace([string]$exclusions[$_]) })
+Assert-True ($staleExclusions.Count -eq 0 -and $unreasoned.Count -eq 0) ("every census exclusion names a file that exists, with a reason{0}" -f $(
+        if ($staleExclusions.Count + $unreasoned.Count -gt 0) { "`n  STALE: " + ($staleExclusions -join ', ') + "`n  NO REASON: " + ($unreasoned -join ', ') } else { '' }))
+
+# --- Every test on disk is named by at least one lane, CI step or the release manifest -------------
+$unnamed = @($census | Where-Object { -not $names.Named.Contains($_.Path) } | ForEach-Object { $_.Path })
+Assert-True ($unnamed.Count -eq 0) ("every test file on disk is named by a verification lane, a CI step or the release manifest{0}" -f $(
+        if ($unnamed.Count -gt 0) {
+            "`n  UNNAMED (" + $unnamed.Count + "): they run nowhere, so nothing would notice them failing:`n    " + ($unnamed -join "`n    ") +
+            "`n  Add each to a lane, a CI step or .specrew/release-gate-suites.txt, or list it in the census exclusions with a reason."
+        } else { '' }))
+
+# --- Held: tests the sweep lists but does not run until they are read (maintainer, 2026-11-12) ----------
+# A script that no lane, CI step or registry ran before is not run by the sweep until it has been read
+# for home writes (FR-012, T014). It is still a test, so the comparison above still counts it. The held
+# list may hold only such scripts: one that something already runs has nothing to wait for.
+$held = Get-CensusHeld
+$censusPaths = @($census | ForEach-Object { $_.Path })
+$heldNotTests = @($held.Keys | Where-Object { $censusPaths -notcontains $_ })
+$heldNamed = @($held.Keys | Where-Object { $names.Named.Contains($_) })
+$heldUnreasoned = @($held.Keys | Where-Object { [string]::IsNullOrWhiteSpace([string]$held[$_]) })
+Assert-True ($heldNotTests.Count + $heldNamed.Count + $heldUnreasoned.Count -eq 0) ("every held script is a test in the census, has a reason, and is named by no lane, CI step or registry{0}" -f $(
+        if ($heldNotTests.Count + $heldNamed.Count + $heldUnreasoned.Count -gt 0) {
+            "`n  NOT A TEST: " + ($heldNotTests -join ', ') + "`n  ALREADY NAMED: " + ($heldNamed -join ', ') + "`n  NO REASON: " + ($heldUnreasoned -join ', ')
+        } else { '' }))
+
+# --- And the lanes may not name suites that do not exist ------------------------------------------
 # The mirror failure: a lane naming a deleted file runs nothing and reports success for it.
-$stale = @($named | Where-Object { -not (Test-Path -LiteralPath (Join-Path $repoRoot $_) -PathType Leaf) })
-Assert-True (@($stale).Count -eq 0) ("every suite the lanes name still exists{0}" -f $(
-    if (@($stale).Count -gt 0) { "`n  STALE: " + (@($stale) -join ', ') } else { '' }))
+$stale = @($names.LaneNamed | Where-Object { -not (Test-Path -LiteralPath (Join-Path $repoRoot $_) -PathType Leaf) })
+Assert-True ($stale.Count -eq 0) ("every suite the lanes name still exists{0}" -f $(
+        if ($stale.Count -gt 0) { "`n  STALE: " + ($stale -join ', ') } else { '' }))
 
-Write-Host 'every suite is named by a lane: all assertions pass' -ForegroundColor Green
+# --- SC-004, both ways, on fixtures ---------------------------------------------------------------
+# Without this, the comparison above could pass because it is broken rather than because the lanes are
+# complete - the exact failure mode the W66 ruling is about. The fixture is a temp folder with one lane,
+# one release-manifest entry and one CI step, each naming a test; a fixture file and a support helper sit
+# beside them and must not count.
+function New-CensusFixture {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('census-fixture-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+    foreach ($dir in @('.specrew', '.github/workflows', 'tests/unit', 'tests/integration/fixtures', 'tests/support')) {
+        $null = New-Item -ItemType Directory -Path (Join-Path $root $dir) -Force
+    }
+    $plan = [ordered]@{ schema_version = '1.0'; commands = @([ordered]@{ command_id = 'lane'; executable = 'pwsh'; arguments = @('-NoProfile', '-File', 'tests/unit/lane-named.tests.ps1') }) }
+    [IO.File]::WriteAllText((Join-Path $root '.specrew/verification-plan.json'), ($plan | ConvertTo-Json -Depth 5))
+    [IO.File]::WriteAllText((Join-Path $root '.specrew/release-gate-suites.txt'), "# release cadence`ntests/unit/release-named.tests.ps1`n")
+    # Review round 2, finding 6: only what a step's run: block executes counts. An inline comment, a step name
+    # and a trigger paths: filter name a file without running it.
+    [IO.File]::WriteAllText((Join-Path $root '.github/workflows/ci.yml'), (@(
+                'on:'
+                '  push:'
+                '    paths:'
+                '      - tests/integration/only-in-a-paths-filter.ps1'
+                'jobs:'
+                '  t:'
+                '    runs-on: ubuntu-latest'
+                '    steps:'
+                '      # tests/integration/only-in-a-comment.ps1'
+                '      - run: pwsh -File ./tests/integration/ci-named.ps1'
+                '      - run: echo ok # tests/integration/only-in-an-inline-comment.ps1'
+                '      - name: Run tests/integration/only-in-a-step-name.ps1'
+                '        run: echo hi'
+                '      - name: A block'
+                '        shell: pwsh'
+                '        run: |'
+                '          $suites = @('
+                "            'tests/integration/ci-block-named.ps1'   # runs it"
+                '          )'
+                '          # tests/integration/only-in-a-block-comment.ps1'
+                '          foreach ($s in $suites) { & pwsh -File $s }'
+                '      - name: After the block'
+                '        env:'
+                '          NOTE: tests/integration/only-in-an-env-value.ps1'
+                '        run: echo done'
+                # Review round 3, finding 5: a key named run under with: or env: is an action input or a variable,
+                # not what the step executes.
+                '      - name: An action input named run'
+                '        uses: actions/upload-artifact@v7'
+                '        with:'
+                '          run: tests/integration/only-in-an-action-input.ps1'
+                '      - name: A variable named run'
+                '        env:'
+                '          run: tests/integration/only-in-an-env-run.ps1'
+                '        run: pwsh -File tests/integration/ci-after-env-run.ps1'
+                # Review round 3, finding 6: a PowerShell block comment over several lines; the suite after it runs.
+                '      - name: A multi-line block comment'
+                '        shell: pwsh'
+                '        run: |'
+                '          <#'
+                '          tests/integration/only-in-a-multiline-block-comment.ps1'
+                '          #>'
+                '          & pwsh -File tests/integration/ci-after-block-comment.ps1'
+                # Feature 206 T031 (bug list item 31): a block scalar's text is not workflow structure, even when it
+                # holds "steps:" and a "- run:" line.
+                '      - name: An env value written as a block scalar'
+                '        env:'
+                '          SCRIPT: |'
+                '            steps:'
+                '              - run: tests/integration/only-in-a-block-scalar.ps1'
+                '        run: echo env-block'
+                # T031 (the T037 brief): a key named steps at another level is not a job's steps.
+                '      - name: An action input named steps'
+                '        uses: some/action@v1'
+                '        with:'
+                '          steps:'
+                '            - run: tests/integration/only-in-an-input-named-steps.ps1'
+                # T031 (bug list item 32): a statement delimiter starts a new command, so a '#' after it is a comment.
+                '      - run: Write-Host done;# tests/integration/only-after-a-semicolon.ps1'
+                '      - run: pwsh -File tests/integration/ci-after-new-cases.ps1'
+                # Iteration 002 review round 2, finding 2: a step or a job with an if: may never run (two suites in
+                # specrew-ci.yml carry if: runner.os != 'Linux' inside an ubuntu-latest job), so its run: names nothing.
+                '      - name: A step that runs only off Linux'
+                "        if: runner.os != 'Linux'"
+                '        run: pwsh -File tests/integration/only-under-a-step-if.ps1'
+                # A condition on the declared list, and a runner.os test that holds for the job's runner, still run.
+                '      - name: A step every push runs'
+                "        if: github.event_name != 'pull_request'"
+                '        run: pwsh -File tests/integration/ci-under-a-push-if.ps1'
+                "      - if: always() && runner.os == 'Linux'"
+                '        run: pwsh -File tests/integration/ci-under-a-linux-if.ps1'
+                '      - name: A condition that is not on the list'
+                "        if: github.event_name == 'workflow_dispatch'"
+                '        run: pwsh -File tests/integration/only-under-an-unlisted-if.ps1'
+                # Iteration 002 review round 3, finding-c79fd0045cfa0bb1: runs-on written after steps: still decides the
+                # step's runner.os condition.
+                '  w:'
+                '    steps:'
+                "      - if: runner.os != 'Linux'"
+                '        run: pwsh -File tests/integration/only-under-if-before-runs-on.ps1'
+                '    runs-on: ubuntu-latest'
+                '  u:'
+                '    if: false'
+                '    runs-on: ubuntu-latest'
+                '    steps:'
+                '      - run: pwsh -File tests/integration/only-under-a-job-if.ps1'
+            ) -join "`n") + "`n")
+    foreach ($file in @('tests/unit/lane-named.tests.ps1', 'tests/unit/release-named.tests.ps1', 'tests/integration/ci-named.ps1', 'tests/integration/ci-block-named.ps1',
+            'tests/integration/ci-after-env-run.ps1', 'tests/integration/ci-after-block-comment.ps1', 'tests/integration/ci-after-new-cases.ps1',
+            'tests/integration/ci-under-a-push-if.ps1', 'tests/integration/ci-under-a-linux-if.ps1', 'tests/integration/fixtures/helper.ps1', 'tests/support/helper.ps1')) {
+        [IO.File]::WriteAllText((Join-Path $root $file), "exit 0`n")
+    }
+    return $root
+}
+
+$fixture = New-CensusFixture
+try {
+    $fixtureCensus = @(Get-CensusTests -Root $fixture | ForEach-Object { $_.Path })
+    Assert-True ($fixtureCensus -contains 'tests/integration/ci-named.ps1') 'fixture: a script named only by a CI step is a test in the census'
+    Assert-True ($fixtureCensus -notcontains 'tests/integration/fixtures/helper.ps1' -and $fixtureCensus -notcontains 'tests/support/helper.ps1') 'fixture: a fixture file and a support helper are not tests (the listed rule)'
+    $baseline = @(Get-UnnamedTests -Root $fixture)
+    Assert-True ($baseline.Count -eq 0) ("fixture: with every test named, the comparison passes (unnamed: {0})" -f ($baseline -join ', '))
+
+    foreach ($probe in @('tests/integration/zz-probe.ps1', 'tests/integration/zz-probe.tests.ps1', 'tests/integration/ZzProbe.Tests.ps1',
+            'tests/integration/deeper/zz_probe.ps1', 'tests/integration/only-in-a-comment.ps1', 'tests/integration/only-in-an-inline-comment.ps1',
+            'tests/integration/only-in-a-step-name.ps1', 'tests/integration/only-in-a-block-comment.ps1', 'tests/integration/only-in-a-paths-filter.ps1',
+            'tests/integration/only-in-an-env-value.ps1', 'tests/integration/only-in-an-action-input.ps1', 'tests/integration/only-in-an-env-run.ps1',
+            'tests/integration/only-in-a-multiline-block-comment.ps1', 'tests/integration/only-in-a-block-scalar.ps1',
+            'tests/integration/only-in-an-input-named-steps.ps1', 'tests/integration/only-after-a-semicolon.ps1',
+            'tests/integration/only-under-a-step-if.ps1', 'tests/integration/only-under-a-job-if.ps1', 'tests/integration/only-under-an-unlisted-if.ps1',
+            'tests/integration/only-under-if-before-runs-on.ps1')) {
+        $probePath = Join-Path $fixture $probe
+        $null = New-Item -ItemType Directory -Path (Split-Path -Parent $probePath) -Force
+        [IO.File]::WriteAllText($probePath, "exit 0`n")
+        $withProbe = @(Get-UnnamedTests -Root $fixture)
+        Assert-True ($withProbe.Count -eq 1 -and $withProbe[0] -eq $probe) ("SC-004: an unregistered '{0}' fails the comparison (unnamed: {1})" -f $probe, ($withProbe -join ', '))
+        Remove-Item -LiteralPath $probePath -Force
+        $withoutProbe = @(Get-UnnamedTests -Root $fixture)
+        Assert-True ($withoutProbe.Count -eq 0) ("SC-004: with '{0}' removed, the comparison passes (unnamed: {1})" -f $probe, ($withoutProbe -join ', '))
+    }
+}
+finally {
+    Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+# --- The release full sweep uses the same definition ----------------------------------------------
+# Listed, never run: -ListOnly prints the files the sweep would run ("LIST") and the held ones ("HELD"), and
+# exits before running any of them.
+function Compare-Listing {
+    param([string[]] $Listed, [string[]] $Expected, [string] $Message, [int] $Exit)
+    $onlyListed = @($Listed | Where-Object { $Expected -notcontains $_ })
+    $onlyExpected = @($Expected | Where-Object { $Listed -notcontains $_ })
+    Assert-True ($Exit -eq 0 -and $onlyListed.Count -eq 0 -and $onlyExpected.Count -eq 0) ("{0} (exit {1}; listed {2}; expected {3}; only listed: {4}; missing: {5})" -f
+        $Message, $Exit, @($Listed).Count, @($Expected).Count, (@($onlyListed | Select-Object -First 5) -join ', '), (@($onlyExpected | Select-Object -First 5) -join ', '))
+}
+$sweep = Join-Path $repoRoot 'tests/full-powershell-test-sweep.ps1'
+$sweepOutput = @(& pwsh -NoProfile -NonInteractive -File $sweep -ListOnly 2>&1 | ForEach-Object { [string]$_ })
+$sweepExit = $LASTEXITCODE
+$sweepListed = @($sweepOutput | Where-Object { $_ -match '^LIST (pester|script) (\S.*)$' } | ForEach-Object { '{0} {1}' -f $Matches[1], $Matches[2] } | Sort-Object)
+$sweepHeld = @($sweepOutput | Where-Object { $_ -match '^HELD (pester|script) (\S.*)$' } | ForEach-Object { '{0} {1}' -f $Matches[1], $Matches[2] } | Sort-Object)
+$censusToRun = @($census | Where-Object { -not $held.Contains($_.Path) } | ForEach-Object { '{0} {1}' -f $_.Kind, $_.Path } | Sort-Object)
+$censusHeld = @($census | Where-Object { $held.Contains($_.Path) } | ForEach-Object { '{0} {1}' -f $_.Kind, $_.Path } | Sort-Object)
+Assert-True ($sweepListed.Count -ge 400) ("the release full sweep lists the tests it would run (found {0})" -f $sweepListed.Count)
+Compare-Listing -Listed $sweepListed -Expected $censusToRun -Exit $sweepExit -Message 'the release full sweep lists exactly the census to run, with the same kinds'
+Compare-Listing -Listed $sweepHeld -Expected $censusHeld -Exit $sweepExit -Message 'the release full sweep marks exactly the held scripts as held'
+
+# --- A held script is not run by the sweep's real run (fixture) -----------------------------------
+# The sweep and the census are copied into a temp repository with two trivial scripts, one of them held
+# by the fixture's own census. Each writes a marker OUTSIDE that repository when it runs (inside it, the
+# marker would trip the sweep's caller-contamination check). Only the fixture's two files run.
+$sweepBase = Join-Path ([IO.Path]::GetTempPath()) ('census-sweep-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+$sweepRepo = Join-Path $sweepBase 'repo'
+$markers = Join-Path $sweepBase 'markers'
+try {
+    foreach ($dir in @('tests/unit', 'tests/integration', 'tests/support')) { $null = New-Item -ItemType Directory -Path (Join-Path $sweepRepo $dir) -Force }
+    $null = New-Item -ItemType Directory -Path $markers -Force
+    Copy-Item -LiteralPath $sweep -Destination (Join-Path $sweepRepo 'tests/full-powershell-test-sweep.ps1')
+    $censusSource = Join-Path $repoRoot 'tests/support/test-census.ps1'
+    $censusText = if (Test-Path -LiteralPath $censusSource -PathType Leaf) { Get-Content -LiteralPath $censusSource -Raw -Encoding UTF8 } else { '' }
+    # The fixture's held list replaces the repository's: a later definition of the function wins.
+    $censusText += "`nfunction Get-SpecrewTestCensusHeld { [ordered]@{ 'tests/integration/zz-held.tests.ps1' = 'fixture: held' } }`n"
+    [IO.File]::WriteAllText((Join-Path $sweepRepo 'tests/support/test-census.ps1'), $censusText)
+    foreach ($fixtureScript in @(@{ Path = 'tests/unit/ok.tests.ps1'; Marker = 'ok-ran' }, @{ Path = 'tests/integration/zz-held.tests.ps1'; Marker = 'held-ran' })) {
+        $markerPath = (Join-Path $markers $fixtureScript.Marker).Replace("'", "''")
+        [IO.File]::WriteAllText((Join-Path $sweepRepo $fixtureScript.Path), "[IO.File]::WriteAllText('$markerPath', 'ran')`nexit 0`n")
+    }
+    & git -C $sweepRepo init --quiet
+    & git -C $sweepRepo add -- tests
+    & git -C $sweepRepo -c user.name='Census Fixture' -c user.email='census-fixture@example.invalid' commit --quiet -m 'fixture: held'
+    $fixtureSweep = Join-Path $sweepRepo 'tests/full-powershell-test-sweep.ps1'
+    $fixtureList = @(& pwsh -NoProfile -NonInteractive -File $fixtureSweep -ListOnly 2>&1 | ForEach-Object { [string]$_ })
+    $fixtureListExit = $LASTEXITCODE
+    Assert-True ($fixtureListExit -eq 0 -and $fixtureList -contains 'HELD script tests/integration/zz-held.tests.ps1' -and
+        $fixtureList -notcontains 'LIST script tests/integration/zz-held.tests.ps1' -and $fixtureList -contains 'LIST script tests/unit/ok.tests.ps1') ("fixture: -ListOnly marks a held script as held, not as to be run (exit {0}: {1})" -f $fixtureListExit, ($fixtureList -join ' | '))
+    $fixtureRun = @(& pwsh -NoProfile -NonInteractive -File $fixtureSweep -MaxParallel 1 -PerFileTimeoutSeconds 120 2>&1 | ForEach-Object { [string]$_ })
+    $fixtureRunExit = $LASTEXITCODE
+    $okRan = Test-Path -LiteralPath (Join-Path $markers 'ok-ran') -PathType Leaf
+    $heldRan = Test-Path -LiteralPath (Join-Path $markers 'held-ran') -PathType Leaf
+    Assert-True ($fixtureRunExit -eq 0 -and $okRan -and -not $heldRan) ("fixture: the sweep's real run skips a held script and runs the rest (exit {0}; ran ok: {1}; ran held: {2}; output: {3})" -f
+        $fixtureRunExit, $okRan, $heldRan, (@($fixtureRun | Select-Object -Last 3) -join ' | '))
+}
+finally {
+    Remove-Item -LiteralPath $sweepBase -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+# --- T015 (maintainer ruling 2026-11-12): the start-path scripts redirect the user profile themselves -----
+# `specrew start` writes ~/.specrew/user-profile.yml when it is missing (scripts/specrew-start.ps1, the path
+# from scripts/internal/user-profile.ps1). Each script below runs it, so each points SPECREW_USER_PROFILE_PATH
+# at a temp file before its first start call, and never relies on the shell that runs it to have done so.
+$startPathScripts = @(
+    'tests/integration/project-path-resolution-regression.ps1'
+    'tests/integration/specrew-start-auto-continue-preservation.ps1'
+    'tests/integration/specrew-start-baseline-tracking.ps1'
+    'tests/integration/specrew-start-change-detector.ps1'
+    'tests/integration/specrew-start-end-to-end.ps1'
+    'tests/integration/specrew-start-parameter-handling.ps1'
+    'tests/integration/specrew-start-pause-and-confirm.ps1'
+    'tests/integration/validator-hardening-iteration2.ps1'
+)
+foreach ($startPathScript in $startPathScripts) {
+    $startPathText = Get-UncommentedText -Path (Join-Path $repoRoot $startPathScript)
+    $profileOverride = [regex]::Match($startPathText, '(?m)^\s*\$env:SPECREW_USER_PROFILE_PATH\s*=\s*[^\r\n]*GetTempPath\(\)')
+    $firstStartCall = $startPathText.IndexOf('specrew-start.ps1', [StringComparison]::OrdinalIgnoreCase)
+    Assert-True ($profileOverride.Success -and $firstStartCall -ge 0 -and $profileOverride.Index -lt $firstStartCall) ("{0} sets SPECREW_USER_PROFILE_PATH to a temp file before it first names specrew-start.ps1 (override found: {1}; first start reference at {2})" -f
+        $startPathScript, $profileOverride.Success, $firstStartCall)
+}
+
+# --- T015 (maintainer ruling 2026-11-12): the held list is empty, and each held script is where the ruling put it ---
+# Every script T014 read is now registered (a CI step or the release manifest) or excluded with its reason; the
+# held list exists only while a reading is owed, and none is.
+Assert-True ($held.Count -eq 0) ("the census holds no script back: each is registered or excluded with its reason (held: {0})" -f (@($held.Keys) -join ', '))
+
+$perPush = @(
+    'tests/integration/brownfield-merge.ps1'
+    # Feature 206 T028 (FR-012, maintainer 2026-11-16 "OK for all"): per push once it clears the key itself and the
+    # release script refuses a live publish nobody asked for.
+    'tests/integration/distribution-module-publish.ps1'
+    # Feature 206 T024 (SC-001, maintainer 2026-11-16 "OK for all"): per push after its supervised runs.
+    'tests/integration/project-path-resolution-regression.ps1'
+    'tests/integration/carry-forward-closed-iteration.ps1'
+    'tests/integration/concurrency-sizing.ps1'
+    'tests/integration/descriptive-reference-authored-prose.ps1'
+    'tests/integration/descriptive-reference-excluded-surfaces.ps1'
+    'tests/integration/feature-018-render-budget.ps1'
+    'tests/integration/gap-governance.ps1'
+    'tests/integration/hardening-gate-contract.ps1'
+    'tests/integration/lockout-chain-cap.ps1'
+    'tests/integration/mechanical-findings-contract.ps1'
+    'tests/integration/quality-evidence-governance.ps1'
+    'tests/integration/quality-profile-foundation.ps1'
+    'tests/integration/reviewer-artifacts.ps1'
+    'tests/integration/reviewer-closeout-governance.ps1'
+    'tests/integration/reviewer-regression-event.ps1'
+    'tests/integration/reviewer-regression-ledger.ps1'
+    'tests/integration/reviewer-regression-withdrawal.ps1'
+    'tests/integration/specrew-start-auto-continue-preservation.ps1'
+    'tests/integration/specrew-start-baseline-tracking.ps1'
+    'tests/integration/specrew-start-change-detector.ps1'
+    'tests/integration/specrew-start-end-to-end.ps1'
+    'tests/integration/specrew-start-parameter-handling.ps1'
+    'tests/integration/specrew-start-pause-and-confirm.ps1'
+)
+$releaseOnly = @(
+    'tests/integration/validator-hardening-iteration1.ps1'
+    # Feature 206 T021 (SC-002, maintainer ruling 2026-11-12): excluded until green, then the release manifest.
+    'tests/integration/validator-hardening-iteration2.ps1'
+)
+$notInCi = @($perPush | Where-Object { -not $names.PushNamed.Contains($_) })
+Assert-True ($notInCi.Count -eq 0) ("the scripts registered per push are named by a CI step of a workflow every push runs (missing: {0})" -f ($notInCi -join ', '))
+# Iteration 002 review round 2, finding 2: which workflows count as per push.
+$pushVerdicts = [ordered]@{ 'specrew-ci.yml' = $true; 'cross-platform-validation.yml' = $true; 'publish-module.yml' = $false; 'specrew-nightly-truth-check.yml' = $false; 'specrew-confidence-lane.yml' = $false; 'specrew-project-sync.yml' = $false }
+$wrongPush = @($pushVerdicts.Keys | Where-Object { (Test-WorkflowRunsPerPush -Path (Join-Path $repoRoot ('.github/workflows/' + $_))) -ne $pushVerdicts[$_] })
+Assert-True ($wrongPush.Count -eq 0) ("per push means a push trigger with no tags-only and no paths filter (wrong: {0})" -f ($wrongPush -join ', '))
+$notInRelease = @($releaseOnly | Where-Object { -not $names.LaneNamed.Contains($_) -or $names.CiNamed.Contains($_) })
+Assert-True ($notInRelease.Count -eq 0) ("the slow scripts are in the release manifest, not a per-push CI step (wrong: {0})" -f ($notInRelease -join ', '))
+
+$homeWriter = 'writes the real home; not run until feature 203''s private test home is merged'
+$rulingExclusions = [ordered]@{
+    'tests/integration/substantive-interaction-model-iteration2.ps1' = 'stale README assertion (section removed by b27f35c4)'
+    'tests/integration/distribution-module-init.ps1'                 = $homeWriter
+    'tests/manual/multi-host-smoke.ps1'                              = $homeWriter
+    'tests/integration/team-management.ps1'                          = $homeWriter
+    'tests/integration/update-command.ps1'                           = $homeWriter
+    'tests/integration/validate-baseline-team.ps1'                   = $homeWriter
+    'tests/manual/copilot-squad-smoke.ps1'                           = $homeWriter
+    'tests/integration/feature-017-dashboard-core.ps1'               = 'red: '
+    'tests/integration/feature-018-rich-dashboard.ps1'               = 'red: '
+}
+foreach ($excludedPath in $rulingExclusions.Keys) {
+    $declared = if ($exclusions.Contains($excludedPath)) { [string]$exclusions[$excludedPath] } else { '' }
+    Assert-True ($declared.StartsWith([string]$rulingExclusions[$excludedPath], [StringComparison]::Ordinal) -and -not $names.Named.Contains($excludedPath)) ("{0} is excluded with the reason '{1}' and is named by no lane (declared: '{2}')" -f
+        $excludedPath, $rulingExclusions[$excludedPath], $declared)
+}
+
+# --- SC-001's fixture is what a fresh checkout has (reviewer ruling 2026-11-12, under the maintainer's delegation) --
+# project-path-resolution-regression.ps1 builds its fixture by copying this repository's .specrew. A copy of the
+# working folder took the developer's gitignored session state with it (last-start-prompt.md, start-context.json,
+# and the authority, review and runtime stores), so `specrew start` met a stale prompt and the result depended on
+# whoever ran it. The copy takes the files git tracks.
+# T002's suite copied the whole .specrew folder into its fixture, so the git-ignored local review store came with it:
+# after a review round recorded a findings result, the fixture's accepted review.md failed the validator on this
+# machine and passed on CI. It copies the files git does not ignore: tracked ones, and untracked ones such as the
+# support files a review preflight restores into its verification copy (the suite's own test proves both).
+$t002Text = Get-UncommentedText -Path (Join-Path $repoRoot 'tests/unit/overclaim-dirty-check-separator.tests.ps1')
+Assert-True (($t002Text -match 'ls-files --cached --others --exclude-standard') -and ($t002Text -notmatch "Copy-Item -LiteralPath \`$source -Destination \`$root -Recurse")) "T002's fixture copies the files git does not ignore under .specrew, .squad and .github, so its result depends neither on the local review store nor on whether those files are tracked"
+
+# SC-002's script (feature 206 T021) built its fixtures under this repository's .scratch/ and copied .specrew, .squad
+# and .github whole. Its fixtures live in a temp folder it creates and copy only the files git does not ignore.
+$vh2Text = Get-UncommentedText -Path (Join-Path $repoRoot 'tests/integration/validator-hardening-iteration2.ps1')
+Assert-True (($vh2Text -match 'ls-files --cached --others --exclude-standard') -and ($vh2Text -match "GetTempPath\(\)\) \('validator-hardening-iteration2-'") -and ($vh2Text -notmatch "'\.scratch\\validator-hardening-iteration2'") -and ($vh2Text -notmatch "foreach \(\`$item in @\('\.specrew', '\.squad', '\.github'\)\)")) "SC-002's script builds its fixtures in a temp folder and copies only the files git does not ignore under .specrew, .squad and .github"
+
+$sc001Text = Get-UncommentedText -Path (Join-Path $repoRoot 'tests/integration/project-path-resolution-regression.ps1')
+# Feature 206 T024 (bug list items 22, 24 and 29): the fixture copies the files git does not ignore under each folder it
+# takes, tracked or not, so it holds what a fresh checkout holds and never the developer's session files or review store.
+Assert-True (($sc001Text -match 'ls-files --cached --others --exclude-standard') -and ($sc001Text -notmatch 'Copy-Item -LiteralPath \$source -Destination \$fixtureRoot -Recurse')) "SC-001's fixture copies the files git does not ignore, so its result does not depend on the developer's session files"
+# Since T022 a governed project with no session files is a first start, so the start case passes no recovery choice:
+# SC-001 is a fresh checkout's no-console start, not a recovery (iteration 001 passed -RecoveryChoice A instead).
+Assert-True (($sc001Text -match "(?s)scripts\\specrew-start\.ps1'\s*\r?\n\s*Arguments\s*=\s*'-NoLaunch'") -and ($sc001Text -notmatch '-RecoveryChoice')) "SC-001's start case passes no recovery choice: a fresh checkout's first start needs none (T022)"
+# Supervised run 3: the fixture sat under this repository's .scratch and was not its own git repository, so git
+# inside it resolved to this worktree, recovery A re-anchored to this repository's own feature, and `specrew start`
+# rewrote its real state.md. The fixture is built under the temp folder, given its own `git init`, and the script
+# refuses to run if the fixture's git top level is not the fixture (reviewer ruling 2026-11-12, maintainer's option 1).
+$sc001Isolated = ($sc001Text -match '\$scratchRoot\s*=\s*Join-Path\s*\(\[IO\.Path\]::GetTempPath\(\)\)') -and
+    ($sc001Text -match 'git\s+-C\s+\$fixtureRoot\s+init') -and ($sc001Text -match 'git\s+-C\s+\$fixtureRoot\s+rev-parse\s+--show-toplevel')
+Assert-True $sc001Isolated "SC-001's fixture is built outside this repository, has its own git repository, and the script checks that the fixture's git top level is not this repository"
+
+# Iteration 001 made the script refuse to run (DRIFT-206-I001-019) until bug list items 23, 24 and 25 were fixed; T023,
+# T024 and T025 fixed them in iteration 002, so the refusal is gone. The script stays out of the automated lists until
+# the maintainer has seen its supervised run (iteration 001 ruling).
+$sc001Raw = Get-Content -LiteralPath (Join-Path $repoRoot 'tests/integration/project-path-resolution-regression.ps1') -Raw -Encoding UTF8
+Assert-True ($sc001Raw -notmatch 'does not run until feature 206 bug list items') "SC-001's script no longer refuses to run: bug list items 23, 24 and 25 are fixed (T023, T024, T025)"
+# Round 1 F6: one fixed temp folder name let two runs at once delete each other's fixture. Each run's folder has a
+# unique suffix, and the cleanup removes that exact folder.
+Assert-True (($sc001Text -match "\`$scratchRoot\s*=\s*Join-Path\s*\(\[IO\.Path\]::GetTempPath\(\)\)\s*\('specrew-project-path-resolution-regression-'\s*\+\s*\[guid\]::NewGuid\(\)") -and ($sc001Text -notmatch "Join-Path\s*\(\[IO\.Path\]::GetTempPath\(\)\)\s*'specrew-project-path-resolution-regression'")) "SC-001's script gives each run its own temp folder (unique suffix), so two runs at once cannot delete each other's fixture"
+# Round 1 F9: every entry-point case runs in the fixture, none in the repository that holds the script.
+$sc001Cases = [regex]::Match($sc001Text, '(?s)\$entryPointCases\s*=\s*@\((?<body>.*?)\r?\n\)').Groups['body'].Value
+$caseCount = [regex]::Matches($sc001Cases, '(?m)^\s*Label\s*=').Count
+$inFixture = [regex]::Matches($sc001Cases, '(?m)^\s*WorkingDirectory\s*=\s*\$(fixtureRoot|initFixtureRoot)\s*$').Count
+Assert-True ($caseCount -ge 5 -and $inFixture -eq $caseCount) ("every SC-001 entry-point case runs in a fixture, none in this repository (cases {0}; in a fixture {1})" -f $caseCount, $inFixture)
+
+# --- A registered script decides on Test-Json's result, not on whether it throws (bug list item 26) ------------------
+# mechanical-findings-contract.ps1, registered per push at T015, went red on one Ubuntu image and green on another
+# with no change to it: its helper threw Test-Json's result away ($null = Test-Json ...) and counted a document as
+# invalid only when Test-Json threw. On a PowerShell where a schema mismatch returns $false without throwing, an
+# invalid document passes. The helper is lifted from the script and run against a Test-Json stand-in in its own scope.
+$mfcSource = Get-Content -LiteralPath (Join-Path $repoRoot 'tests/integration/mechanical-findings-contract.ps1') -Raw -Encoding UTF8
+$mfcHelper = [regex]::Match($mfcSource, '(?s)function Test-FixtureAgainstSchema \{.*?\r?\n\}\r?\n').Value
+$mfcVerdicts = & {
+    param($HelperText)
+    function Test-Json { [CmdletBinding()] param([string]$Path, [string]$SchemaFile) return ($Path -eq 'valid') }
+    . ([scriptblock]::Create($HelperText))
+    [pscustomobject]@{
+        Mismatch = Test-FixtureAgainstSchema -Path 'mismatch' -SchemaPath 'schema'
+        Valid    = Test-FixtureAgainstSchema -Path 'valid' -SchemaPath 'schema'
+    }
+} $mfcHelper
+Assert-True (-not [string]::IsNullOrWhiteSpace($mfcHelper) -and $mfcVerdicts.Mismatch -eq $false -and $mfcVerdicts.Valid -eq $true) ("mechanical-findings-contract.ps1 reports a schema mismatch as invalid when Test-Json returns false without throwing (mismatch: {0}; valid: {1})" -f
+    $mfcVerdicts.Mismatch, $mfcVerdicts.Valid)
+
+# --- 206's review plan (maintainer, 2026-11-13, option 1) -----------------------------------------------------------
+# The review round reads only .specrew/verification-plan.json. For 206's round it names 206's five lanes, and the ten
+# lanes it named before (features 199 and 202) are parked, unchanged, in verification-plan.signoff-lanes.json, which
+# this guard reads too, so their suites stay named and they can be restored as they were.
+# Feature 206 iteration 002 (DRIFT-206-I002-008): a sixth lane carries the repository-wide structural guards.
+$f206Lanes = @('f206-unit-suites', 'f206-changed-integration', 'f206-census-guard', 'f206-structural-guards', 'f206-governance-206', 'f206-deployed-hash-record')
+$planNow = Get-Content -LiteralPath (Join-Path $repoRoot '.specrew/verification-plan.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$planIds = @($planNow.commands | ForEach-Object { [string]$_.command_id })
+Assert-True (($planIds -join ',') -eq ($f206Lanes -join ',')) ("the verification plan names exactly 206's six lanes, in order (found: {0})" -f ($planIds -join ', '))
+$parkedPath = Join-Path $repoRoot '.specrew/verification-plan.signoff-lanes.json'
+$parkedJson = if (Test-Path -LiteralPath $parkedPath -PathType Leaf) { (Get-Content -LiteralPath $parkedPath -Raw -Encoding UTF8 | ConvertFrom-Json).commands | ConvertTo-Json -Depth 12 -Compress } else { '' }
+$baseJson = ((& git -C $repoRoot show 'd3e33550:.specrew/verification-plan.json' 2>$null) -join "`n" | ConvertFrom-Json).commands | ConvertTo-Json -Depth 12 -Compress
+Assert-True (-not [string]::IsNullOrWhiteSpace($baseJson) -and $parkedJson -ceq $baseJson) "the ten lanes the plan named at the branch base (d3e33550) are parked unchanged in verification-plan.signoff-lanes.json"
+
+# T002's Unix evidence (maintainer, 2026-11-13, option (a)): its suite runs in the per-push CI step on Ubuntu.
+Assert-True ($names.CiNamed.Contains('tests/unit/overclaim-dirty-check-separator.tests.ps1')) 'T002''s suite (overclaim-dirty-check-separator) is run by a per-push CI step, so its Unix evidence comes from the runner'
+
+Write-Host ''
+if ($script:Failures.Count -gt 0) {
+    Write-Host ("every suite is named by a lane: {0} of {1} assertions failed" -f $script:Failures.Count, $script:AssertionCount) -ForegroundColor Red
+    exit 1
+}
+Write-Host ("every suite is named by a lane: all {0} assertions pass" -f $script:AssertionCount) -ForegroundColor Green

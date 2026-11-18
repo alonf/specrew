@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "boundary_type": "review-signoff",
-  "recorded_at": "2026-10-24T15:04:41Z",
+  "recorded_at": "2026-11-17T20:16:31Z",
   "decision": {
     "schema_version": "1.0",
     "decision": "allow",
@@ -13,19 +13,19 @@
     "override": {
       "schema_version": "1.0",
       "fact_type": "review-signoff-partial-override",
-      "request_id": "override-d2b2575be53ed6dbbbaeeb08",
-      "target_tree_id": "b88152e7543d072ccbc9c4ea42ce3e2035689d68",
-      "campaign_id": "cmp-202-beta4-1-ux-stabilization-i003",
-      "run_id": "run-20261022-211453497-9ebe9c9c",
+      "request_id": "override-7aaeb4d8ef72cd2428caf13b",
+      "target_tree_id": "d8d7953228ecf9911d357e10fde8fc8777b22c59",
+      "campaign_id": "cmp-206-bug-bash-i002",
+      "run_id": "run-20261117-175417271-a471ffb6",
       "authority_kind": "human",
       "authorized_by": "unattributed-human",
-      "verdict_text": "approved for partial review signoff - since round 4 on f00da0f2 no product source changed; only records, runtime copies identical to the reviewed sources, and the walk's eight test fixtures, whose suites pass",
-      "rationale": "since round 4 on f00da0f2 no product source changed; only records, runtime copies identical to the reviewed sources, and the walk's eight test fixtures, whose suites pass",
-      "response_hash": "c0bd99072f86a25eabf401536ff11e03774e389a5abd1ce2b4b90b2939ef9229",
+      "verdict_text": "approved for partial review signoff - round 4 read the whole iteration and I stopped on it; only review.md and the drift log changed since",
+      "rationale": "round 4 read the whole iteration and I stopped on it; only review.md and the drift log changed since",
+      "response_hash": "9977e38c078be830c06189df8eec2855dce6a6615c7f1a244c26447147df4f8f",
       "evidence_source": "hook-captured-user-prompt",
       "source_event": "UserPromptSubmit",
       "host_kind": "claude",
-      "observed_at": "2026-10-24T15:04:14.2942668Z"
+      "observed_at": "2026-11-17T20:15:56.0453104Z"
     },
     "evidence_labels": null,
     "acknowledgement": null

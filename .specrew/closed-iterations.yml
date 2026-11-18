@@ -413,3 +413,11 @@ closed:
   - feature: 202-beta4-1-ux-stabilization
     iteration: 003
     closed_at: 2026-10-24T22:22:00Z
+  - feature: 206-bug-bash
+    iteration: 001
+    closed_at: 2026-11-15T01:12:21Z
+    closed_at_source: closeout
+  - feature: 206-bug-bash
+    iteration: 002
+    closed_at: 2026-11-18T01:07:19Z
+    closed_at_source: closeout

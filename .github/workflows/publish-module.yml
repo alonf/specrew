@@ -281,7 +281,8 @@ jobs:
             -ReleaseMode '${{ steps.release_context.outputs.release_mode }}' `
             -GitRefType '${{ steps.release_context.outputs.release_ref_type }}' `
             -GitRefName '${{ steps.release_context.outputs.release_ref_name }}' `
-            -SummaryPath $env:GITHUB_STEP_SUMMARY
+            -SummaryPath $env:GITHUB_STEP_SUMMARY `
+            -ConfirmLivePublish
 
       - name: Build release artifact (module zip)
         if: steps.release_context.outputs.create_github_release == 'true'
