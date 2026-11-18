@@ -409,8 +409,13 @@ Assert-True ($heldNotTests.Count + $heldNamed.Count + $heldUnreasoned.Count -eq 
         } else { '' }))
 
 # --- And the lanes may not name suites that do not exist ------------------------------------------
-# The mirror failure: a lane naming a deleted file runs nothing and reports success for it.
-$stale = @($names.LaneNamed | Where-Object { -not (Test-Path -LiteralPath (Join-Path $repoRoot $_) -PathType Leaf) })
+# The mirror failure: a lane naming a deleted file runs nothing and reports success for it. Active lanes, parked lanes
+# and the release manifest alike: a parked lane is restored as it was, so a suite it names must still be there.
+function Get-StaleLaneSuites {
+    param([Parameter(Mandatory)][string] $Root)
+    @((Get-NamedTests -Root $Root).LaneNamed | Where-Object { -not (Test-Path -LiteralPath (Join-Path $Root $_) -PathType Leaf) })
+}
+$stale = @(Get-StaleLaneSuites -Root $repoRoot)
 Assert-True ($stale.Count -eq 0) ("every suite the lanes name still exists{0}" -f $(
         if ($stale.Count -gt 0) { "`n  STALE: " + ($stale -join ', ') } else { '' }))
 
@@ -769,19 +774,125 @@ $mfcVerdicts = & {
 Assert-True (-not [string]::IsNullOrWhiteSpace($mfcHelper) -and $mfcVerdicts.Mismatch -eq $false -and $mfcVerdicts.Valid -eq $true) ("mechanical-findings-contract.ps1 reports a schema mismatch as invalid when Test-Json returns false without throwing (mismatch: {0}; valid: {1})" -f
     $mfcVerdicts.Mismatch, $mfcVerdicts.Valid)
 
-# --- 206's review plan (maintainer, 2026-11-13, option 1) -----------------------------------------------------------
-# The review round reads only .specrew/verification-plan.json. For 206's round it names 206's five lanes, and the ten
-# lanes it named before (features 199 and 202) are parked, unchanged, in verification-plan.signoff-lanes.json, which
-# this guard reads too, so their suites stay named and they can be restored as they were.
-# Feature 206 iteration 002 (DRIFT-206-I002-008): a sixth lane carries the repository-wide structural guards.
-$f206Lanes = @('f206-unit-suites', 'f206-changed-integration', 'f206-census-guard', 'f206-structural-guards', 'f206-governance-206', 'f206-deployed-hash-record')
-$planNow = Get-Content -LiteralPath (Join-Path $repoRoot '.specrew/verification-plan.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-$planIds = @($planNow.commands | ForEach-Object { [string]$_.command_id })
-Assert-True (($planIds -join ',') -eq ($f206Lanes -join ',')) ("the verification plan names exactly 206's six lanes, in order (found: {0})" -f ($planIds -join ', '))
-$parkedPath = Join-Path $repoRoot '.specrew/verification-plan.signoff-lanes.json'
-$parkedJson = if (Test-Path -LiteralPath $parkedPath -PathType Leaf) { (Get-Content -LiteralPath $parkedPath -Raw -Encoding UTF8 | ConvertFrom-Json).commands | ConvertTo-Json -Depth 12 -Compress } else { '' }
-$baseJson = ((& git -C $repoRoot show 'd3e33550:.specrew/verification-plan.json' 2>$null) -join "`n" | ConvertFrom-Json).commands | ConvertTo-Json -Depth 12 -Compress
-Assert-True (-not [string]::IsNullOrWhiteSpace($baseJson) -and $parkedJson -ceq $baseJson) "the ten lanes the plan named at the branch base (d3e33550) are parked unchanged in verification-plan.signoff-lanes.json"
+# --- The lane plan's shape ------------------------------------------------------------------------------------------
+# The review round reads only .specrew/verification-plan.json (the active lanes); lanes not in this round are parked in
+# verification-plan.signoff-lanes.json, which this guard reads too, so their suites stay named and they can be restored
+# as they were. Get-LanePlanProblems judges the two files' shape and returns one line per problem.
+#
+# The rule is general: no feature's lane list is asserted, and the parked file is not compared with any commit, because
+# every feature brings its own lanes and parks the others' (feature 206 pinned its own six lanes and its base's parked
+# file here, and on main that failed every branch that took main in with its own lanes). What the pin protected,
+# stated for any feature:
+#   - the plan names at least one lane: a round that runs no lane verifies nothing;
+#   - every lane id is unique across the plan and the parked file: one id for two lanes means a round or a restore
+#     picks one and loses the other;
+#   - every suite an active or parked lane names exists on disk: already the stale-suite check above
+#     (Get-StaleLaneSuites), not repeated here;
+#   - every test on disk is named by an active lane, a parked lane, a per-push CI step or the release list: the census
+#     comparison above, unchanged.
+function Get-LanePlanProblems {
+    param([Parameter(Mandatory)][string] $Root)
+    $problems = [Collections.Generic.List[string]]::new()
+    $lanes = [Collections.Generic.List[object]]::new()
+    foreach ($source in @(@{ Name = 'plan'; Path = '.specrew/verification-plan.json' }, @{ Name = 'parked'; Path = '.specrew/verification-plan.signoff-lanes.json' })) {
+        $path = Join-Path $Root $source.Path
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { continue }
+        $doc = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+        $commands = if ($null -ne $doc -and $doc.PSObject.Properties.Name -contains 'commands') { @($doc.commands) } else { @() }
+        foreach ($command in $commands) {
+            $id = if ($null -ne $command -and $command.PSObject.Properties.Name -contains 'command_id') { [string]$command.command_id } else { '' }
+            $lanes.Add([pscustomobject]@{ Id = $id; Source = $source.Name })
+        }
+    }
+    if (@($lanes | Where-Object { $_.Source -eq 'plan' }).Count -eq 0) { $problems.Add('no active lane: the verification plan names no lane, so a review round would verify nothing') }
+    foreach ($blank in @($lanes | Where-Object { [string]::IsNullOrWhiteSpace($_.Id) })) { $problems.Add(("a lane with no command_id (in the {0} file)" -f $blank.Source)) }
+    foreach ($group in @($lanes | Where-Object { -not [string]::IsNullOrWhiteSpace($_.Id) } | Group-Object -Property Id |Where-Object { $_.Count -gt 1 })) {
+        $problems.Add(("duplicate lane id: {0} ({1} lanes; in: {2})" -f $group.Name, $group.Count, ((@($group.Group | ForEach-Object { $_.Source }) | Sort-Object -Unique) -join ', ')))
+    }
+    return @($problems)
+}
+
+$planProblems = @(Get-LanePlanProblems -Root $repoRoot)
+Assert-True ($planProblems.Count -eq 0) ("the lane plan's shape holds{0}" -f $(if ($planProblems.Count -gt 0) { "`n  " + ($planProblems -join "`n  ") } else { '' }))
+
+# The rule on scratch plans (a temp folder each; the repository's own plan files are never edited). Each lane names the
+# suites in its list; a suite in -Missing is named but not written to disk.
+function New-LanePlanFixture {
+    param([object[]] $Active = @(), [object[]] $Parked = $null, [string[]] $Missing = @())
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('lane-plan-fixture-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+    foreach ($dir in @('.specrew', 'tests/unit')) { $null = New-Item -ItemType Directory -Path (Join-Path $root $dir) -Force }
+    $toCommands = {
+        param($lanes)
+        @($lanes | ForEach-Object {
+                [ordered]@{ command_id = $_.Id; executable = 'pwsh'; arguments = @(@('-NoProfile', '-File') + @($_.Suites)) }
+            })
+    }
+    $suites = [Collections.Generic.List[string]]::new()
+    foreach ($lane in @($Active) + @($Parked)) { if ($null -ne $lane) { foreach ($s in @($lane.Suites)) { $suites.Add($s) } } }
+    [IO.File]::WriteAllText((Join-Path $root '.specrew/verification-plan.json'), ([ordered]@{ schema_version = '1.0'; commands = @(& $toCommands $Active) } | ConvertTo-Json -Depth 6))
+    if ($null -ne $Parked) {
+        [IO.File]::WriteAllText((Join-Path $root '.specrew/verification-plan.signoff-lanes.json'), ([ordered]@{ schema_version = '1.0'; commands = @(& $toCommands $Parked) } | ConvertTo-Json -Depth 6))
+    }
+    foreach ($s in ($suites | Sort-Object -Unique)) {
+        if ($Missing -contains $s) { continue }
+        $path = Join-Path $root $s
+        $null = New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force
+        [IO.File]::WriteAllText($path, "exit 0`n")
+    }
+    return $root
+}
+
+$lanePlanCases = @(
+    @{  # Another feature's lanes, every suite still named: the shape holds. Nothing ties the plan to one feature.
+        Name = "a plan naming another feature's lanes, with every suite named, has no shape problem"
+        Active = @(@{ Id = 'f999-suites'; Suites = @('tests/unit/a.tests.ps1') }, @{ Id = 'iteration-001-governance-999'; Suites = @('tests/unit/b.tests.ps1') })
+        Parked = @(@{ Id = 'f998-parked'; Suites = @('tests/unit/c.tests.ps1') })
+        Missing = @(); Expect = @(); ExpectStale = @(); ExpectUnnamed = 0
+    }
+    @{  # The parked file is not compared with any commit: a parked lane may be added or removed.
+        Name = 'a plan with no parked file, and every suite named, has no shape problem'
+        Active = @(@{ Id = 'f999-suites'; Suites = @('tests/unit/a.tests.ps1') })
+        Parked = $null; Missing = @(); Expect = @(); ExpectStale = @(); ExpectUnnamed = 0
+    }
+    @{  # A round that runs no lane verifies nothing.
+        Name = 'a plan that names no lane is a shape problem'
+        Active = @(); Parked = @(@{ Id = 'f998-parked'; Suites = @('tests/unit/c.tests.ps1') })
+        Missing = @(); Expect = @('no active lane'); ExpectStale = @(); ExpectUnnamed = 0
+    }
+    @{  # One id, two lanes: a restore or a round would pick one and lose the other.
+        Name = 'a lane id in both the plan and the parked file is a shape problem'
+        Active = @(@{ Id = 'f999-suites'; Suites = @('tests/unit/a.tests.ps1') })
+        Parked = @(@{ Id = 'f999-suites'; Suites = @('tests/unit/c.tests.ps1') })
+        Missing = @(); Expect = @('duplicate lane id: f999-suites'); ExpectStale = @(); ExpectUnnamed = 0
+    }
+    @{  # The same, inside one file.
+        Name = 'a lane id used twice in the plan is a shape problem'
+        Active = @(@{ Id = 'f999-suites'; Suites = @('tests/unit/a.tests.ps1') }, @{ Id = 'f999-suites'; Suites = @('tests/unit/b.tests.ps1') })
+        Parked = $null; Missing = @(); Expect = @('duplicate lane id: f999-suites'); ExpectStale = @(); ExpectUnnamed = 0
+    }
+    @{  # A parked lane naming a deleted suite would run nothing when restored (the stale-suite check above).
+        Name = 'a parked lane naming a suite that does not exist is reported as stale'
+        Active = @(@{ Id = 'f999-suites'; Suites = @('tests/unit/a.tests.ps1') })
+        Parked = @(@{ Id = 'f998-parked'; Suites = @('tests/unit/gone.tests.ps1') })
+        Missing = @('tests/unit/gone.tests.ps1'); Expect = @(); ExpectStale = @('tests/unit/gone.tests.ps1'); ExpectUnnamed = 0
+    }
+)
+foreach ($case in $lanePlanCases) {
+    $planFixture = New-LanePlanFixture -Active $case.Active -Parked $case.Parked -Missing $case.Missing
+    try {
+        $found = @(Get-LanePlanProblems -Root $planFixture)
+        $foundStale = @(Get-StaleLaneSuites -Root $planFixture)
+        $foundUnnamed = @(Get-UnnamedTests -Root $planFixture)
+        $expected = @($case.Expect)
+        $shapeOk = if ($expected.Count -eq 0) { $found.Count -eq 0 } else { $found.Count -eq $expected.Count -and @($expected | Where-Object { $p = $_; -not @($found | Where-Object { $_.StartsWith($p, [StringComparison]::Ordinal) }) }).Count -eq 0 }
+        $staleOk = (($foundStale | Sort-Object) -join ',') -eq ((@($case.ExpectStale) | Sort-Object) -join ',')
+        Assert-True ($shapeOk -and $staleOk -and $foundUnnamed.Count -eq $case.ExpectUnnamed) ("lane plan: {0} (problems: {1}; stale: {2}; unnamed: {3})" -f
+            $case.Name, $(if ($found.Count) { $found -join ' | ' } else { 'none' }), $(if ($foundStale.Count) { $foundStale -join ', ' } else { 'none' }), $(if ($foundUnnamed.Count) { $foundUnnamed -join ', ' } else { 'none' }))
+    }
+    finally {
+        Remove-Item -LiteralPath $planFixture -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
 
 # T002's Unix evidence (maintainer, 2026-11-13, option (a)): its suite runs in the per-push CI step on Ubuntu.
 Assert-True ($names.CiNamed.Contains('tests/unit/overclaim-dirty-check-separator.tests.ps1')) 'T002''s suite (overclaim-dirty-check-separator) is run by a per-push CI step, so its Unix evidence comes from the runner'
