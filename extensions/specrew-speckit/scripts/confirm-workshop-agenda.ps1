@@ -49,17 +49,35 @@ if (-not (Test-Path -LiteralPath $authorityStorePath -PathType Leaf)) {
 }
 . $authorityStorePath
 
+# Feature 205 (FR-032): the selected lenses are shown under three headings taken from each lens's `space` tag in
+# index.yml - problem space, both spaces, solution space, in that order - keeping the agenda's (index.yml) order
+# inside each heading and leaving out a heading with no selected lens. Each heading carries its text label and one
+# coloured marker for its group (U+1F7E6, U+1F7EA, U+1F7E7); the label carries the meaning where a host cannot draw
+# the marker. The `Selected lenses:` line stays: the conformance provider detects the agenda by it.
+$script:WorkshopAgendaGroups = [ordered]@{
+    problem  = ('{0} Problem space' -f [char]::ConvertFromUtf32(0x1F7E6))
+    both     = ('{0} Both spaces' -f [char]::ConvertFromUtf32(0x1F7EA))
+    solution = ('{0} Solution space' -f [char]::ConvertFromUtf32(0x1F7E7))
+}
+
 function Get-CanonicalWorkshopAgendaText {
     param(
         [Parameter(Mandatory)][Collections.IDictionary]$Agenda,
-        [Parameter(Mandatory)][Collections.IDictionary]$Skipped
+        [Parameter(Mandatory)][Collections.IDictionary]$Skipped,
+        [Parameter(Mandatory)][Collections.IDictionary]$LensSpace
     )
     $lines = [Collections.Generic.List[string]]::new()
     $lines.Add('Workshop agenda') | Out-Null
     $lines.Add('') | Out-Null
     $lines.Add('Selected lenses:') | Out-Null
-    foreach ($entry in $Agenda.GetEnumerator()) {
-        $lines.Add(('- {0} ({1}): {2}' -f $entry.Key, $entry.Value.depth, $entry.Value.decision)) | Out-Null
+    foreach ($group in $script:WorkshopAgendaGroups.Keys) {
+        $members = @($Agenda.GetEnumerator() | Where-Object { [string]$LensSpace[[string]$_.Key] -ceq $group })
+        if ($members.Count -eq 0) { continue }
+        $lines.Add('') | Out-Null
+        $lines.Add($script:WorkshopAgendaGroups[$group]) | Out-Null
+        foreach ($entry in $members) {
+            $lines.Add(('- {0} ({1}): {2}' -f $entry.Key, $entry.Value.depth, $entry.Value.decision)) | Out-Null
+        }
     }
     $lines.Add('') | Out-Null
     $lines.Add('Skipped lenses:') | Out-Null
@@ -145,8 +163,11 @@ if (-not (Test-Path -LiteralPath $catalogPath -PathType Leaf)) {
 $yamlReader = Join-Path $PSScriptRoot 'intake/helpers/Read-IntakeYaml.ps1'
 if (-not (Test-Path -LiteralPath $yamlReader -PathType Leaf)) { throw "Design-lens catalog parser is missing: '$yamlReader'." }
 . $yamlReader
-$catalog = @(Read-IntakeYamlDocument -Path $catalogPath -Kind lenses | ForEach-Object { [string]$_.id } | Where-Object { $_ -and -not (Test-SpecrewWorkshopIntakeLens -Lens $_) })
+$catalogEntries = @(Read-IntakeYamlDocument -Path $catalogPath -Kind lenses)
+$catalog = @($catalogEntries | ForEach-Object { [string]$_.id } | Where-Object { $_ -and -not (Test-SpecrewWorkshopIntakeLens -Lens $_) })
 if ($catalog.Count -eq 0) { throw 'The design-lens catalog contains no technical lenses.' }
+$lensSpace = @{}
+foreach ($entry in $catalogEntries) { $lensSpace[[string]$entry.id] = [string]$entry.space }
 
 $selectedSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $skippedSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -183,7 +204,27 @@ if ($missing.Count -gt 0) {
     throw ('Every technical lens must be selected or visibly skipped with a reason. Missing: {0}.' -f ($missing -join ', '))
 }
 
-$canonicalAgendaText = Get-CanonicalWorkshopAgendaText -Agenda $agenda -Skipped $skipped
+# Feature 205 (FR-016): index.yml is the one lens order. A NEW agenda must list its selected lenses in that relative
+# order; it is refused, never reordered. Only an agenda awaiting confirmation reaches this point, so an agenda
+# confirmed before this check existed is never re-checked (FR-013).
+$outOfOrder = @(for ($i = 1; $i -lt $SelectedLens.Count; $i++) {
+        if ([array]::IndexOf($catalog, [string]$SelectedLens[$i]) -lt [array]::IndexOf($catalog, [string]$SelectedLens[$i - 1])) {
+            '{0} before {1}' -f $SelectedLens[$i - 1], $SelectedLens[$i]
+        }
+    })
+if ($outOfOrder.Count -gt 0) {
+    $catalogSelectedOrder = @($catalog | Where-Object { $selectedSet.Contains($_) }) -join ', '
+    throw (New-SpecrewWorkshopAgendaRefusal `
+            -Summary ('The selected lenses are not in index.yml order ({0}). The index.yml order for this selection is: {1}.' -f ($outOfOrder -join '; '), $catalogSelectedOrder) `
+            -Action 'List the selected lenses in index.yml order and render the agenda again with -RenderOnly; nothing was written.')
+}
+# Feature 205 (FR-032): every selected lens needs a space tag to be grouped; index.yml gives every lens one.
+$untagged = @($SelectedLens | Where-Object { [string]$lensSpace[[string]$_] -cnotin @($script:WorkshopAgendaGroups.Keys) })
+if ($untagged.Count -gt 0) {
+    throw ('The design-lens catalog gives no problem, both or solution space to: {0}.' -f ($untagged -join ', '))
+}
+
+$canonicalAgendaText = Get-CanonicalWorkshopAgendaText -Agenda $agenda -Skipped $skipped -LensSpace $lensSpace
 $agendaBinding = ConvertTo-SpecrewWorkshopAgendaBinding -Agenda $agenda -Skipped $skipped
 $agendaDigest = Get-SpecrewWorkshopAgendaDigest -Binding $agendaBinding
 $proposalPath = Join-Path $resolvedProjectRoot '.specrew/handover/workshop-agenda-proposal.json'
@@ -202,6 +243,10 @@ if ($RenderOnly) {
         New-Item -ItemType Directory -Path $proposalDir -Force | Out-Null
     }
     Write-AtomicUtf8NoBom -Path $proposalPath -Content (($proposal | ConvertTo-Json -Depth 10) + [Environment]::NewLine)
+    # Feature 205 (FR-032): the block carries non-ASCII markers and the agent pastes it; the conformance provider
+    # compares the pasted block with canonical_text. Write UTF-8 whatever the console's encoding, so the block never
+    # reaches the agent as '??' and the agenda confirmation binds.
+    [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
     Write-Output $canonicalAgendaText
     exit 0
 }

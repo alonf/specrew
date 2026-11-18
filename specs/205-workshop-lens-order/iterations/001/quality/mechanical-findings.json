@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/205-workshop-lens-order/spec.md",
+  "iterationRef": "specs/205-workshop-lens-order/iterations/001",
+  "generatedAt": "2026-11-09T23:55:59Z",
+  "generator": {
+    "name": "specrew-iteration-scaffold",
+    "version": "1.0.0"
+  },
+  "findings": []
+}

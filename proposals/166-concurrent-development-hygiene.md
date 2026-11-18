@@ -220,6 +220,52 @@ Near-term decomposition targets:
   separate modules
 - `shared-governance.ps1` splits parsing, authorization, and file-reference helpers
 
+## Amendment A1 (2026-11-18): Evidence From the First Merge With Features Open Side by Side
+
+### What happened
+
+On 2026-11-18 feature 206 merged into main while features 203 and 205 were still open. All three had branched from the
+same base, `d3e33550`. Taking main in then conflicted on:
+
+- **205: 5 files.** `.specrew/closed-iterations.yml`, `.specrew/review/signoff-gate/latest.json`,
+  `.specrew/verification-plan.json`, `.squad/events/lifecycle-events.jsonl` and `.squad/identity/now.md`.
+- **203: 8 files.** The same five, plus `.specrew/verification-plan.signoff-lanes.json`,
+  `.specify/extensions/specrew-speckit/.specrew-extension-runtime.json` and `tests/manual/multi-host-smoke.ps1`.
+  That is 10 files once 205 is also on main, as the reviewer session reported.
+
+Every conflicting file was a record or a configuration file, except one manual test script. No engine code conflicted.
+Both counts were confirmed read-only with `git merge-tree` against main at `d5f4af87`.
+
+### Surfaces Pillar 1 does not yet name
+
+| Surface | What happened | Proposed class and policy |
+| --- | --- | --- |
+| `.specrew/verification-plan.json`, `.specrew/verification-plan.signoff-lanes.json` | One active-feature slot for the whole repository. It conflicts at every merge. A feature-specific pin in the repository-wide lane guard (`every-suite-is-named-by-a-lane`) asserted one feature's lanes, and it blocked both merges until it was replaced by a shape rule (pull request #3916). | Per-feature lane files, or `global-ledger` with a merge rule. No guard may name one feature's lanes. |
+| `.specrew/review/signoff-gate/latest.json` | One tracked "latest" sign-off record per repository. | Per-feature, or `runtime-local`. |
+| `.specrew/closed-iterations.yml` | Both sides append. | `global-ledger`, union merge. |
+| `.squad/identity/now.md` | One session block, so one side must be picked. The Why section lists its churn, but Pillar 1 does not classify it. | `worktree-pointer`, or generated from per-feature state. |
+| `.specify/extensions/specrew-speckit/.specrew-extension-runtime.json` | The hash record conflicts whenever both sides change a mirrored file. | `generated-mirror`, with the rule "regenerate after the merge, never pick a side". |
+| `.squad/events/lifecycle-events.jsonl` | It has no union rule and was merged by hand. Two crews each made a mistake doing it and caught it. | Already `global-ledger` (Pillar 3). Until the split lands, a union merge rule plus a well-formedness check. |
+
+### A reader class FR-008 should name
+
+Some readers take "the latest entry" by position in `.squad/decisions.md`. `Get-LatestSpecrewBoundarySyncState` has
+four callers:
+
+- session recovery;
+- the boundary sync's previous-commit lookup;
+- the review command's unsynced warning;
+- the resume snapshot.
+
+After a merge brings in another feature's closeout, these readers return the other feature's entry. Feature 203 is
+adding a feature-aware reader (the maintainer's decision, 2026-11-18). Pillar 3's ledger split should build on that
+reader rather than add a second one.
+
+### Also seen
+
+A lane that validates one feature's review against the local review store is red in any other feature's worktree.
+See feature 206's bug list items 45 and 52.
+
 ## Functional Requirements
 
 - **FR-000**: Specrew MUST add the concurrency coverage foundation before performing tracked-state
@@ -244,6 +290,10 @@ Near-term decomposition targets:
 - **FR-008**: Global ledger splitting MUST preserve existing historical records and provide
   backward-compatible reader behavior during migration.
 - **FR-009**: Central-hub edits MUST surface a decomposition check during plan or before-implement.
+- **FR-008a** (A1): Readers that take "the latest entry" of a global ledger by position MUST become feature-aware before
+  or with the ledger split, so a merge of another feature's records cannot change what they return.
+- **FR-010** (A1): No repository-wide guard or test may assert one feature's names (lane ids, iteration paths,
+  branch names). Feature-specific checks live with the feature and are removed or generalized before it merges.
 
 ## Out of Scope
 
@@ -273,6 +323,10 @@ Phase 2, priority tier 1.
 Although the parent multi-developer story belongs to Phase 5, this proposal is already blocking
 today's Phase 2 dogfooding. It reduces merge drag for the current parallel feature model without
 requiring the full multi-developer architecture.
+
+**Priority (A1)**: the maintainer, 2026-11-18, on having this written up: "OK, lets do it. And this fix gets priority
+now since we will work on multiple features concurrently". The consequence: 166 is sequenced first among the next
+streams, before more crews run side by side.
 
 ## Open Questions
 
@@ -318,3 +372,7 @@ requiring the full multi-developer architecture.
   generated-surface, or ledger refactor.
 - 2026-06-06: Scope-fit review kept this as a standalone concurrency proposal, while routing
   broader refactor-prevention concerns to 008, 091, 145, and 163.
+- 2026-11-18: Amendment A1. It adds the evidence from the first merge with features open side by side (205: 5
+  conflicting files, 203: 8, all records or configuration except one manual test script), six surfaces Pillar 1 did
+  not name, the positional "latest entry" reader class (FR-008a), the no-feature-pins rule (FR-010), and the
+  maintainer's priority.

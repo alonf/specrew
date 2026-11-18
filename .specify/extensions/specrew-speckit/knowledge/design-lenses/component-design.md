@@ -18,6 +18,12 @@ coupling, cohesion, extension needs, and testability.
 
 ## Design Decision Points
 
+### Problem questions
+
+No problem questions: the problem facts this lens needs come from product-domain, requirements-nfr and the problem sections of the other lenses; this lens chooses the solution.
+
+### Solution questions
+
 - What responsibilities belong together, and what should stay separate?
 - Which dependencies point inward vs outward?
 - Is the right abstraction a function, helper, module, service, plugin, engine,

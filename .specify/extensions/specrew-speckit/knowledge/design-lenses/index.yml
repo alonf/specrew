@@ -1,70 +1,85 @@
 schema_version: "1.0"
 description: "Specrew design-analysis lens catalog"
+# Feature 205 (proposal 220): this list is the ONE definition of the workshop lens order - problem space first
+# (product-domain, requirements-nfr), then the lenses with questions in both spaces, then the solution-space
+# lenses. `space` is problem | solution | both. tests/unit/lens-order-parity.tests.ps1 fails on any surface that
+# disagrees; if a list elsewhere disagrees with this one, this one wins.
 lenses:
   - id: product-domain
     file: product-domain.md
+    space: problem
     default_phase: intake-product-domain
     categories:
       - product-and-problem-domain
       - users-stakeholders-and-outcomes
-  - id: architecture-core
-    file: architecture-core.md
-    default_phase: design-analysis
-    categories:
-      - scope-and-boundaries
-      - success-criteria-and-metrics
   - id: requirements-nfr
     file: requirements-nfr.md
+    space: problem
     default_phase: specify-clarify-design-analysis
     categories:
       - functional-requirements
       - testing-and-quality
       - success-criteria-and-metrics
-  - id: data-storage
-    file: data-storage.md
-    default_phase: design-analysis
-    categories:
-      - data-and-state-management
-      - migration-and-compatibility
   - id: ui-ux
     file: ui-ux.md
+    space: both
     default_phase: specify-clarify-design-analysis
     categories:
       - user-personas-and-journeys
       - ui-and-interaction-design
-  - id: devops-operations
-    file: devops-operations.md
-    default_phase: design-analysis-plan
-    categories:
-      - deployment-and-operations
-      - migration-and-compatibility
-  - id: integration-api
-    file: integration-api.md
-    default_phase: design-analysis
-    categories:
-      - integration-and-dependencies
-      - migration-and-compatibility
   - id: security-compliance
     file: security-compliance.md
+    space: both
     default_phase: specify-clarify-design-analysis
     categories:
       - security-and-compliance
       - data-and-state-management
+  - id: data-storage
+    file: data-storage.md
+    space: both
+    default_phase: design-analysis
+    categories:
+      - data-and-state-management
+      - migration-and-compatibility
+  - id: integration-api
+    file: integration-api.md
+    space: both
+    default_phase: design-analysis
+    categories:
+      - integration-and-dependencies
+      - migration-and-compatibility
+  - id: devops-operations
+    file: devops-operations.md
+    space: both
+    default_phase: design-analysis-plan
+    categories:
+      - deployment-and-operations
+      - migration-and-compatibility
+  - id: architecture-core
+    file: architecture-core.md
+    space: solution
+    default_phase: design-analysis
+    categories:
+      - scope-and-boundaries
+      - success-criteria-and-metrics
+  - id: component-design
+    file: component-design.md
+    space: solution
+    default_phase: design-analysis
+    categories:
+      - scope-and-boundaries
+      - integration-and-dependencies
   - id: observability-resilience
     file: observability-resilience.md
+    space: solution
     default_phase: design-analysis-plan
     categories:
       - deployment-and-operations
       - performance-and-scalability
       - testing-and-quality
-  - id: component-design
-    file: component-design.md
-    default_phase: design-analysis
-    categories:
-      - scope-and-boundaries
-      - integration-and-dependencies
   - id: code-implementation
     file: code-implementation.md
+    space: solution
     default_phase: design-analysis-plan
     categories:
       - code-craft-and-implementation

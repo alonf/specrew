@@ -395,13 +395,17 @@ rules:
     applies: "stack is C#/.NET"
     title: "C#: target framework + language-version posture"
     default: "TFM default vs pinned language version vs preview/latest; nullable reference types, implicit usings, file-scoped namespaces, records, primary constructors, collection expressions, minimal APIs; .editorconfig + .NET analyzers; DI container vs manual composition; util packaging (extension/internal project/NuGet)."
+    sources_checked: "2026-11-16"
+    current: ".NET 11.0 (STS, released 2026-11-10, support until 2028-11-14) defaults to C# 15; .NET 10.0 (LTS, latest 10.0.15, support until 2028-11-14) defaults to C# 14; .NET 9.0 and 8.0 reached end of support on 2026-11-10."
     enforcement_mode: [compiler, analyzer, review]
   - id: code-rule.cpp.standard-and-safety-posture
     group: decision-prompt
     scope: "language:c-cpp"
     applies: "stack is C/C++"
     title: "C/C++: standard, ABI, ownership, and safety posture"
-    default: "C11/17/23 or C++17/20/23/26 + extensions; toolchain/ABI/header hygiene; RAII/smart pointers vs explicit alloc; exceptions/RTTI/templates/macros posture; safety profile (app/systems/embedded/safety-critical/security); clang-format/clang-tidy/sanitizers; baseline = Google C++ Style / C++ Core Guidelines / LLVM / GNU, with CERT/MISRA when safety-critical."
+    default: "C or C++ standard edition (the current field lists the published ones) + extensions; toolchain/ABI/header hygiene; RAII/smart pointers vs explicit alloc; exceptions/RTTI/templates/macros posture; safety profile (app/systems/embedded/safety-critical/security); clang-format/clang-tidy/sanitizers; baseline = Google C++ Style / C++ Core Guidelines / LLVM / GNU, with CERT/MISRA when safety-critical."
+    sources_checked: "2026-11-16"
+    current: "C23 is the current C standard (adopted by ISO/IEC in 2024); C++23 is the latest published C++ standard, and C++26 is still in progress."
     enforcement_mode: [compiler, analyzer, review]
   - id: code-rule.ts.strictness-posture
     group: decision-prompt
@@ -409,6 +413,8 @@ rules:
     applies: "stack is TypeScript/JavaScript"
     title: "TS/JS: strictness + module + tooling posture"
     default: "tsconfig strict (default for greenfield) vs gradual; ESM/CJS/module resolution; Prettier for formatting + ESLint/typescript-eslint for code-quality + typed linting where justified; functional/OO + framework patterns."
+    sources_checked: "2026-11-16"
+    current: "TypeScript 7.0 (latest 7.0.2, released 2026-07-08; 7.1 in beta); Node.js 26 (26.13.1) and Node.js 24 (24.22.3) are the LTS lines, both updated 2026-11-10."
     enforcement_mode: [compiler, analyzer, formatter, review]
   - id: code-rule.python.typing-and-layout-posture
     group: decision-prompt
@@ -416,6 +422,8 @@ rules:
     applies: "stack is Python"
     title: "Python: version, typing, layout, and tooling posture"
     default: "Version floor + modern syntax; typing posture (none/gradual/strict for core); src vs flat layout; ruff (lint + optional format) / Black / mypy via pyproject.toml; PEP 8 mediated by tooling."
+    sources_checked: "2026-11-16"
+    current: "Python 3.15 (first released 2026-10-09) and 3.14 receive bugfixes; 3.13, 3.12 and 3.11 receive security fixes only; 3.10 reached end of life on 2026-10-01."
     enforcement_mode: [analyzer, formatter, review]
   - id: code-rule.go.boundaries-and-tooling-posture
     group: decision-prompt
@@ -423,6 +431,8 @@ rules:
     applies: "stack is Go"
     title: "Go: version, package boundaries, and tooling posture"
     default: "Min version/toolchain; idiomatic small interfaces + package boundaries (avoid over-layered DI); error/context propagation norms; gofmt + go vet + golangci-lint when needed; internal/ boundaries. Do not invent style rules (gofmt is canonical)."
+    sources_checked: "2026-11-16"
+    current: "Go 1.27 (released 2026-08-19, latest 1.27.4 on 2026-11-10) and Go 1.26 (latest 1.26.11) are supported; each major release is supported until two newer major releases exist."
     enforcement_mode: [formatter, analyzer, review]
   - id: code-rule.java.baseline-and-tooling-posture
     group: decision-prompt
@@ -430,6 +440,8 @@ rules:
     applies: "stack is Java"
     title: "Java: version, module, DI, and static-analysis posture"
     default: "LTS baseline + preview posture; module system vs packages; DI/framework (Spring/CDI/manual), builder/factory, records/sealed; google-java-format + Checkstyle + PMD + SpotBugs; nullness/immutability where tooling supports."
+    sources_checked: "2026-11-16"
+    current: "JDK 27 (GA 2026-09-15, non-LTS, Oracle Premier Support to March 2027) is the latest release; JDK 25 (GA 2025-09-16) is the latest LTS (Premier Support to September 2030); the next LTS is JDK 29, planned for September 2027."
     enforcement_mode: [compiler, analyzer, formatter, review]
 
   # --- Per-stack shared-code packaging (decision prompt, applies to compiled/package ecosystems) ---

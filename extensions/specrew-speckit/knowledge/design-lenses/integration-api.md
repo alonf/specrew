@@ -19,13 +19,46 @@ message semantics explicit before implementation couples systems accidentally.
 
 ## Design Decision Points
 
+### Problem questions
+
+- What owns the contract?
+- Which outside systems exist, and whose contracts must be honoured? — Light: recommend "the systems product-domain's carry-over names, else none stated" (carry-over is already answered) → spec.md Problem Context: Outside systems and their limits
+- What are their limits, quotas and SLAs? — Light: recommend "not stated" (nothing to infer it from) → spec.md Problem Context: Outside systems and their limits
+
+### Solution questions
+
 - What is the integration style: REST, GraphQL, gRPC, OData, RPC, events,
   pub/sub, queue, webhook, file contract, SDK, or direct library call?
-- What owns the contract and how is it versioned?
+- How is the contract versioned?
 - Are operations synchronous, asynchronous, streaming, or eventually consistent?
 - Which requests are safe, idempotent, cacheable, or replayable?
 - How are authentication, authorization, throttling, and API management handled?
 - How are compatibility and schema evolution tested?
+
+## Handed Forward From Earlier Lenses
+
+Shown at every depth as recommendation lines, in this lens's one recommendation list. Each line names the earlier
+lens that asked it and the answer's key. A product-domain answer comes from the feature's product-domain record
+(`areas.<key>`); another lens's answer comes from that lens's workshop record. The line shows it as
+"<lens>: <answer>", or "<lens>: not stated" when that is the answer or the lens did not run. The human accepts it
+or changes it for this lens.
+
+- product-domain `carry_over` — recommend "product-domain: <its answer, or not stated>" (already answered in product-domain; not asked again here) → spec.md Problem Context: Systems and data carried over
+
+## Depth Model
+
+The agenda's depth for this lens decides what it asks. The questions above that carry no suffix, or the suffix
+"Light: ask", are asked at every depth.
+
+- **Light** — those questions are asked as before. Each question with a "Light: recommend" suffix is shown as a
+  **recommendation line** instead: its recommended answer, its reason, and where the answer goes. All of this
+  lens's recommendation lines, with the handed-forward lines, are shown **once, as one list**, closed by the same typed reply as
+  the questions. "accept" takes every line as shown; changing a line is part of the same reply. Never one prompt
+  per line.
+- **Standard** — every question is asked, the "Light: recommend" ones included, each with its recommended answer
+  shown.
+  The handed-forward lines stay recommendation lines.
+- **Deep** — as Standard.
 
 ## Workshop Conduct
 
