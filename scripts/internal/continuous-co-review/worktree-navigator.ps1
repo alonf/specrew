@@ -59,7 +59,10 @@ function Get-ReviewCampaignNavigatorScopeApplicability {
     # Campaign authority is installed before a greenfield project has an active feature or iteration. Those
     # intake states are expected no-ops, not authority failures. Once any active-feature signal exists, malformed
     # or missing state remains applicable so the packet gate below fails closed with the authoritative reason.
-    param([Parameter(Mandatory)][string]$RepoRoot)
+    # Feature 203 T025 (DRIFT-041): -DeferImplementationCheck leaves the last check, whether the coverage delta holds
+    # implementation (about 1 s and eight git calls), to the caller, and says so with implementation_check_deferred. The
+    # Stop navigator asks it only when a review stop is open, because with none open every answer is a quiet no-op.
+    param([Parameter(Mandatory)][string]$RepoRoot, [switch]$DeferImplementationCheck)
 
     $featureRoot = $null
     $activeFeatureSignal = $false
@@ -219,6 +222,9 @@ function Get-ReviewCampaignNavigatorScopeApplicability {
     # the premise the rule already states: quiet while nothing reviewable has been implemented.
     # This REMOVES NO GATE - the surface goes live the moment implementation appears, and every
     # unresolvable input fails CLOSED (applicable), so a broken anchor can never quiet the block.
+    if ($DeferImplementationCheck) {
+        return [pscustomobject]@{ applicable = $true; reason = 'campaign-applicable'; implementation_check_deferred = $true }
+    }
     $implementation = Test-ReviewCampaignCoverageDeltaHasImplementation -RepoRoot $RepoRoot
     if (-not $implementation.has_implementation) {
         return [pscustomobject]@{ applicable = $false; reason = ('campaign-not-applicable:no-implementation-yet ({0})' -f $implementation.reason) }
@@ -354,7 +360,18 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
     }
     if ([bool]$authority.campaign_authority_enabled) {
         if ($SessionStart) { $decision.reason = 'campaign-cross-session-no-legacy-reap'; return $decision }
-        $scope = Get-ReviewCampaignNavigatorScopeApplicability -RepoRoot $resolved
+        # Feature 203 T025 (DRIFT-041; the maintainer's "203 T025: build the navigator reorder", 11:36 local on
+        # 2026-11-18): the coverage check - is there implementation to review - is the one expensive step (about 1 s and
+        # eight git calls), and with no stop open every answer below is a quiet no-op. So it waits until a stop is found
+        # open, and then decides exactly as it did before; authority, scope state, stage and identity keep their order.
+        $scope = Get-ReviewCampaignNavigatorScopeApplicability -RepoRoot $resolved -DeferImplementationCheck
+        $implementationDeferred = ($scope.PSObject.Properties['implementation_check_deferred'] -and [bool]$scope.implementation_check_deferred)
+        $quietWithoutImplementation = {
+            # The coverage check's own quiet answer, unchanged from when it ran first.
+            $implementation = Test-ReviewCampaignCoverageDeltaHasImplementation -RepoRoot $resolved
+            if ([bool]$implementation.has_implementation) { return $null }
+            return ('campaign-not-applicable:no-implementation-yet ({0})' -f $implementation.reason)
+        }
         if (-not [bool]$scope.applicable) {
             $decision.reason = [string]$scope.reason
             return $decision
@@ -380,12 +397,23 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
             if ($null -ne $openStop) { $openFindings = @(Get-ReviewCampaignOpenFindings -StoreRoot $navStore -CampaignId ([string]$navIdentity.campaign_id)) }
         }
         catch {
+            $storeError = $_.Exception.Message
+            # Today's order on an unreadable store: the coverage check answered first, so over records only it stays quiet.
+            if ($implementationDeferred) {
+                $quietReason = & $quietWithoutImplementation
+                if ($null -ne $quietReason) { $decision.reason = $quietReason; return $decision }
+            }
             # Not a stop: an unreadable store is reported, and the review command refuses on it by itself.
             $decision.reason = 'campaign-stop-unreadable'
-            $decision.inject_notes = @(('[co-review] Specrew could not read whether a review stop is waiting: {0}' -f $_.Exception.Message))
+            $decision.inject_notes = @(('[co-review] Specrew could not read whether a review stop is waiting: {0}' -f $storeError))
             return $decision
         }
         if ($null -eq $openStop) { $decision.reason = 'no-open-stop'; return $decision }
+        if ($implementationDeferred) {
+            # A stop is open: the coverage check decides, as it always did.
+            $quietReason = & $quietWithoutImplementation
+            if ($null -ne $quietReason) { $decision.reason = $quietReason; return $decision }
+        }
         $stopKind = [string](Get-ReviewAuthorityProperty -Object $openStop -Name 'stop_kind')
         $decision.reason = ('review-stop-open:' + $stopKind)
         # The route travels on the decision so the provider can tell a stop the human owes from a file attribution.
