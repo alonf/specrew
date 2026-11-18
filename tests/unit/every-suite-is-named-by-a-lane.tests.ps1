@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - reads specrew-start.ps1 and the start-running suites as text; runs the release sweep with -ListOnly here and for real only in a temp repository holding two trivial scripts; runs no Specrew entry point (203 T030, docs/beta5-findings.md B5F-039)
 [CmdletBinding()]
 param()
 

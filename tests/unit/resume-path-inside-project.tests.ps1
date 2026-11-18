@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - runs specrew-start.ps1 -NoLaunch, which never deploys hooks, with SPECREW_USER_PROFILE_PATH pointed at a temp file first, and the boundary sync wrapper in a temp project; dot-sources helper libraries (203 T030, docs/beta5-findings.md B5F-039)
 # Feature 206, T023 (FR-001, SC-001, bug list item 23): `specrew start` re-anchored to, and wrote into, a feature
 # outside the -ProjectPath it was given. The route: the tracked `.squad/identity/now.md` carried an absolute
 # `session_state_feature_path`; with no prompt or start context the session state came from it; start then adopted

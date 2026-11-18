@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - reads specrew-start.ps1 as text and dot-sources the instruction-merge helpers; runs no Specrew entry point (203 T030, docs/beta5-findings.md B5F-039)
 # Feature 206, T003 (FR-003, bug list item 2b, design condition 3): specrew start heals Specrew's coordinator
 # section into .github/copilot-instructions.md before it classifies the file's changes, so Specrew's own block
 # was classified as the user's behavior change and paused the session. Before comparing, Specrew's

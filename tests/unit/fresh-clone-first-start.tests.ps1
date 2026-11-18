@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - runs specrew-start.ps1 -NoLaunch only, which never deploys hooks, with SPECREW_USER_PROFILE_PATH pointed at a temp file first; dot-sources the session-recovery helpers (203 T030, docs/beta5-findings.md B5F-039)
 # Feature 206, T022 (FR-001, SC-001, bug list item 22, design D6-a): a fresh clone of a governed project has neither
 # `.specrew/last-start-prompt.md` nor `.specrew/start-context.json` (both are ignored by git), but it does carry the
 # tracked `.squad/identity/now.md`. `specrew start` read the two absent files as stale session state and, with no

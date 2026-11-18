@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - runs specrew-start.ps1 -NoLaunch only, which never deploys hooks, with SPECREW_USER_PROFILE_PATH pointed at a temp file first; dot-sources the instruction-merge helpers (203 T030, docs/beta5-findings.md B5F-039)
 # Feature 206, T020 (FR-003, SC-002, bug list item 21, design D5-a): `specrew start` heals
 # `.github/agents/squad.agent.md` and creates the `.squad/agents/*/charter.md` files itself. Once those writes are
 # committed, the next start read them as the user's changes to session-loaded files and paused

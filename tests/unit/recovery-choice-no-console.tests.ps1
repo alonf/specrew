@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - reads specrew-start.ps1 as text; its child processes dot-source session-recovery.ps1 only and call its functions (203 T030, docs/beta5-findings.md B5F-039)
 # Feature 206, T001 (FR-001, bug list item 1): with stale session state and no console input,
 # Read-SpecrewRecoveryChoice must not prompt or loop. It returns no choice, and specrew start prints a plain
 # refusal and exits non-zero. An interactive console gets at most three invalid answers.

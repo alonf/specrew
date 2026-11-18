@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - reads specrew-init.ps1 as text and calls the Squad probe functions against a fake squad in a temp folder; init itself never runs (203 T030, docs/beta5-findings.md B5F-039)
 # Feature 206, T025 (SC-001, SC-007, bug list item 25): `specrew init` ran its Squad capability probe in the Specrew
 # install root, dry run or not: `Get-SquadInitPlan -ProbeRoot $repoRoot` made `.specrew-squad-probe-<guid>` there and
 # ran a real `squad init --non-interactive` in it, and a dev checkout's install root is this repository. Its cleanup
