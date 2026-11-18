@@ -57,6 +57,15 @@ next bug bash.
   its `completed_at` to the time of the call and moves state.md's "Last Completed Task" back to it (iteration 002
   DRIFT-036). A done-to-done call should be a no-op, or keep the time and say so. Not a 206 item; found by 203 on
   2026-11-18.
+- **Hook commands of other hosts whose missing-launcher refusal is not plain Specrew text (not covered).** 203 fixed
+  Claude's generated command (guarded-project-encoded; iteration 002 DRIFT-038, `4d750cfc2`). Not covered, by host:
+  - **Codex, Copilot and Cursor** (`launcher-file`) run the per-machine launcher with `pwsh -File`, so a missing
+    launcher gets pwsh's own `-File` error.
+  - **Antigravity's** `launcher-encoded` command (`& '<launcher>' ...` through `-EncodedCommand`) has no
+    missing-launcher guard, so pwsh's error reaches the host the way Claude's throw did. Same class, separate line
+    (`deploy-refocus-hooks.ps1`, the `launcher-encoded` case).
+
+  Placement is the maintainer's, through the reviewer session; not built in 203.
 
 ## Fixed in 203, for Completeness
 
