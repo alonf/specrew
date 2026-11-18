@@ -1044,5 +1044,29 @@ The following resolution strategies remain available if drift is detected later 
 - **Proposed practice** (for the reviewer session): a commit that adds a test file runs the class-guard lanes and
   `test-home-isolation.Tests.ps1` in its own batch, the home-isolation guard being the other repository-wide check a
   new test file can fail.
+- **Ruled** (the reviewer session, routine, 06:34 local): a commit that adds or renames a test file runs, in its own
+  batch, every guard that judges test files by their existence, name, location, header or content. The inventory
+  (the crew's search of `tests/`, `tools/` and the workflows on `9f1605749`, for checks that walk the whole `tests`
+  tree):
+  1. `tests/unit/every-suite-is-named-by-a-lane.tests.ps1`: every test file is named by a lane. In lane
+     `f199-class-guards-a` (with `-b` beside it).
+  2. `tests/unit/test-home-isolation.Tests.ps1`: a test that names a hook-writing entry point has a private home, or
+     a not-a-writer line saying why. In lane `f203-i001-t008-suites`.
+  3. `tests/integration/host-coupling-firewall.tests.ps1`: no host-name enumeration outside `hosts/`. It scans every
+     `.ps1` under the repository, `tests/` included. No lane; it runs in CI.
+  4. Specrew CI's Lint, PSScriptAnalyzer with the PSGallery settings, errors only: every `.ps1`, `tests/` included.
+     Only in CI.
+
+  The other candidates scan only `scripts/`, `extensions/` or fixtures they build, and do not judge test files:
+  `no-internal-ids-in-emitted-strings`, `no-automatic-variable-collisions`, `path-identity`, `twin-copy-parity`,
+  `regression-harness-isolation`, `full-sweep-direct-exit`, `authority-control-consumer-guard` and
+  `forge-neutralization-sweep`. On `9f1605749`, against the seven test files added in iteration 002
+  (`hook-command-plain-refusal`, `hook-run-git-snapshot`, `hook-git-snapshot-reader`, `hook-transcript-tail`,
+  `records-only-source-repo-narrowed`, `review-end-one-approval`, `plan-crossing-pending`), each was run alone:
+  - guards 1 to 3 exit 0;
+  - PSScriptAnalyzer: 0 errors, and one warning each in `hook-run-git-snapshot` and `plan-crossing-pending`
+    (warnings do not block).
+
+  Nothing to fix. A candidate for the hand-back note: one "new test file" lane that runs all four.
 - **Next**: a full sweep of the new tip, then the gated push of that exact revision.
 - **Class closure**: the existing guard caught it before any push; the batch gap is the proposed practice above.

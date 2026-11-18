@@ -66,6 +66,11 @@ next bug bash.
     (`deploy-refocus-hooks.ps1`, the `launcher-encoded` case).
 
   Placement is the maintainer's, through the reviewer session; not built in 203.
+- **One "new test file" lane.** Twice on 2026-11-18 a new test file passed its own batch and was then caught by a
+  repository-wide guard the batch did not run: the lane-naming guard (DRIFT-035), then the home-isolation guard
+  (DRIFT-040). The guards that judge test files are listed in iteration 002's DRIFT-040: lane naming, home isolation,
+  the host-coupling firewall, and CI's PSScriptAnalyzer errors. A single lane that runs all four makes the miss
+  impossible. Not built in 203.
 
 ## Fixed in 203, for Completeness
 
