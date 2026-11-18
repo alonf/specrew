@@ -1,3 +1,4 @@
+# specrew-test-home: not-a-writer - parses the deployer's three copies and runs only the hook command it builds, against a stub launcher in a temp folder; the deployer itself never runs (203 iteration 002 DRIFT-040)
 # Feature 203 T025 (T006's launcher half; DRIFT-018, DRIFT-046): a hook refusal is written as plain text. T006 made the
 # generated project launcher's refusals plain text, but the guarded-project-encoded hook command the deployer writes into
 # the host's settings (Claude's .claude/settings.local.json) still threw when the project launcher was missing. Through
