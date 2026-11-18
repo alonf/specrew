@@ -92,3 +92,11 @@ T033, T026 and T031 drew 18 of iteration 002's 35 review findings.
 - **Candidates the maintainer has not ruled on:** the retro scaffold refusing an explained verdict line (iteration
   002's DRIFT-023, the third sighting) and iteration 002's retro improvement actions. Both are in
   `iterations/002/retro.md`.
+  - **A feature-specific pin left in a repository-wide guard** (candidate, 2026-11-18, found after 206 reached main):
+    `tests/unit/every-suite-is-named-by-a-lane.tests.ps1` ended with feature 206's review plan pinned. The active plan
+    had to name exactly 206's six lanes, and the parked file had to equal the plan at `d3e33550` byte for byte. On
+    main that failed every branch taking main in with its own lanes: 203 and 205 both stopped on it. Four review
+    rounds and the reviewer session missed it. Fixed on `fix/lane-guard-feature-pin`, where the guard judges the plan's
+    shape for any feature: at least one active lane, and lane ids unique across both files. The open question for the
+    next bug bash is the class, not this instance: a guard written while one feature is active should be checked for
+    that feature's names before it reaches main.
