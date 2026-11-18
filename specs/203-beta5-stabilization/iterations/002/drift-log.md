@@ -959,3 +959,41 @@ The following resolution strategies remain available if drift is detected later 
   current process layout, the one-process form, a recommendation), and T025 is not done until that is decided.
 - **Class closure**: NONE — a measurement; T025's third change, its launcher half (T006) and its own sweep are still to
   come.
+
+### DRIFT-038 — T006 left a thrown refusal in the generated Claude hook command; no test named it; fixed on T025's line
+
+- **Found** (2026-11-18, while preparing T025's launcher half, the plain-text launcher refusals of iteration 001's
+  DRIFT-046): T006 (`e85dff7fc`) made the generated project launcher's refusals plain text. The deployer, however,
+  also writes the guarded-project-encoded hook command into Claude's `.claude/settings.local.json`
+  (`deploy-refocus-hooks.ps1:407`, in all three copies). That command still threw
+  `"Specrew hook launcher not found at '<path>'."` when the project launcher was missing. It runs through
+  `pwsh -EncodedCommand`, so the host got CLIXML with ANSI color codes, one of the forms DRIFT-018 names and T006's
+  acceptance covers ("a hook refusal is written as plain text"). No test named that line, and a redeploy would have
+  kept it. Measured on today's command: stderr `#< CLIXML ... _x001B_[31;1mException: ...`, exit 1.
+- **Ruling** (the reviewer session's, routine, inside the plan): T025's Work carries T006's launcher half and T025
+  owns the deployer, so the fix closes T006's own acceptance and adds no scope. The conditions: RED first, a pinned
+  launcher-present case, all three copies with the hash record, the class-guard lanes in the batch, the command-length
+  limit checked, the hosts covered or named.
+- **RED** `43dffe38f` (`tests/unit/hook-command-plain-refusal.tests.ps1`, red 3 of 12, one per copy). It builds the
+  command from each copy's own functions by parsing them, and never runs the deployer. It is pinned on three points:
+  - With the launcher present, the command runs it with `-Event` and no other arguments, passes its output through,
+    and keeps today's exit (1 for a launcher exiting 3, 0 for 0).
+  - With no project root, it does nothing and exits 0.
+  - Every event's command stays within half of cmd.exe's 8,191 characters.
+- **Fix** `4d750cfc2`: plain text on stderr with exit 1, in the sentence style of the launcher's other refusals, in
+  all three copies, with the `.specify` hash record. The test is 12 of 12. Command length: Stop 996 to 1,588 characters,
+  UserPromptSubmit 1,620 (the commit message's "about 1,560" was an estimate), within the 4,095 the length test
+  allows.
+- **Hosts**: only Claude's hosts use the guarded-project-encoded command.
+  - Codex, Copilot and Cursor run the per-machine launcher with `-File`. A missing launcher there gets pwsh's own
+    `-File` error, not a Specrew throw. Not covered here.
+  - Antigravity's `launcher-encoded` command (`& '<launcher>' ...`) is a separate line of the same class and is not
+    covered here. Candidate for the hand-back note if the maintainer does not place it.
+- **A stray command, recorded**: while staging the fix, the crew's command line also ran
+  `. ./scripts/internal/deploy-refocus-hooks.ps1 -?`, which was not intended. It deployed nothing: the crew's 12-file home
+  hash was identical before and after, `.claude/settings.local.json` and the project launcher were unchanged since
+  2026-11-13, and the only recent home writes were the Codex app's own log and model-cache files, before the call.
+- **Not live**: the maintainer's "launcher: wait" (2026-11-16 03:13) stands. No deployer run on the real project; the
+  maintainer is asked in session when the build is ready, with a scratch dry run's file list, the
+  `settings.local.json` diff and the home hash before and after.
+- **Class closure**: the new suite, in lane `f203-i001-suites`, holds the generated command to plain-text refusals.
