@@ -917,4 +917,8 @@ The following resolution strategies remain available if drift is detected later 
   became 2026-11-18 02:14 UTC) and moved state.md's "Last Completed Task". The crew restored both files from HEAD
   before any commit. In iteration 002, no done task is checked in tasks.md (T015 to T024 are all `- [ ]`), and
   `tasks-progress.yml` is the record of status. The question of how to check them went back to the reviewer session.
+  **Ruling** (the reviewer session's, routine): leave `tasks.md` as it is; `tasks-progress.yml` is the record of task
+  status in iteration 002, and no boxes are checked by hand. If a later gate asks for checked boxes, its exact message
+  goes to the reviewer session then. The re-stamp is filed as B5F-091 (candidate, not planned), with a line in the
+  hand-back note.
 - **Class closure**: NONE — records only; the open questions are listed above.

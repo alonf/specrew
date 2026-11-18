@@ -51,6 +51,13 @@ next bug bash.
   diagnosable (each suite has a named 300 s limit, and the CI step its own timeout below the job's; guard
   `bounded-suite-runner.Tests.ps1`). Why the job hung is still unexplained.
 
+## Found in 203, Candidate (Not Planned)
+
+- **B5F-091, the task writer re-stamps a done task.** `Set-TaskStatus -Status done` on a task already done rewrites
+  its `completed_at` to the time of the call and moves state.md's "Last Completed Task" back to it (iteration 002
+  DRIFT-036). A done-to-done call should be a no-op, or keep the time and say so. Not a 206 item; found by 203 on
+  2026-11-18.
+
 ## Fixed in 203, for Completeness
 
 - **Item 8 (HO-206-5), suites that rewrite the real home's hook files**: B5F-039, test first (`77bd4a2e2`, `b69cc5caf`),
