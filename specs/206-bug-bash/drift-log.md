@@ -163,3 +163,28 @@
   Test `44299443587` and Cross-Platform Validation `44299443482` were green on their first attempt.
 - **Class closure**: NONE. These are sightings of bug list item 3 (the new case is recorded there with the reviewer
   session's reading) and of item 57.
+
+## DRIFT-206-011 — the lane guard fix: a pull request off main, merged past the required review by the maintainer's word
+
+- **Recorded**: 2026-11-18, on the 206 branch only. The fix itself is outside feature 206: it was done after the
+  closeout, in its own worktree, on `fix/lane-guard-feature-pin`, as #3713 was.
+- **Why**: `tests/unit/every-suite-is-named-by-a-lane.tests.ps1` ended with 206's review plan pinned. The active plan
+  had to name exactly 206's six lanes, and the parked file had to equal the plan at `d3e33550`. On main that failed
+  every branch taking main in with its own lanes, so 203 and 205 both stopped.
+  - The maintainer's word, at 20:13 local: "main guard fix: 206 crew, small PR off main".
+  - The class is recorded as an unruled candidate in `follow-up-seed.md`.
+- **The commits**:
+  - `21f7d388` RED: 6 of 95 fail.
+  - `04f5f5b2` fix: 95 of 95 pass.
+  - `f70a7918` records.
+  The guard now judges the plan's shape for any feature: at least one active lane, and lane ids unique across both
+  files. The suites named by lanes must still exist, and the census comparison is unchanged. Main's plan files did not
+  change.
+- **Pull request #3916**: 22 of 22 checks green and mergeable, but BLOCKED on the required approving review, which the
+  PR's author cannot give.
+  - The maintainer's word: "lane guard merge: go, use --admin for PR 3916", typed in the reviewer session at 23:25
+    local on 2026-11-18 and relayed by it. It covers this one pull request and this one merge only.
+  - Re-checked just before merging: head `f70a7918`, 22 of 22 green, mergeable, main at `d5f4af87`.
+  - Merged with `gh pr merge 3916 --merge --admin`: merge commit `e6732b27` (21:26:18Z), parents `d5f4af87` and
+    `f70a7918`. The branch was kept.
+- **Class closure**: NONE — a recorded, maintainer-authorized exception, the second after DRIFT-206-008.
