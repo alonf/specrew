@@ -1155,3 +1155,28 @@ The following resolution strategies remain available if drift is detected later 
   maintainer's.
 - **Class closure**: T025's Acceptance is met on the crew's say: the Stop median fell again. The navigator suite's
   T025 context holds the reorder. The full sweep and the push follow.
+
+### DRIFT-043 — T025 done; the deployer question carried to the review-signoff packet
+
+- **The last T025 sweep and push**: the full sweep of `638551594` (12:06 to 13:15 local on 2026-11-18, Throttle 3,
+  1,500 s per suite; git sampled every 2 minutes, 35 samples, all ok): 282 suites, 0 failed, 2 known red (B5F-036),
+  all 10 lanes exit 0. Home hook files: 0 changed before or during, 0 written to the redirected home, and the crew's
+  12-file hash identical. markdownlint and `validate-governance -ChangedOnly` passed, and `638551594` was pushed as
+  swept at 13:16:15 (`608b21ba6..638551594`). CI was green on every job:
+  - Specrew CI `44293149770`: Lint, Self-leak firewall, Deterministic gate and Contract lane;
+  - Cross-Platform Validation `44293149642`: all eight jobs;
+  - Test `44293149835`.
+- **T025 done** (the reviewer session's ruling: the deployer question does not block "done", because T025's Work
+  says the crew asks the maintainer before the deployer runs, and the maintainer's "launcher: wait" is their answer
+  until they give another). It was set done once through the task writer (B5F-091 in mind). T025 had never been set
+  in progress, so the writer stamped both `started_at` and `completed_at` with the call's time (2026-11-18 11:46:51
+  UTC). The work began with the RED `634785049` at 00:17 local on 2026-11-18. The file is left as the writer wrote it.
+- **Carried to the review-signoff packet (open item)**: whether to redeploy this project's Claude hooks.
+  - The maintainer's "launcher: wait" (2026-11-16 03:13) stands until they answer.
+  - The dry run (DRIFT-039) showed the deploy writes only `.claude/settings.local.json` and
+    `.claude/specrew-hook-launch.ps1`, and nothing in the home folder.
+  - Until then the plain-text refusals (T006's launcher half, `4d750cfc2` and `e85dff7fc`) are in the branch, not in
+    the live launcher.
+  - The navigator reorder (`2de23bb06`) reaches the live hooks only at a pin advance (DRIFT-042), which is also the
+    maintainer's.
+- **Class closure**: NONE — a task closure and an open item.

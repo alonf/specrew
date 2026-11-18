@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "203-beta5-stabilization"
 iteration: "002"
-updated_at: "2026-11-17T22:05:51.6565575Z"
+updated_at: "2026-11-18T11:46:51.6550795Z"
 tasks:
   T017:
     title: "The agent invoker loses an exited child's output: `worktree-reviewer.ps1:1598` takes stdout only if the read task already finished, without waiting; the likely cause of `empty-result-retry` and `reviewer-hook-suppression` case 1 (DRIFT-014, DRIFT-016). Wait for both reads, bounded, after exit; report an unfinished read. Test red first (a child writing several MB and exiting at once). First in the batch (the maintainer's \"203 rerun: add reviewer-hook-suppression; T017 first\", 15:48 local); if the RED needs a seam, the extra 0.25 SP comes from the stated buffer as an overrun"
@@ -58,10 +58,10 @@ tasks:
     completed_at: ""
     blocked_reason: ""
   T025:
-    title: "F3, the hook cost (DRIFT-073): one git snapshot and one transcript tail read per hook run, handed to the providers; the stores loaded once. Measured as DRIFT-073 measured it: the Stop and prompt hooks through the deployed launcher on a scratch copy of the tree, the same payload, a typed prompt appended to a copy of a real 53 MB transcript, ten turns per engine, median and worst; on `5cb83329` the medians were 14.1 s Stop and 4.8 s prompt per turn. Done when: structurally, proven by tests committed red first, each hook run takes one git snapshot and one transcript tail read and hands them to the providers, the stores load once, and every hook check still runs; measured, the before figures re-measured on the tree T025 starts from and the after figures reported, median and worst. If the medians do not fall, T025 is not done on the crew's say and goes to the maintainer with the numbers. No numeric target is set; one is the maintainer's to set if they want it. T006's launcher half (plain-text refusals, DRIFT-046) travels in the same push and sweep"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    title: "F3, the hook cost (DRIFT-073): one git snapshot and one transcript tail read per hook run, handed to the providers; the stores loaded once. Measured as DRIFT-073 measured it: the Stop and prompt hooks through the deployed launcher on a scratch copy of the tree, the same payload, a typed prompt appended to a copy of a real 53 MB transcript, ten turns per engine, median and worst; on `5cb83329` the medians were 14.1 s Stop and 4.8 s prompt per turn. Done when: structurally, proven by tests committed red first, each hook run takes one git snapshot and one transcript tail read and hands them to the providers, the stores load once, and every hook check still runs; measured, the before figures re-measured on the tree T025 starts from and the after figures reported, median and worst. If the medians do not fall, T025 is not done on the crew's say and goes to the maintainer with the numbers. No numeric target is set; one is the maintainer's to set if they want it. T006's launcher half (plain-text refusals, DRIFT-046) travels in the same push and sweep. Amended (the maintainer, relayed: \"203 T025: build the navigator reorder; stores load once is met; defer one process\", 11:36 local on 2026-11-18; DRIFT-041): the co-review navigator reads whether a review stop is open before its coverage-delta scope check, so a Stop with no open stop makes no coverage-delta git call, and an open stop still gets the scope check and today's block; \"the stores load once\" is met per provider process; the providers in one process go to the follow-up feature (B5F-092); done when the Stop median falls again, or the numbers go to the maintainer"
+    status: "done"
+    started_at: "2026-11-18T11:46:51.6514309Z"
+    completed_at: "2026-11-18T11:46:51.6514309Z"
     blocked_reason: ""
   T026:
     title: "The t008 lane's time and the three slow suites: measure `f203-i001-t008-suites` (838 of 900 s on `da78b600`), `message-identity`, `review-loop-stops` and `review-budget-loop` (at the 1,500 s cap on `aa06b3e5b`) against round D finding 1's whole-transcript read before any limit moves; widened by \"203 sweep: yes\" (DRIFT-023), +0.25 from the buffer: each suite alone at two or three older commits, and the same suites under a sweep-shaped load (alone 356 to 390 s, in the sweep past 1,500 s, DRIFT-024); no throttle or limit changed; after Phase 8's push, before Phase 9"
