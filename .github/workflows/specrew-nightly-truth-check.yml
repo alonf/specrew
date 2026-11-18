@@ -15,6 +15,13 @@ name: Specrew Nightly Truth-Check
 # Manual trigger: workflow_dispatch is enabled for ad-hoc audits
 # (e.g., after shipping a schema-migration commit that adds a new
 # validator rule, or for pre-release sanity checks before tagging).
+#
+# Notification (FR-009): the validator writes its findings (iteration ids,
+# rule names, severities) to a file; the notify job reads it and keeps one
+# tracking issue labelled nightly-truth-check: opened on the first red night,
+# commented on only when the failure set changes, closed on the next green
+# night. Only the notify job holds issues: write; the default stays read-only.
+# The notify job runs only for the default branch.
 
 on:
   schedule:
@@ -37,4 +44,48 @@ jobs:
 
       - name: Validate full repo
         shell: pwsh
-        run: ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .
+        run: ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -FindingsJsonPath "$env:RUNNER_TEMP/nightly-findings.json"
+
+      - name: Upload the findings file
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-findings
+          path: ${{ runner.temp }}/nightly-findings.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  notify:
+    name: Tracking issue
+    needs: full-repo-validator
+    # The tracking issue belongs to the default branch: a manual run on another branch still validates but
+    # never notifies. A scheduled run is always on the default branch, and its event has no repository object.
+    if: always() && (github.event_name == 'schedule' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Download the findings file
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: nightly-findings
+          path: ${{ runner.temp }}/findings
+
+      - name: Open, comment on or close the tracking issue
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VALIDATOR_OUTCOME: ${{ needs.full-repo-validator.result }}
+        run: >-
+          ./.github/scripts/nightly-tracking-issue.ps1
+          -ValidatorOutcome $env:VALIDATOR_OUTCOME
+          -FindingsJsonPath "$env:RUNNER_TEMP/findings/nightly-findings.json"
+          -RunId $env:GITHUB_RUN_ID
+          -Commit $env:GITHUB_SHA

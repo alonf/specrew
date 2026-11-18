@@ -53,6 +53,12 @@ if (-not (Test-Path -LiteralPath $boundaryStateHelperPath -PathType Leaf)) {
 }
 . $boundaryStateHelperPath
 
+$instructionFileMergeHelperPath = Join-Path $PSScriptRoot 'internal\instruction-file-merge.ps1'
+if (-not (Test-Path -LiteralPath $instructionFileMergeHelperPath -PathType Leaf)) {
+    throw "Missing instruction-file merge helper '$instructionFileMergeHelperPath'."
+}
+. $instructionFileMergeHelperPath
+
 $sessionRecoveryHelperPath = Join-Path $PSScriptRoot 'internal\session-recovery.ps1'
 if (-not (Test-Path -LiteralPath $sessionRecoveryHelperPath -PathType Leaf)) {
     throw "Missing session-recovery helper '$sessionRecoveryHelperPath'."
@@ -634,6 +640,16 @@ function Resolve-FeatureDirectory {
         [string]$ResumeFeature
     )
 
+    # F-206 T023 (FR-001, bug list item 23): start resumes only a feature inside the project it was given. A rooted
+    # path to another checkout was accepted, and start then wrote into that checkout.
+    $assertInsideProject = {
+        param([string]$Candidate)
+        if (-not (Test-SpecrewPathInsideProject -ProjectRoot $Root -Path $Candidate)) {
+            throw ("specrew start could not continue: the feature folder '{0}' is outside the project '{1}', and start resumes only a feature inside the project it was given. Nothing was written. Run it again with a feature folder inside the project, for example: specrew start --resume-feature specs/<feature>" -f $Candidate, $Root)
+        }
+        return $Candidate
+    }
+
     if ($ResumeFeature) {
         if ($ResumeFeature -eq 'auto') {
             $featureJsonPath = Join-Path $Root '.specify\feature.json'
@@ -654,19 +670,27 @@ function Resolve-FeatureDirectory {
             }
 
             $candidate = [string]$featureJson['feature_directory']
-            if (-not [System.IO.Path]::IsPathRooted($candidate)) {
+            # Another OS's absolute path or a drive-relative one is refused as it is written, before GetFullPath could
+            # read it as a folder under the current directory.
+            if ((Get-SpecrewPathRootKind -Path $candidate) -eq 'relative') {
                 $candidate = Join-Path $Root $candidate
             }
+            else {
+                $null = & $assertInsideProject $candidate
+            }
 
-            return [System.IO.Path]::GetFullPath($candidate)
+            return (& $assertInsideProject ([System.IO.Path]::GetFullPath($candidate)))
         }
 
         $candidatePath = $ResumeFeature
-        if (-not [System.IO.Path]::IsPathRooted($candidatePath)) {
+        if ((Get-SpecrewPathRootKind -Path $candidatePath) -eq 'relative') {
             $candidatePath = Join-Path $Root $candidatePath
         }
+        else {
+            $null = & $assertInsideProject $candidatePath
+        }
 
-        return [System.IO.Path]::GetFullPath($candidatePath)
+        return (& $assertInsideProject ([System.IO.Path]::GetFullPath($candidatePath)))
     }
 
     $featureJsonPath = Join-Path $Root '.specify\feature.json'
@@ -2209,7 +2233,8 @@ function Get-RestartTriggerFiles {
     param(
         [string]$ResolvedProjectPath,
         [AllowNull()][string]$BaselineCommitHash,
-        [string[]]$ChangedFiles
+        [string[]]$ChangedFiles,
+        [AllowNull()][System.Collections.IDictionary]$StartWrittenFiles
     )
 
     $restartTriggerFiles = New-Object System.Collections.Generic.List[string]
@@ -2219,8 +2244,40 @@ function Get-RestartTriggerFiles {
         }
 
         $normalizedChangedFile = ([string]$changedFile).Trim() -replace '/', '\'
+        # F-206 T020 (FR-003, D5-a): a whole file start created or repaired itself is bookkeeping while its committed
+        # content still matches the hash start recorded when it wrote it; any edit changes the hash, so it is the
+        # user's. A file with no record entry is the user's.
+        # Round 1, F1: a file Specrew and the user share (copilot-instructions.md) is never consulted in the record,
+        # even if an older record holds it; T003's block-aware classifier below decides it.
+        $recordKey = ([string]$changedFile).Trim() -replace '\\', '/'
+        if (-not (Get-Command -Name 'Get-SpecrewCommittedContentHash' -ErrorAction SilentlyContinue)) {
+            . (Join-Path $PSScriptRoot 'internal\instruction-file-merge.ps1')
+        }
+        if ($null -ne $StartWrittenFiles -and $StartWrittenFiles.Contains($recordKey) -and -not (Test-SpecrewSharedInstructionFile -RelativePath $recordKey)) {
+            $committedHash = Get-SpecrewCommittedContentHash -ProjectPath $ResolvedProjectPath -RelativePath $recordKey
+            if (-not [string]::IsNullOrWhiteSpace($committedHash) -and $committedHash -ceq [string]$StartWrittenFiles[$recordKey]) {
+                continue
+            }
+        }
         if ($normalizedChangedFile -ieq '.github\copilot-instructions.md') {
-            $classification = Test-CopilotInstructionsChangeType -ProjectPath $ResolvedProjectPath -BaselineCommitHash $BaselineCommitHash -TargetPath '.github/copilot-instructions.md'
+            # F-206 T003 (FR-003): start heals Specrew's coordinator block into this file before it classifies,
+            # so compare with Specrew's matched specrew-managed blocks stripped from both sides; an unbalanced
+            # marker on either side compares the whole files.
+            if (-not (Get-Command -Name 'Get-SpecrewInstructionComparisonPair' -ErrorAction SilentlyContinue)) {
+                . (Join-Path $PSScriptRoot 'internal\instruction-file-merge.ps1')
+            }
+            $instructionsPath = Join-Path $ResolvedProjectPath '.github\copilot-instructions.md'
+            $afterContent = if (Test-Path -LiteralPath $instructionsPath -PathType Leaf) { Get-Content -LiteralPath $instructionsPath -Raw -Encoding UTF8 } else { '' }
+            $beforeContent = $afterContent
+            if (-not [string]::IsNullOrWhiteSpace($BaselineCommitHash)) {
+                $beforeOutput = @(& git -C $ResolvedProjectPath show ("{0}:.github/copilot-instructions.md" -f $BaselineCommitHash) 2>$null)
+                $beforeContent = if ($LASTEXITCODE -eq 0) { $beforeOutput -join [Environment]::NewLine } else { '' }
+            }
+            # A side may be empty: the file added or deleted since the baseline (compared as empty, as before
+            # T003), or a file holding only Specrew's managed block, which strips to empty (review round 2,
+            # finding 1). The classifier accepts an empty side.
+            $comparisonPair = Get-SpecrewInstructionComparisonPair -BeforeContent $beforeContent -AfterContent $afterContent
+            $classification = Test-CopilotInstructionsChangeType -BeforeContent $comparisonPair.BeforeContent -AfterContent $comparisonPair.AfterContent
             if ($classification.RequiresRestart) {
                 $restartTriggerFiles.Add($normalizedChangedFile) | Out-Null
             }
@@ -2434,7 +2491,14 @@ function Save-StartArtifacts {
     # Get baseline commit and check for session-loaded file changes
     $baselineCommit = Get-BaselineCommitHash -ResolvedProjectPath $ResolvedProjectPath
     $changedFiles = @(Test-SessionLoadedFilesChanged -ResolvedProjectPath $ResolvedProjectPath -BaselineCommitHash $baselineCommit)
-    $restartTriggerFiles = @(Get-RestartTriggerFiles -ResolvedProjectPath $ResolvedProjectPath -BaselineCommitHash $baselineCommit -ChangedFiles $changedFiles)
+    $startWrittenFiles = @{}
+    try {
+        $startWrittenFiles = Read-SpecrewStartWrittenFilesRecord -ProjectPath $ResolvedProjectPath
+    }
+    catch {
+        Write-Verbose ("Start-written files record not read: {0}" -f $_.Exception.Message)
+    }
+    $restartTriggerFiles = @(Get-RestartTriggerFiles -ResolvedProjectPath $ResolvedProjectPath -BaselineCommitHash $baselineCommit -ChangedFiles $changedFiles -StartWrittenFiles $startWrittenFiles)
     $hasChanges = ($restartTriggerFiles.Count -gt 0)
     $templateRefreshArtifacts = @(Get-UnresolvedTemplateRefreshArtifacts -ResolvedProjectPath $ResolvedProjectPath)
 
@@ -2979,9 +3043,15 @@ if ($missingBootstrapPaths.Count -gt 0) {
     exit 1
 }
 
+# F-206 T020 (FR-003, D5-a) and round 1 F5: each of start's writing steps records the session-loaded files it
+# creates or repairs, in a region of its own (this heal, the skill catalog repair, the crew runtime sync), so nothing a
+# user or another tool changes while start waits on a prompt between them is recorded as Specrew's. Fail-open.
+$startWrittenGlobs = @(Get-SessionLoadedPaths)
+
 # F-184 iter-002 (T003, FR-016): heal/refresh the coordinator instruction section in each
 # supported host's InstructionsFile (idempotent backstop; init/update are the primary deploy
 # path). Fail-open + silent: never fails `specrew start`.
+$healRegion = Start-SpecrewStartWrittenRegion -ProjectPath $resolvedProjectPath -Globs $startWrittenGlobs
 try {
     . (Join-Path $PSScriptRoot 'internal\instruction-deploy.ps1')
     $null = @(Invoke-SpecrewInstructionDeployment -ProjectPath $resolvedProjectPath)
@@ -2989,6 +3059,7 @@ try {
 catch {
     Write-Verbose ("Coordinator-instruction heal skipped: {0}" -f $_.Exception.Message)
 }
+Complete-SpecrewStartWrittenRegion -ProjectPath $resolvedProjectPath -Globs $startWrittenGlobs -Before $healRegion
 
 # Feature 049 Iteration 003: User profile first-run check (FR-023, FR-024, FR-026)
 # Check for user profile and prompt on first run
@@ -3139,6 +3210,7 @@ $skillCatalogState = Get-SpecrewSkillCatalogState -ProjectPath $resolvedProjectP
 if ($skillCatalogState.HasMissingRoots) {
     Write-Info ("WARN: Skill catalog directories missing: {0}" -f (Format-SpecrewSkillCatalogRoots -Roots $skillCatalogState.MissingRoots))
     Write-Info "Attempting skill catalog auto-repair via bundled runtime deployment."
+    $skillRepairRegion = Start-SpecrewStartWrittenRegion -ProjectPath $resolvedProjectPath -Globs $startWrittenGlobs
     try {
         $skillCatalogRepair = Invoke-SpecrewSkillCatalogRepair -ProjectPath $resolvedProjectPath
         foreach ($repairAction in @($skillCatalogRepair.Actions)) {
@@ -3157,6 +3229,7 @@ if ($skillCatalogState.HasMissingRoots) {
     catch {
         Write-Info ("WARN: Skill catalog auto-repair failed: {0}" -f $_.Exception.Message)
     }
+    Complete-SpecrewStartWrittenRegion -ProjectPath $resolvedProjectPath -Globs $startWrittenGlobs -Before $skillRepairRegion
 }
 
 # Per-host skill verification (FR-009 non-fatal warning; FR-013 Codex informational note)
@@ -3227,6 +3300,10 @@ elseif ($staleSessionStateCheck.IsStale) {
     Write-Output '  C) exit and manually fix state'
 
     $selectedRecoveryChoice = Read-SpecrewRecoveryChoice -PreferredChoice $RecoveryChoice
+    if ([string]::IsNullOrWhiteSpace($selectedRecoveryChoice)) {
+        Write-Output (Get-SpecrewRecoveryRefusalMessage)
+        exit 1
+    }
     $recoveryPlan = Resolve-SpecrewRecoverySelection -Choice $selectedRecoveryChoice -SessionState $validatedSessionState
     $recoverySession = New-SpecrewRecoverySession -EntryMode 'detected-stale-state' -StaleReasons @($staleSessionStateCheck.Issues) -BypassGate $false -SelectedChoice $selectedRecoveryChoice -NextActionMessage $recoveryPlan.NextActionMessage
     $ResumeFeature = $recoveryPlan.ResumeFeatureOverride
@@ -3289,7 +3366,10 @@ else {
 }
 
 if ($null -eq $resolvedFeaturePath -and $null -ne $validatedSessionState -and -not [string]::IsNullOrWhiteSpace([string]$validatedSessionState.feature_path)) {
-    if (Test-Path -LiteralPath ([string]$validatedSessionState.feature_path) -PathType Container) {
+    # F-206 T023 (bug list item 23): never adopt a saved feature path outside the project, such as an absolute path
+    # an older identity file carries from another checkout.
+    if ((Test-Path -LiteralPath ([string]$validatedSessionState.feature_path) -PathType Container) -and
+        (Test-SpecrewPathInsideProject -ProjectRoot $resolvedProjectPath -Path ([string]$validatedSessionState.feature_path))) {
         $resolvedFeaturePath = [string]$validatedSessionState.feature_path
     }
 }
@@ -3305,6 +3385,14 @@ $validatedSessionState = if ($null -ne $validatedSessionState -and $resolvedFeat
         auth_commit_hash = $validatedSessionState.auth_commit_hash
         recorded_at      = $validatedSessionState.recorded_at
     }
+}
+elseif ($null -ne $validatedSessionState -and -not [string]::IsNullOrWhiteSpace([string]$validatedSessionState.feature_path) -and
+    -not (Test-SpecrewPathInsideProject -ProjectRoot $resolvedProjectPath -Path ([string]$validatedSessionState.feature_path))) {
+    # Round 1, F4: an outside feature path start did not adopt is not written back into the prompt or the start
+    # context either, or it would persist into the next start; the rest of the session state is kept.
+    $clearedSessionState = $validatedSessionState.PSObject.Copy()
+    $clearedSessionState.feature_path = $null
+    $clearedSessionState
 }
 else {
     $validatedSessionState
@@ -3437,6 +3525,7 @@ if (Get-Command Update-SpecrewHostHistory -ErrorAction SilentlyContinue) {
 # Proposal 108 Slice 9: deploy the selected host's Crew runtime from the canonical .specrew/team/.
 # Translation runs every launch — cheap (~50ms for 5-7 files), keeps per-host view in sync.
 if (Get-Command Invoke-CrewBootstrap -ErrorAction SilentlyContinue) {
+    $crewRegion = Start-SpecrewStartWrittenRegion -ProjectPath $resolvedProjectPath -Globs $startWrittenGlobs
     try {
         $crewResult = Invoke-CrewBootstrap -ProjectPath $resolvedProjectPath -HostKind $selectedHost
         $writeCount = @($crewResult.Actions | Where-Object { $_.Action -in @('written', 'updated') }).Count
@@ -3450,6 +3539,7 @@ if (Get-Command Invoke-CrewBootstrap -ErrorAction SilentlyContinue) {
     catch {
         Write-Info ("WARN: Crew runtime sync failed for host '{0}': {1}" -f $selectedHost, $_.Exception.Message)
     }
+    Complete-SpecrewStartWrittenRegion -ProjectPath $resolvedProjectPath -Globs $startWrittenGlobs -Before $crewRegion
 }
 
 Write-Success "Prepared Specrew start context."

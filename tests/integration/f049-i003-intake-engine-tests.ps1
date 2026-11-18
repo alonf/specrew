@@ -123,7 +123,17 @@ try {
     Assert-Equal -Actual $personas.Count -Expected 4 -Message 'T001/T002: persona catalog loads all four lenses'
     Assert-Equal -Actual $categories.Count -Expected 12 -Message 'T001/T010: category catalog loads all twelve categories'
     Assert-Equal -Actual $defaults.Count -Expected 12 -Message 'T016/T031: generic auto-decision catalog exposes twelve defaults'
-    Assert-Equal -Actual (Detect-RepoStack -ProjectRoot $repoRoot) -Expected 'nodejs' -Message 'T019: stack detection falls back to repository package.json'
+    # Feature 206 T017 (FR-014): the assertion read this repository's stray root package.json, which made the quality
+    # resolver treat Specrew as a Node service. It now reads a fixture with its own package.json.
+    $stackFixture = Join-Path ([IO.Path]::GetTempPath()) ('f049-stack-fixture-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
+    $null = New-Item -ItemType Directory -Path $stackFixture -Force
+    try {
+        [System.IO.File]::WriteAllText((Join-Path $stackFixture 'package.json'), '{ "dependencies": { "react": "^18.2.0", "express": "^4.19.0", "pg": "^8.11.0" } }', [System.Text.UTF8Encoding]::new($false))
+        Assert-Equal -Actual (Detect-RepoStack -ProjectRoot $stackFixture) -Expected 'nodejs' -Message 'T019: stack detection falls back to the project package.json'
+    }
+    finally {
+        Remove-Item -LiteralPath $stackFixture -Recurse -Force -ErrorAction SilentlyContinue
+    }
     Write-Pass 'Engine foundation catalogs and stack detection load without ConvertFrom-Yaml'
 
     $profilePath = Join-Path $scratchRoot 'user-profile.yml'

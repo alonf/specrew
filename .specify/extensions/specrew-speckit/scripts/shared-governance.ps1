@@ -715,7 +715,8 @@ function Get-SpecrewClosedIterationIndexPath {
 
 function Get-SpecrewClosedIterationIndex {
     # Proposal 085: reads .specrew/closed-iterations.yml; returns a hashtable
-    # keyed by "<feature>/<iteration>" with values @{ closed_at = '<ISO8601>' }.
+    # keyed by "<feature>/<iteration>" with values @{ closed_at = '<ISO8601>'; closed_at_source = 'closeout' | $null }.
+    # closed_at_source (FR-008) is 'closeout' only on entries iteration closeout wrote; the rest have none.
     # Returns an empty hashtable when the file is missing or empty.
     param(
         [Parameter(Mandatory = $true)]
@@ -741,7 +742,7 @@ function Get-SpecrewClosedIterationIndex {
         if ($line -match '^\s*-\s+feature:\s*(.+?)\s*$') {
             if ($null -ne $current -and $current.ContainsKey('feature') -and $current.ContainsKey('iteration')) {
                 $key = "$($current['feature'])/$($current['iteration'])"
-                $result[$key] = @{ closed_at = $current['closed_at'] }
+                $result[$key] = @{ closed_at = $current['closed_at']; closed_at_source = $current['closed_at_source'] }
             }
             $current = @{ feature = $Matches[1].Trim('"').Trim("'") }
             continue
@@ -755,10 +756,14 @@ function Get-SpecrewClosedIterationIndex {
             $current['closed_at'] = $Matches[1].Trim('"').Trim("'")
             continue
         }
+        if ($line -match '^\s*closed_at_source:\s*(.+?)\s*$') {
+            $current['closed_at_source'] = $Matches[1].Trim('"').Trim("'")
+            continue
+        }
     }
     if ($null -ne $current -and $current.ContainsKey('feature') -and $current.ContainsKey('iteration')) {
         $key = "$($current['feature'])/$($current['iteration'])"
-        $result[$key] = @{ closed_at = $current['closed_at'] }
+        $result[$key] = @{ closed_at = $current['closed_at']; closed_at_source = $current['closed_at_source'] }
     }
     return $result
 }
@@ -775,9 +780,175 @@ function Normalize-SpecrewIterationNumber {
     return $trimmed
 }
 
+function Get-SpecrewLegacyFrozenIterationKeys {
+    # The frozen legacy list (FR-007), .specrew/legacy-frozen.yml. Returns its
+    # "<feature-dir>/<NNN>" keys; an absent or empty file gives none.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+    $path = Join-Path -Path (Resolve-ProjectPath -Path $ProjectRoot) -ChildPath '.specrew\legacy-frozen.yml'
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        return @()
+    }
+    $keys = New-Object System.Collections.Generic.List[string]
+    foreach ($rawLine in @(Get-Content -LiteralPath $path -Encoding UTF8)) {
+        if ($rawLine -match '^\s*-\s+iteration:\s*(.+?)\s*$') {
+            $value = $Matches[1].Trim('"').Trim("'")
+            if ($value -match '^(.+)/([^/]+)$') {
+                $keys.Add(('{0}/{1}' -f $Matches[1], (Normalize-SpecrewIterationNumber -IterationNumber $Matches[2]))) | Out-Null
+            }
+        }
+    }
+    return $keys.ToArray()
+}
+
+function Get-SpecrewIterationStatusValue {
+    # The state.md "Iteration Status" value (FR-008a), lower-cased, without markdown backticks.
+    # Returns '' when state.md or the field is missing.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$StatePath
+    )
+    if (-not (Test-Path -LiteralPath $StatePath -PathType Leaf)) {
+        return ''
+    }
+    foreach ($line in @(Get-Content -LiteralPath $StatePath -Encoding UTF8)) {
+        if ($line -match '^\s*\*\*Iteration Status\*\*\s*:\s*(.*)$') {
+            return (($Matches[1] -replace '`', '').Trim()).ToLowerInvariant()
+        }
+    }
+    return ''
+}
+
+function Test-SpecrewIterationRulingRecorded {
+    # FR-008 (T009): true when state.md records a maintainer ruling on the iteration: a `## Disposition`
+    # section with a sentence that records the abandonment, by the maintainer's dated ruling, in an affirmative form.
+    # 174/007, 197/006, 198/010 and 198/011 record one; an abandonment reason with no Disposition does not.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$StatePath
+    )
+    if (-not (Test-Path -LiteralPath $StatePath -PathType Leaf)) {
+        return $false
+    }
+    # Iteration 002 review round 2, finding 3: the section is read as Markdown. A code fence's lines are not text and
+    # are no heading; any heading (any level) ends the section; HTML comments are removed before the sentences are read.
+    $inDisposition = $false
+    $fence = $null
+    $section = New-Object System.Collections.Generic.List[string]
+    # Iteration 002 review round 3, finding-a9d93413b59ece33: HTML comments are removed from the whole page before the
+    # headings are read, so a Disposition heading inside a comment opened above it is no heading.
+    $pageText = [string](Get-Content -LiteralPath $StatePath -Raw -Encoding UTF8)
+    $pageText = [regex]::Replace(($pageText -replace "`r`n?", "`n"), '(?s)<!--.*?-->', '')
+    foreach ($line in @($pageText -split "`n")) {
+        if ($null -ne $fence) {
+            if ($line -match ('^\s{0,3}' + [regex]::Escape($fence) + '\s*$')) { $fence = $null }
+            continue
+        }
+        if ($line -match '^\s{0,3}(?<f>```+|~~~+)') { $fence = $Matches['f']; continue }
+        if ($line -match '^#{1,6}\s') {
+            if ($inDisposition) { break }
+            if ($line -match '^##\s+Disposition\b') {
+                # The heading is not read: its date is when the section was written, not a ruling.
+                $inDisposition = $true
+            }
+            continue
+        }
+        if ($inDisposition) { $section.Add($line) | Out-Null }
+    }
+    if ($section.Count -eq 0) {
+        return $false
+    }
+    # One sentence must record the abandonment in an affirmative form (maintainer ruling, 2026-11-14: only the
+    # listed forms count; a sentence in any other shape - rejected, declined, pending, proposed - is no ruling):
+    #   abandoned[ and superseded | , superseded by iteration NNN,][,] by the maintainer's ruling|decision of|on YYYY-MM-DD[ (note)]
+    #   [closed as ]abandoned[-superseded] (YYYY-MM-DD, maintainer's ruling|decision)
+    # The sentence starts with the abandonment and ends with the ruling's date (or one bracketed note after it).
+    $apostrophe = "['’]"
+    $date = '\d{4}-\d{2}-\d{2}'
+    $byRuling = "by the maintainer(?:$apostrophe" + 's)?\s+(?:ruling|decision)\s+(?:of|on)\s+' + $date
+    $bracketed = '\(' + $date + ",\s+maintainer(?:$apostrophe" + 's)?\s+(?:ruling|decision)\)'
+    # Iteration 002 review round 2, finding 3: the one bracketed note after the date is a listed form - where the
+    # ruling was given, "(at ...)" - and never a word that denies or conditions it. The date is a real date, not later
+    # than tomorrow (UTC, so a ruling typed late on the maintainer's local day still reads).
+    $note = '\(at\s[^)]*\)'
+    $affirmative = '^(?:closed as\s+)?abandoned(?:-superseded)?(?:,?\s+(?:and\s+)?superseded(?:\s+by\s+iteration\s+\d+)?)?,?\s+(?:' + $byRuling + '|' + $bracketed + ')(?:\s*' + $note + ')?$'
+    $denies = '\b(?:not|no|never|pending|withdrawn|revoked|reversed|rejected|unconfirmed|awaiting|proposed|draft|if|unless|once|until|subject)\b'
+    $latest = [datetime]::UtcNow.Date.AddDays(1)
+    $text = ((([regex]::Replace(($section -join "`n"), '(?s)<!--.*?-->', ' ')) -replace '\s+', ' ') -replace '\*', '').ToLowerInvariant()
+    foreach ($sentence in @($text -split '[.;!?](?:\s+|$)')) {
+        $candidate = $sentence.Trim()
+        if ($candidate -notmatch $affirmative) { continue }
+        $noteText = [regex]::Match($candidate, '\([^)]*\)\s*$').Value
+        if ($noteText -and $noteText -notmatch ('^\(' + $date) -and $noteText -match $denies) { continue }
+        $dateOk = $true
+        foreach ($d in [regex]::Matches($candidate, $date)) {
+            $parsed = [datetime]::MinValue
+            if (-not [datetime]::TryParseExact($d.Value, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$parsed) -or $parsed -gt $latest) { $dateOk = $false }
+        }
+        if ($dateOk) { return $true }
+    }
+    return $false
+}
+
+function Test-SpecrewIterationAbandonedByRuling {
+    # FR-008 (T009; maintainer, 2026-11-11): state.md says `abandoned` and records the maintainer's ruling.
+    # Such an iteration is not held to the plan-status rule (retro.md exists) or the review-verdict rule.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$StatePath
+    )
+    return ((Get-SpecrewIterationStatusValue -StatePath $StatePath) -eq 'abandoned') -and (Test-SpecrewIterationRulingRecorded -StatePath $StatePath)
+}
+
+function Test-SpecrewClosedCheckApplies {
+    # FR-008 (T009): a check that judges closed iterations declares the date it shipped (`since`). It judges
+    # an iteration only when iteration closeout stamped its index entry (closed_at_source: closeout) with a
+    # closed_at on or after that date. An entry without the stamp (the 2026-08-06 rebuild and every older
+    # one), or no entry, has no trusted closure date; that history is covered by the frozen list.
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$ClosedIndex,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Feature,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Iteration,
+
+        [Parameter(Mandatory = $true)]
+        [datetime]$Since
+    )
+    $key = '{0}/{1}' -f $Feature, (Normalize-SpecrewIterationNumber -IterationNumber $Iteration)
+    if (-not $ClosedIndex.ContainsKey($key)) {
+        return $false
+    }
+    # Read by key, not by property: an index from an older reader has no closed_at_source key, and under
+    # strict mode a missing key read as a property throws. A missing key means no stamp.
+    $entry = $ClosedIndex[$key]
+    if ($entry -isnot [System.Collections.IDictionary] -or -not $entry.Contains('closed_at_source') -or [string]$entry['closed_at_source'] -ne 'closeout') {
+        return $false
+    }
+    $closedAt = [datetimeoffset]::MinValue
+    $styles = [System.Globalization.DateTimeStyles]::AssumeUniversal
+    if (-not $entry.Contains('closed_at') -or -not [datetimeoffset]::TryParse([string]$entry['closed_at'], [System.Globalization.CultureInfo]::InvariantCulture, $styles, [ref]$closedAt)) {
+        return $false
+    }
+    return ($closedAt.UtcDateTime.Date -ge $Since.Date)
+}
+
 function Test-SpecrewIterationClosed {
-    # Proposal 085: returns $true if the (feature, iteration) tuple is recorded
-    # in the closed-iteration index.
+    # THE definition of a closed iteration (FR-008a), used by the validator's closed
+    # filter, the dashboard check and the dashboard renderer.
+    #   closed = in .specrew/closed-iterations.yml (Proposal 085), or state.md Iteration Status
+    #            `complete`, or `abandoned` with the maintainer's ruling recorded (Test-SpecrewIterationRulingRecorded,
+    #            T026), or a status that claims closure (Test-SpecrewClosureClaimStatus:
+    #            the validator's own claim words, in one of the listed affirmative forms);
+    #   an entry of .specrew/legacy-frozen.yml is never closed (frozen: judged by no check, FR-007);
+    #   a review verdict never makes an iteration closed, and the old state.md text heuristic decides
+    #   nothing here.
+    # -ClosedIndex / -FrozenKeys let a caller that loops over many iterations read each file once.
     param(
         [Parameter(Mandatory = $true)]
         [string]$ProjectRoot,
@@ -786,16 +957,76 @@ function Test-SpecrewIterationClosed {
         [string]$Feature,
 
         [Parameter(Mandatory = $true)]
-        [string]$Iteration
+        [string]$Iteration,
+
+        [AllowNull()]
+        [hashtable]$ClosedIndex,
+
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [string[]]$FrozenKeys
     )
     $normalizedIteration = Normalize-SpecrewIterationNumber -IterationNumber $Iteration
-    $index = Get-SpecrewClosedIterationIndex -ProjectRoot $ProjectRoot
     $key = "$Feature/$normalizedIteration"
-    return $index.ContainsKey($key)
+
+    $frozen = if ($PSBoundParameters.ContainsKey('FrozenKeys') -and $null -ne $FrozenKeys) { $FrozenKeys } else { @(Get-SpecrewLegacyFrozenIterationKeys -ProjectRoot $ProjectRoot) }
+    if ($frozen -contains $key) {
+        return $false
+    }
+
+    $index = if ($null -ne $ClosedIndex) { $ClosedIndex } else { Get-SpecrewClosedIterationIndex -ProjectRoot $ProjectRoot }
+    if ($index.ContainsKey($key)) {
+        return $true
+    }
+
+    $statePath = Join-Path -Path (Resolve-ProjectPath -Path $ProjectRoot) -ChildPath ('specs\{0}\iterations\{1}\state.md' -f $Feature, $Iteration)
+    $status = Get-SpecrewIterationStatusValue -StatePath $statePath
+    if ($status -eq 'abandoned') {
+        # T026: abandoned is closed only with the maintainer's ruling recorded in state.md's
+        # Disposition section. An abandonment reason alone is the agent's account, not a ruling.
+        return (Test-SpecrewIterationRulingRecorded -StatePath $statePath)
+    }
+    return (($status -eq 'complete') -or (Test-SpecrewClosureClaimStatus -IterationStatus $status))
+}
+
+function Test-SpecrewClosureClaimStatus {
+    # FR-008a: true when an Iteration Status claims closure in an affirmative form (maintainer ruling,
+    # 2026-11-14: only the listed forms count, so "not closed", "to be closed", "may be closed" and "closed? no"
+    # are no claims, without a list of the words that make them so). Each clause - the status split at '.' or ';'
+    # followed by a space, or at a spaced dash - is read on its own, and one clause must be, in full:
+    #   <claim>[ via|by|on|at|after|with ...]
+    #   [the ][feature NNN ]iteration[ NNN][ is| was| has been][ formally] <claim>[ via|by|on|at|after|with ...]
+    # where <claim> is "closed", "closeout complete", "iteration-closeout complete" or "closure complete".
+    # A status written before the closed index existed ("iteration closed on 2026-05-13 via ...") still reads
+    # closed; every status in this repository reads as it did before the ruling.
+    # Test-ClosedIterationStatus itself is unchanged; its other caller (the closeout-evidence check) keeps
+    # reading any claim word, so a "not closed" status is still checked for closeout evidence there.
+    param([AllowNull()][string]$IterationStatus)
+
+    if ([string]::IsNullOrWhiteSpace($IterationStatus)) {
+        return $false
+    }
+    $claim = '(?:closed|(?:iteration-)?closeout complete|closure complete)'
+    $tail = '(?:\s+(?:via|by|on|at|after|with)\b.*)?'
+    $forms = @(
+        ('^' + $claim + $tail + '$'),
+        ('^(?:the\s+)?(?:feature\s+\d+\s+)?iteration(?:\s+\d+)?\s+(?:(?:is|was|has been)\s+)?(?:formally\s+)?' + $claim + $tail + '$')
+    )
+    foreach ($clause in @($IterationStatus.ToLowerInvariant() -split '[.;](?:\s+|$)|\s+[-–—]\s+')) {
+        $text = $clause.Trim()
+        foreach ($form in $forms) {
+            if ($text -match $form) {
+                return $true
+            }
+        }
+    }
+    return $false
 }
 
 function Add-SpecrewClosedIterationEntry {
     # Proposal 085: appends a {feature, iteration, closed_at} entry to the index.
+    # Its one caller is the iteration-closeout approval, so the entry carries closed_at_source: closeout
+    # (FR-008): closed_at is the real closure time. -RebuildClosedIndex writes entries without it.
     # Idempotent: if an entry already exists, no-op. Uses Invoke-WithFileLock to
     # serialize concurrent writes (multi-dev safety).
     param(
@@ -829,7 +1060,8 @@ function Add-SpecrewClosedIterationEntry {
         $newEntryLines = @(
             "  - feature: $Feature",
             "    iteration: $normalizedIteration",
-            "    closed_at: $ClosedAt"
+            "    closed_at: $ClosedAt",
+            "    closed_at_source: closeout"
         )
         $needsHeader = -not (Test-Path -LiteralPath $indexPath -PathType Leaf) -or [string]::IsNullOrWhiteSpace((Get-Content -LiteralPath $indexPath -Raw -Encoding UTF8))
         if ($needsHeader) {
@@ -4003,6 +4235,44 @@ function Set-SpecrewMarkdownMetadataLine {
     return [pscustomobject]@{ Path = $Path; Label = $Label; Found = $true; Changed = $true; Previous = $previous }
 }
 
+function Set-SpecrewPlanCompletedDate {
+    # Feature 206 T036 (FR-018): the Completed date of an iteration that has just moved to complete. A recorded
+    # date is kept; a blank or placeholder value is filled; a plan with no Completed line gets one after Started
+    # (or after Status). This is the one metadata line the mirror writer adds, because the governance check
+    # requires it of every complete iteration and nothing else writes it.
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string]$Path, [Parameter(Mandatory = $true)][string]$Date)
+    $result = [pscustomobject]@{ Path = $Path; Changed = $false; Previous = $null }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $result }
+    $previous = Get-SpecrewMirrorMetadataValue -Path $Path -Label 'Completed'
+    $result.Previous = $previous
+    if ($null -ne $previous) {
+        if ($previous -notmatch '^(?:|—|-|none|null|n/a|\(none\)|blank|pending|tbd)$') { return $result }
+        # The whole line is rewritten, so a blank `**Completed**:` with no trailing space still reads `**Completed**: <date>`.
+        $content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8
+        $blank = [regex]::Match($content, '(?m)^\*\*Completed\*\*:[^\r\n]*?(?=\r?$)')
+        if (-not $blank.Success) { return $result }
+        $updated = $content.Substring(0, $blank.Index) + '**Completed**: ' + $Date + $content.Substring($blank.Index + $blank.Length)
+        [IO.File]::WriteAllText($Path, $updated, [Text.UTF8Encoding]::new($false))
+        $result.Changed = $true
+        return $result
+    }
+    $content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8
+    $anchor = $null
+    foreach ($label in @('Started', 'Status')) {
+        $match = [regex]::Match($content, '(?m)^\*\*' + [regex]::Escape($label) + '\*\*:[^\r\n]*(?<eol>\r?\n|$)')
+        if ($match.Success) { $anchor = $match; break }
+    }
+    if ($null -eq $anchor) { return $result }
+    $eol = if ($anchor.Groups['eol'].Value) { $anchor.Groups['eol'].Value } elseif ($content.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $insertAt = $anchor.Index + $anchor.Length
+    $line = '**Completed**: ' + $Date
+    $updated = if ($anchor.Groups['eol'].Value) { $content.Substring(0, $insertAt) + $line + $eol + $content.Substring($insertAt) } else { $content + $eol + $line }
+    [IO.File]::WriteAllText($Path, $updated, [Text.UTF8Encoding]::new($false))
+    $result.Changed = $true
+    return $result
+}
+
 function Get-SpecrewMirrorMetadataValue {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string]$Path, [Parameter(Mandatory = $true)][string]$Label)
@@ -4110,6 +4380,13 @@ function Sync-SpecrewCrossingMirrors {
             $w3 = Set-SpecrewMarkdownMetadataLine -Path $paths.PlanPath -Label 'Status' -Value ([string]$map.PlanStatus)
             if ([bool]$w3.Changed) { $wrote.Add(('plan.md Status: {0} -> {1}' -f $w3.Previous, $map.PlanStatus)) | Out-Null }
             elseif (-not [bool]$w3.Found) { $left.Add('plan.md has no Status line; not invented') | Out-Null }
+            # Feature 206 T036 (FR-018, bug list item 44): an iteration at complete must record its Completed date,
+            # and the move to complete is this write. Written once: a recorded date is kept.
+            if ([bool]$w3.Found -and ([string]$map.PlanStatus).ToLowerInvariant() -eq 'complete') {
+                $completedDate = if ([string]::IsNullOrWhiteSpace($NowUtc)) { (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd') } else { ([datetimeoffset]$NowUtc).ToUniversalTime().ToString('yyyy-MM-dd') }
+                $wc = Set-SpecrewPlanCompletedDate -Path $paths.PlanPath -Date $completedDate
+                if ([bool]$wc.Changed) { $wrote.Add(('plan.md Completed: {0}' -f $completedDate)) | Out-Null }
+            }
         }
     }
     $result.Wrote = $wrote.ToArray()
@@ -4672,6 +4949,14 @@ function Add-SpecrewBoundaryAuthorization {
         if ($authorizedCanonical -ceq 'iteration-closeout' -and $null -ne $mirrorResult -and [bool]$mirrorResult.Attempted -and
             $mirrorResult.PSObject.Properties['IterationDir'] -and -not [string]::IsNullOrWhiteSpace([string]$mirrorResult.IterationDir) -and
             (Get-Command -Name 'Invoke-SpecrewCloseoutSeal' -ErrorAction SilentlyContinue)) {
+            # Feature 206 T035 (FR-017): redraw the closeout dashboard from the advanced records, then seal it. A failed
+            # redraw is loud but never blocks the seal or un-records the verdict.
+            try {
+                Invoke-SpecrewCloseoutDashboardRedraw -ProjectRoot $ProjectRoot -IterationDirectory ([string]$mirrorResult.IterationDir) -Feature $rebindFeature -Iteration $rebindIteration
+            }
+            catch {
+                try { [Console]::Error.WriteLine(('[specrew-governance] WARN CLOSEOUT_DASHBOARD_NOT_REDRAWN the closeout verdict for {0}/{1} is recorded and the iteration is sealed, but its dashboard still shows the arrival''s view: {2}. Run: specrew where --capture-kind iteration-closeout, then specrew reseal --feature {0} --iteration {1}' -f $rebindFeature, $rebindIteration, $_.Exception.Message)) } catch { $null = $_ }
+            }
             try {
                 $sealPath = Invoke-SpecrewCloseoutSeal -ProjectRoot $ProjectRoot -IterationDirectory ([string]$mirrorResult.IterationDir) -Feature $rebindFeature -Iteration $rebindIteration
                 if (-not [string]::IsNullOrWhiteSpace([string]$sealPath)) { $mirrorResult | Add-Member -NotePropertyName 'SealPath' -NotePropertyValue ([string]$sealPath) -Force }
@@ -7310,6 +7595,27 @@ function Test-HardeningConcernBlocksImplementation {
     return [bool]$evaluation.BlocksImplementation
 }
 
+function Get-SpecrewCloseoutOpenHardeningItems {
+    # Feature 206 T036 (FR-018, bug list item 44): what the governance check will refuse in quality/hardening-gate.md
+    # once plan.md is at complete - the same three tests, asked at the retro -> iteration-closeout arrival so the
+    # closeout packet names them before the verdict instead of the check finding them after it. Returns one line per
+    # open item; an iteration without a gate file returns none (the check reports the missing file on its own).
+    param([Parameter(Mandatory = $true)][string]$IterationDirectory, [string]$ProjectRoot)
+    $items = New-Object System.Collections.Generic.List[string]
+    $gatePath = Join-Path $IterationDirectory 'quality/hardening-gate.md'
+    if (-not (Test-Path -LiteralPath $gatePath -PathType Leaf)) { return @() }
+    $gateLines = @(Get-MarkdownContent -Path $gatePath)
+    $verification = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $gateLines -Label 'Post-Implementation Verification')
+    if ((Test-IsNullish $verification) -or $verification.ToLowerInvariant().Contains('pending')) { $items.Add('Post-Implementation Verification is still pending') | Out-Null }
+    $verifiedAt = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $gateLines -Label 'Verified At')
+    if ((Test-IsNullish $verifiedAt) -or $verifiedAt.ToLowerInvariant().Contains('pending')) { $items.Add('Verified At is not recorded') | Out-Null }
+    $gateState = Get-HardeningGateState -Path $gatePath -ProjectRoot $ProjectRoot
+    foreach ($concern in @($gateState.ConcernRows | Where-Object { Test-HardeningConcernBlocksClosure -Concern $_ -ProjectRoot $ProjectRoot })) {
+        $items.Add(("concern '{0}' has no recorded post-implementation evidence ({1} / {2})" -f $concern.Concern, $concern.EvidenceBasis, $concern.RuntimeEvidenceStatus)) | Out-Null
+    }
+    return @($items)
+}
+
 function Test-HardeningConcernBlocksClosure {
     param(
         [Parameter(Mandatory = $true)]
@@ -8442,6 +8748,31 @@ function Add-SpecrewSealJournalEvent {
             Add-Content -LiteralPath $journal -Encoding UTF8
     }
     catch { $null = $_ }
+}
+
+function Invoke-SpecrewCloseoutDashboardRedraw {
+    # Feature 206 T035 (FR-017, bug list item 41, design D3-a): the closeout sync draws the iteration dashboard when the
+    # retro -> iteration-closeout crossing opens, before the verdict. The capture redraws it after its mirrors have
+    # moved the records to complete, so the sealed snapshot shows what the verdict accepted. specrew-where.ps1 sits in
+    # the module's scripts/ folder, three levels above this file in both the module and the source tree. Throws when it
+    # cannot be found or fails; the caller warns and seals anyway.
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$IterationDirectory,
+        [AllowNull()][string]$Feature,
+        [AllowNull()][string]$Iteration
+    )
+    $candidates = @(Join-Path (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))) 'scripts/specrew-where.ps1')
+    if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) { $candidates += Join-Path $env:SPECREW_MODULE_PATH 'scripts/specrew-where.ps1' }
+    $whereScript = @($candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1)
+    if ($whereScript.Count -eq 0) { throw 'specrew-where.ps1 was not found beside this module' }
+    $whereArgs = @('-ProjectPath', $ProjectRoot, '-OutputPath', (Join-Path $IterationDirectory 'dashboard.md'), '-CaptureKind', 'iteration-closeout', '-NoColor')
+    if (-not [string]::IsNullOrWhiteSpace($Feature)) { $whereArgs += @('-FeatureId', $Feature) }
+    if (-not [string]::IsNullOrWhiteSpace($Iteration)) { $whereArgs += @('-IterationNumber', $Iteration) }
+    & pwsh -NoProfile -ExecutionPolicy Bypass -File $whereScript[0] @whereArgs *>&1 | Out-Null
+    $whereExit = $LASTEXITCODE
+    $global:LASTEXITCODE = 0
+    if ($whereExit -ne 0) { throw ("specrew-where exited with code {0}" -f $whereExit) }
 }
 
 function Invoke-SpecrewCloseoutSeal {

@@ -118,7 +118,9 @@ foreach ($pattern in @(
         'session_state_active:\s*false',
         'session_state_boundary:\s*feature-closeout',
         'session_state_feature:\s*022-hotfix-schema-tests',
-        'session_state_feature_path:\s*".*specs\\022-hotfix-schema-tests"',
+        # Feature 206 T023 (bug list item 23): the tracked identity file records the feature path relative to the
+        # project, so a clone or another machine never reads another checkout's absolute path.
+        '(?m)session_state_feature_path:\s*specs/022-hotfix-schema-tests\s*$',
         'session_state_auth_commit:\s*[0-9a-f]{40}',
         '# What We''re Focused On',
         'No active feature\. Last completed: Feature 022'

@@ -752,7 +752,8 @@ else {
 
 if (-not $SpecKitExtensionOnly -and $shouldInitializeSquad) {
     Write-Step 'Running squad init'
-    $squadInitPlan = Get-SquadInitPlan -ProbeRoot $repoRoot
+    # F-206 T025 (bug list item 25): the probe runs in a temp folder of its own, never in the install root.
+    $squadInitPlan = Get-SquadInitPlan
     if ($squadInitPlan.SupportsNonInteractive) {
         if ($DryRun) {
             Write-Host ("[dry-run] squad {0}" -f ($squadInitPlan.ArgumentList -join ' ')) -ForegroundColor Yellow

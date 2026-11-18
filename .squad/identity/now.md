@@ -15,4 +15,4 @@ session_state_recorded_at: 2026-11-16T17:23:33Z
 
 # What We're Focused On
 
-No active feature. Last completed: Feature 202 (202-beta4-1-ux-stabilization), its closeout approved at 2026-10-25T00:56:05Z.
+No active feature. Last completed: Feature 206 (206-bug-bash), its closeout approved at 2026-11-18T09:50:21Z.

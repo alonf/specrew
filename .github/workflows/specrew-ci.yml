@@ -9,6 +9,10 @@ on:
     branches: [ '**' ]
   pull_request:
     branches: [ main, 001-specrew-product ]
+  # Feature 206 T027 (bug list item 12): re-check a commit without a new push, as Test and Cross-Platform
+  # Validation allow. A manual run takes the push path; with no push base, the governance step scopes to its
+  # fallback base (origin/main), a wider check.
+  workflow_dispatch:
 
 jobs:
   self-leak-lint:
@@ -245,15 +249,6 @@ jobs:
         shell: pwsh
         run: ./tests/integration/bootstrap-to-iteration.ps1
 
-      - name: Integration - bootstrap asset blocker recovery
-        if: runner.os != 'Linux'
-        shell: pwsh
-        # .cmd shim scripts (bootstrap-asset-blocker-recovery.ps1 invokes .cmd-based tooling)
-        # are not portable to Linux; native sh/bash equivalents not yet available.
-        # Real fix (multi-platform bootstrap shimming) is queued for post-F-024 work.
-        # See: bootstrap-asset-blocker-recovery.ps1 for context.
-        run: ./tests/integration/bootstrap-asset-blocker-recovery.ps1
-
       - name: Integration - brownfield conflict handling
         shell: pwsh
         run: ./tests/integration/brownfield-conflict-handling.ps1
@@ -283,15 +278,6 @@ jobs:
           }
           if ($failed.Count -gt 0) { Write-Host "FAILED bootstrap suites: $($failed -join ', ')"; exit 1 }
           Write-Host "Bootstrap suite: all green"
-
-      - name: Integration - validate versions cli behavior
-        if: runner.os != 'Linux'
-        shell: pwsh
-        # .cmd shim scripts (validate-versions-cli-behavior.ps1 invokes .cmd-based tooling)
-        # are not portable to Linux; native sh/bash equivalents not yet available.
-        # Real fix (multi-platform bootstrap shimming) is queued for post-F-024 work.
-        # See: validate-versions-cli-behavior.ps1 for context.
-        run: ./tests/integration/validate-versions-cli-behavior.ps1
 
       - name: Integration - drift scenario
         shell: pwsh
@@ -360,6 +346,115 @@ jobs:
       - name: Integration - GitHub Actions Node runtime pins
         shell: pwsh
         run: ./tests/integration/github-actions-node-runtime-pins.tests.ps1
+
+      - name: Integration - script suites no lane ran before the test census (F-206 T015)
+        shell: pwsh
+        timeout-minutes: 20
+        # Feature 206 (FR-011, FR-012): these script-style suites ran in no lane, CI step or release manifest
+        # until the test census counted them. Each was read for writes to the real home folder and run alone with
+        # the home hook files hashed before it was listed here (maintainer ruling 2026-11-12). The slow ones are
+        # in .specrew/release-gate-suites.txt instead. Each runs in its own process; every one runs, and the step
+        # fails if any exits non-zero.
+        run: |
+          $suites = @(
+            'tests/integration/brownfield-merge.ps1'
+            'tests/integration/carry-forward-closed-iteration.ps1'
+            'tests/integration/concurrency-sizing.ps1'
+            'tests/integration/descriptive-reference-authored-prose.ps1'
+            'tests/integration/descriptive-reference-excluded-surfaces.ps1'
+            'tests/integration/feature-018-render-budget.ps1'
+            'tests/integration/gap-governance.ps1'
+            'tests/integration/hardening-gate-contract.ps1'
+            'tests/integration/lockout-chain-cap.ps1'
+            'tests/integration/mechanical-findings-contract.ps1'
+            # F-206 T024 (SC-001, maintainer 2026-11-16): its fixture is a temp folder with its own git repository.
+            'tests/integration/project-path-resolution-regression.ps1'
+            'tests/integration/quality-evidence-governance.ps1'
+            'tests/integration/quality-profile-foundation.ps1'
+            'tests/integration/reviewer-artifacts.ps1'
+            'tests/integration/reviewer-closeout-governance.ps1'
+            'tests/integration/reviewer-regression-event.ps1'
+            'tests/integration/reviewer-regression-ledger.ps1'
+            'tests/integration/reviewer-regression-withdrawal.ps1'
+            'tests/integration/specrew-start-auto-continue-preservation.ps1'
+            'tests/integration/specrew-start-baseline-tracking.ps1'
+            'tests/integration/specrew-start-change-detector.ps1'
+            'tests/integration/specrew-start-end-to-end.ps1'
+            'tests/integration/specrew-start-parameter-handling.ps1'
+            'tests/integration/specrew-start-pause-and-confirm.ps1'
+          )
+          $failed = @()
+          foreach ($suite in $suites) {
+            $watch = [Diagnostics.Stopwatch]::StartNew()
+            & pwsh -NoProfile -NonInteractive -File "./$suite"
+            $code = $LASTEXITCODE
+            Write-Host ("RESULT {0}: exit {1} in {2:N0} s" -f $suite, $code, $watch.Elapsed.TotalSeconds)
+            if ($code -ne 0) { $failed += $suite }
+          }
+          # Pester suites whose Unix evidence comes from this runner (F-206 T002, maintainer 2026-11-13).
+          $pesterSuites = @(
+            'tests/unit/overclaim-dirty-check-separator.tests.ps1'
+          )
+          foreach ($suite in $pesterSuites) {
+            $watch = [Diagnostics.Stopwatch]::StartNew()
+            $result = Invoke-Pester -Path "./$suite" -PassThru -Output Detailed
+            Write-Host ("RESULT {0}: {1} passed, {2} failed in {3:N0} s" -f $suite, $result.PassedCount, $result.FailedCount, $watch.Elapsed.TotalSeconds)
+            if ($result.FailedCount -gt 0 -or $result.Result -ne 'Passed') { $failed += $suite }
+          }
+          if ($failed.Count -gt 0) { Write-Host ("FAILED ({0}): {1}" -f $failed.Count, ($failed -join ', ')); exit 1 }
+          Write-Host ("All {0} script suites and {1} Pester suites green" -f $suites.Count, $pesterSuites.Count)
+
+  publish-suite-windows:
+    name: Publish suite (windows-latest)
+    # Feature 206 T028 (maintainer 2026-11-16 14:38, "206 publish: A"): the publish suite runs on every push, on the OS
+    # the real publish job uses (publish-module.yml, windows-latest). On Linux, PowerShellGet's Publish-Module -WhatIf
+    # copies the module without its hidden .gitkeep files and rejects the FileList (bug list item 56).
+    # This job must never map PSGALLERY_API_KEY, or any secret: the suite's no-key case relies on the key being absent.
+    # It needs no other job and is not continue-on-error, so a red publish suite turns Specrew CI red.
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Integration - distribution module publish suite (F-206 T028)
+        shell: pwsh
+        timeout-minutes: 8
+        run: pwsh -NoProfile -NonInteractive -File ./tests/integration/distribution-module-publish.ps1
+
+  windows-shim-suites:
+    name: Windows .cmd-shim suites (windows-latest)
+    # Feature 206, iteration 002 review round 2, finding 2 (maintainer 2026-11-16 20:56, "OK for both"): these two suites
+    # drive specrew-init and the specrew CLI through .cmd shims, which only Windows runs. They sat in the ubuntu-latest
+    # deterministic gate under if: runner.os != 'Linux', so they never ran (bootstrap-asset-blocker-recovery since
+    # 2026-05-20). They run here on every push. The local review lanes do not run them: bootstrap-asset-blocker-recovery
+    # runs specrew-init, which writes the real home's hook files on a developer machine, and the runner's home is
+    # disposable. This job maps no secret, needs no other job and is not continue-on-error.
+    # Its first run (2026-11-16, job 133612182338) stopped in specrew-init's dependency check, "Node.js v22.23.4
+    # (required: 24.0+)" (scripts/init/preflight.ps1): it now sets up Node 24 as the other jobs do. The suites shim
+    # specify, uv and squad; git and PowerShell 7 come with the runner. The second suite runs even when the first fails
+    # (if: always()), so each gives its own result; a failed step still turns the job red.
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Integration - bootstrap asset blocker recovery
+        shell: pwsh
+        timeout-minutes: 6
+        run: pwsh -NoProfile -NonInteractive -File ./tests/integration/bootstrap-asset-blocker-recovery.ps1
+
+      - name: Integration - validate versions cli behavior
+        if: always()
+        shell: pwsh
+        timeout-minutes: 6
+        run: pwsh -NoProfile -NonInteractive -File ./tests/integration/validate-versions-cli-behavior.ps1
 
   contract-lane:
     name: Contract lane

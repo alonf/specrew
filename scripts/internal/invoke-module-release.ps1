@@ -14,7 +14,11 @@ param(
     [AllowEmptyString()]
     [string]$PSGalleryApiKey = $env:PSGALLERY_API_KEY,
 
-    [string]$SummaryPath
+    [string]$SummaryPath,
+
+    # Feature 206 T028 (FR-012, bug list item 17): a live publish happens only when the caller asks for one. The publish
+    # workflow passes this switch; a test or a local run that only has PSGALLERY_API_KEY in its environment does not.
+    [switch]$ConfirmLivePublish
 )
 
 Set-StrictMode -Version Latest
@@ -82,6 +86,9 @@ try {
 
     $releaseStamp = Resolve-ReleaseStamp -ReleaseMode $ReleaseMode -GitRefType $GitRefType -GitRefName $GitRefName -ExpectedVersion $moduleVersion
     Write-ReleaseInfo ("Resolved release mode '{0}' to publish version {1}." -f $ReleaseMode, $releaseStamp.EffectiveVersion)
+    if ($ReleaseMode -ne 'dry-run' -and -not $ConfirmLivePublish) {
+        throw ("Release mode '{0}' publishes to the PowerShell Gallery, and nobody asked for a live publish: pass -ConfirmLivePublish. The publish workflow passes it; tests and local runs do not." -f $ReleaseMode)
+    }
     if (
         -not [string]::IsNullOrWhiteSpace($releaseStamp.SourcePrereleaseTag) -and
         $releaseStamp.SourcePrereleaseTag -ne $releaseStamp.ManifestPrerelease

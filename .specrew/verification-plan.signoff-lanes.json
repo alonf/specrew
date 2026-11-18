@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "note": "Lanes parked from .specrew/verification-plan.json so checkpoint rounds run only the active feature's lanes (203 DRIFT-017, maintainer ruling 2026-11-01; the 202 precedent is 202 DRIFT-013). They return to the plan for the feature's signoff round. every-suite-is-named-by-a-lane reads this file, so their suites stay named.",
+  "note": "Lanes parked from .specrew/verification-plan.json so checkpoint rounds run only the active feature's lanes (203 DRIFT-017, maintainer ruling 2026-11-01; the 202 precedent is 202 DRIFT-013). They return to the plan for the feature's signoff round. every-suite-is-named-by-a-lane reads this file, so their suites stay named. At 203's merge of main (T030, 2026-11-18; the reviewer session's ruled layout), feature 206's six lanes and iteration-003-governance-202 were parked here, unchanged from main; the two class-guard lanes stay active in the plan.",
   "commands": [
     {
       "command_id": "f202-slice-suites-a",
@@ -228,6 +228,242 @@
         "source": ".specrew/verification-plan.json"
       },
       "label": "SLICE lane: the suites this slice touches, plus the workshop-authority suites added 2026-08-17. The beta3 workshop fixes (W10-W18) shipped with no lane covering them, so a walk regression could only be caught by someone remembering to run them by hand - the same 'a guard only guards code whose author runs it' shape the class-guard lane exists to prevent. The full deterministic registry is the RELEASE GATE lane and runs at the certification round, not on every slice (maintainer ruling 2026-08-10). The W29-W32 review-frame suite joined 2026-08-20: those four defects let a review be recorded as clean and independent while its frame held one planning document, so the guard belongs where a slice touching review machinery runs it. W33's declared-coverage suite joined it 2026-08-20: it is the only guard standing between a review that read nothing and a recorded clean pass, and it spans the candidate contract, the ingest degrade and the store's allowed-field list. W34's authorship and derived-independence suites joined 2026-08-20; they span the hook that observes the write, the store derivation, and the validator that recomputes it. The packaging-identity suite joined 2026-08-21: it pins the two mechanisms that turned out not to exist - a supported local install, and a build stamp derived from what is actually in the package. PARALLELIZED 2026-08-24 (DRIFT-199-I001-116): the lane grew past its own budget - 24 sequential child pwsh spawns measured 370s cold in a faithful frozen-tree materialization against a 480s bound, and two review launches died on exactly that timeout. The suites are isolated processes on GUID-scoped temp fixtures, so they now run 6 at a time; the result count is pinned so a swallowed suite cannot read as a pass. Measured cold+env-scrubbed after: 199s, giving the 480s bound 2.4x headroom, inside the project's own measured-headroom convention. Cycle-reset guard added 2026-08-30: the truth gate replayed the GLOBAL last-authorized boundary into a NEW iteration, forward-writing its plan scaffold from planning to complete and wedging every next-iteration cycle. No existing mirror fixture crossed a cycle boundary, so nothing saw it. RESTORED AND SPLIT 2026-10-15 (202 T015, DRIFT-029): re-timed cold with only these env_refs, the single lane passed in 298.8 s against 480 s (1.61x, under the 2.4x floor). -a holds the 25 parallel script suites, measured 181.1 s (2.65x); -b holds the Pester block, measured 112.9 s (4.25x)."
+    },
+    {
+      "command_id": "iteration-003-governance-202",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-File",
+        "extensions/specrew-speckit/scripts/validate-governance.ps1",
+        "-ProjectPath",
+        ".",
+        "-IterationPath",
+        "specs/202-beta4-1-ux-stabilization/iterations/003",
+        "-NoCacheRead",
+        "-NoParallel"
+      ],
+      "timeout_seconds": 180,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Explicit governance validation of the ACTIVE iteration - feature 202 iteration 003 (re-pointed 2026-10-21 before iteration 003's review round: iteration 002 is sealed, iteration 003 DRIFT-001). Before that: iteration 002 (re-pointed 2026-10-17 at iteration 002's before-implement, iteration 002 DRIFT-002: iteration 001 is sealed). Earlier history: RE-POINTED 2026-10-13 for the THIRD time (202 DRIFT-011): the plan still named 199's closed stub iteration 003, which fails on records a sealed stub never had (no task rows, no Completed date, no retro sections), and on a review check that now reads 202's campaign as the active one. The recurrence the 199 entries predicted. Making the command name the active iteration rather than a number remains open (beta4 owned it; now beta5)."
+    },
+    {
+      "command_id": "f206-unit-suites",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$r = Invoke-Pester -Path 'tests/unit/recovery-choice-no-console.tests.ps1','tests/unit/overclaim-dirty-check-separator.tests.ps1','tests/unit/instruction-classifier-managed-blocks.tests.ps1','tests/unit/iteration-closed-definition.tests.ps1','tests/unit/legacy-frozen-judged-by-nothing.tests.ps1','tests/unit/closed-check-since-and-ruling.tests.ps1','tests/unit/review-verdict-names-status.tests.ps1','tests/unit/nightly-tracking-issue.tests.ps1','tests/unit/start-written-files-record.tests.ps1','tests/unit/fresh-clone-first-start.tests.ps1','tests/unit/resume-path-inside-project.tests.ps1','tests/unit/squad-probe-temp-folder.tests.ps1','tests/unit/init-dry-run-names-project.tests.ps1','tests/unit/sc001-fixture-identity.tests.ps1','tests/unit/no-node-preset-for-this-repo.tests.ps1','tests/unit/record-before-approval.tests.ps1','tests/unit/deferred-task-verdict.tests.ps1','tests/unit/closeout-dashboard-redraw.tests.ps1','tests/unit/closeout-completed-and-open-rows.tests.ps1','tests/unit/release-script-refuses-unasked-publish.tests.ps1' -PassThru -Output None; foreach ($t in @($r.Failed)) { Write-Host (\"FAILED: {0}\" -f $t.ExpandedPath) }; if ($r.FailedCount -gt 0 -or $r.Result -ne 'Passed') { exit 1 }; exit 0"
+      ],
+      "timeout_seconds": 1200,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 206: the eight Pester suites iteration 001's tasks wrote (T001, T002, T003, T006, T008, T009, T011, T012), the five iteration 002's Phase 5 wrote (T020, T022, T023, T025, T024), and Phase 7's (T033, T035, T036, T028). Each was read for home writes before it ran; none deploys hooks or runs specrew-update, and those that run specrew start or init do it in temp folders they create with the user profile pointed at a temp file. The eight measured 285 s in the review layout (2026-11-15); the five add about 145 s; against 1200 s."
+    },
+    {
+      "command_id": "f206-changed-integration",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$fail = 0; $r = Invoke-Pester -Path 'tests/integration/closed-iterations-are-history.tests.ps1' -PassThru -Output None; foreach ($t in @($r.Failed)) { Write-Host (\"FAILED: {0}\" -f $t.ExpandedPath) }; if ($r.FailedCount -gt 0 -or $r.Result -ne 'Passed') { $fail = 1 }; foreach ($s in @('tests/integration/non-specrew-session-bypass.tests.ps1','tests/integration/distribution-module-publish.ps1','tests/integration/project-path-resolution-regression.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"FAILED: $s\" } }; exit $fail"
+      ],
+      "timeout_seconds": 420,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 206: the two integration suites whose fixtures iteration 001 changed for T008 and T009 (DRIFT-206-I001-003 and -009), measured alone 23 s (2026-11-13), and iteration 002's T028 publish suite, tests/integration/distribution-module-publish.ps1, per push by the maintainer's answer of 2026-11-16 (77 s alone; home hook files, PowerShellGet's folder and the repository unchanged; it clears PSGALLERY_API_KEY itself). Also T024's SC-001 script, tests/integration/project-path-resolution-regression.ps1, per push by the same answer (87 s alone, 2026-11-16; home hook files and the repository unchanged; its fixture is a temp folder with its own git repository). About 190 s in all, against 420 s."
+    },
+    {
+      "command_id": "f206-census-guard",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$fail = 0; foreach ($s in @('tests/unit/every-suite-is-named-by-a-lane.tests.ps1','tests/unit/full-sweep-direct-exit.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"FAILED: $s\" } }; exit $fail"
+      ],
+      "timeout_seconds": 120,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 206 iteration 001: the lane guard on the shared test census (T013, T015; it lists the release sweep with -ListOnly and runs a fixture sweep in a temp repository) and the sweep's direct-exit check. Measured alone 9 s against 120 s (2026-11-13, home hook files and the repository unchanged)."
+    },
+    {
+      "command_id": "f206-structural-guards",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$r = Invoke-Pester -Path 'tests/continuous-co-review/unit/path-identity.Tests.ps1','tests/continuous-co-review/unit/authority-control-consumer-guard.Tests.ps1' -PassThru -Output None; foreach ($t in @($r.Failed)) { Write-Host (\"FAILED: {0}\" -f $t.ExpandedPath) }; if ($r.FailedCount -gt 0 -or $r.Result -ne 'Passed') { exit 1 }; exit 0"
+      ],
+      "timeout_seconds": 120,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 206 iteration 002 (DRIFT-206-I002-008, reviewer ruling 2026-11-15): two of the three repository-wide structural guards Specrew CI's Deterministic gate runs and 206's other lanes did not: path identity (no case rule from the OS family) and authority-control consumers. The third, consumer-language.Tests.ps1, stays in CI only: it counts the design-workshop surfaces with git ls-files, and in the review preflight's layout the .specify mirror is restored untracked, so its surface count cannot pass there (feature 203's test; hand-over). Read for home writes: neither starts specrew, runs a child shell or touches the home folder."
+    },
+    {
+      "command_id": "f206-governance-206",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "& ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath specs/206-bug-bash/iterations/002; exit $LASTEXITCODE"
+      ],
+      "timeout_seconds": 120,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 206: the governance validator on the iteration under review only (iteration 002). Measured 38 s in the review layout against 120 s (2026-11-15, home hook files and the repository unchanged)."
+    },
+    {
+      "command_id": "f206-deployed-hash-record",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        ". ./extensions/specrew-speckit/scripts/shared-governance.ps1; $r = Test-SpecrewDeployedExtensionIntegrity -ProjectRoot .; if (-not $r.checked) { Write-Host 'FAILED: no readable hash record (.specrew-extension-runtime.json), so nothing was checked'; exit 1 }; foreach ($p in @($r.drifted)) { Write-Host ('DRIFTED: {0}' -f $p) }; foreach ($p in @($r.missing)) { Write-Host ('MISSING: {0}' -f $p) }; if (@($r.drifted).Count + @($r.missing).Count -gt 0) { exit 1 }; Write-Host 'deployed copies match their hash record'; exit 0"
+      ],
+      "timeout_seconds": 60,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 206 (bug list item 10): every file under .specify/extensions/specrew-speckit/ matches its entry in .specrew-extension-runtime.json. Stricter than the validator, which skips the check when the record is absent. Measured alone 1 s against 60 s (2026-11-13, home hook files and the repository unchanged)."
     }
   ]
 }

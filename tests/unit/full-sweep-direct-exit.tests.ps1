@@ -21,6 +21,8 @@ try {
     }
     New-Item -ItemType Directory -Path $fixtureTests -Force | Out-Null
     Copy-Item -LiteralPath $sourceRunner -Destination (Join-Path $fixtureTests 'full-powershell-test-sweep.ps1')
+    # The runner reads its definition of a test from the census beside it (feature 206, DRIFT-206-I001-012).
+    New-Item -ItemType Directory -Path (Join-Path $fixtureTests 'support') -Force | Out-Null; Copy-Item -LiteralPath (Join-Path $repoRoot 'tests\support\test-census.ps1') -Destination (Join-Path $fixtureTests 'support\test-census.ps1')
     [IO.File]::WriteAllText(
         (Join-Path $fixtureTests 'direct-exit.tests.ps1'),
         "Write-Host 'DIRECT-EXIT-SENTINEL'`nexit 1`n",

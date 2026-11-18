@@ -392,7 +392,8 @@ function Write-BootstrapSummary {
     $Actions | Format-Table -AutoSize
 
     if ($DryRunMode) {
-        Write-Host 'Dry run complete. No files were changed.' -ForegroundColor Yellow
+        # F-206 T024 (SC-001): name the folder the dry run previewed, as the real run's summary does.
+        Write-Host ("Dry run complete for {0}. No files were changed." -f $ProjectPath) -ForegroundColor Yellow
         return
     }
 

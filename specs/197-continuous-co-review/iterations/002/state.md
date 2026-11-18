@@ -9,6 +9,14 @@
 **Baseline Ref**: a5f1b3ac44a41e82ca4514e266c43a637e17e1cd
 **Updated**: 2026-06-19T02:37:08Z
 
+## Disposition (2026-11-16, recorded by feature 206, T026)
+
+**Abandoned by the maintainer's ruling of 2026-11-16.** The maintainer typed "OK for all" at 11:34 local time on
+2026-11-16, answering the line "206: all four abandoned, publish suite per push, per push" put to them by the
+reviewer session (specrewreviewer-98), which relayed it. The ruling covers 197/002, 197/007, 197/008 and 198/005.
+The abandonment account elsewhere in this file is the earlier record; this section is the ruling the closed check
+reads (FR-008, T026). `Current Phase` and `plan.md` are left as they were.
+
 ## Execution Summary
 
 - T057 complete: closeout validation passed before implement-to-review handoff. Pester validation set passed 45/45 and task traceability check found all T051-T057 rows mapped to FR/SC with required refs present.

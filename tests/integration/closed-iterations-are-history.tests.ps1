@@ -32,7 +32,9 @@ BeforeAll {
         }
         New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
         $i1 = Join-Path $root 'specs/001-fixture/iterations/001'
-        Set-Content -LiteralPath (Join-Path $i1 'state.md') -Value "# State`n`n**Current Phase**: iteration-closeout`n`nRETRO COMPLETE`n" -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $i1 'state.md') -Value "# State`n`n**Current Phase**: iteration-closeout`n**Iteration Status**: complete`n`nRETRO COMPLETE`n" -Encoding UTF8
+        # F-206 T006 (FR-008a): closure is read from the iteration's own Iteration Status, no longer from the
+        # Current Phase / RETRO COMPLETE text heuristic. W51's point is unchanged: no index entry is needed.
         Set-Content -LiteralPath (Join-Path $i1 'review.md') -Value "# Review: Iteration 001`n`n**Overall Verdict**: accepted`n`nPreserved FAIL: the stale citation stays by ruling.`n" -Encoding UTF8
         $ctx = [ordered]@{
             schema = 'v2'

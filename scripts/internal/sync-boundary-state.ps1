@@ -153,6 +153,106 @@ function New-SpecrewMarkdownContent {
     return ($lines -join [Environment]::NewLine)
 }
 
+function Get-SpecrewPathRootKind {
+    # What kind of path this is on ANY operating system, so a path written on one machine is read the same on another:
+    #   'absolute'       - a drive letter with a separator (C:\x, C:/x), a UNC path (\\server\share, //server/share),
+    #                      or a path this OS calls rooted;
+    #   'drive-relative' - a drive letter with no separator (C:x), which names no fixed folder on any OS;
+    #   'relative'       - anything else, a relative path that merely contains a colon included.
+    # [IO.Path]::IsPathRooted alone answers for this OS only: on Linux it calls C:\x relative, and a caller that then
+    # joins it under the project root reads another machine's path as a folder inside this one.
+    param([AllowNull()][AllowEmptyString()][string]$Path)
+
+    if ([string]::IsNullOrEmpty($Path)) { return 'relative' }
+    if ($Path -match '^[A-Za-z]:[\\/]') { return 'absolute' }
+    if ($Path -match '^[A-Za-z]:') { return 'drive-relative' }
+    if ($Path -match '^[\\/]{2}[^\\/]') { return 'absolute' }
+    if ([System.IO.Path]::IsPathRooted($Path)) { return 'absolute' }
+    return 'relative'
+}
+
+function Test-SpecrewPathInsideProject {
+    # F-206 T023 (FR-001, bug list item 23): whether a path is the project root or below it. Both sides are made full
+    # and compared whole-segment, so a sibling whose name starts the same ('proj' and 'proj-sibling') is outside.
+    # Case is ignored where the usual file system ignores it (Windows, macOS) and kept elsewhere.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][AllowEmptyString()][string]$Path
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
+    # A drive-relative path names no fixed folder, and another OS's absolute path (C:\x on Linux, a UNC path this OS
+    # does not root) is a place on another machine: neither is inside. Joining either under the root would make it so.
+    $kind = Get-SpecrewPathRootKind -Path $Path
+    if ($kind -eq 'drive-relative') { return $false }
+    if ($kind -eq 'absolute' -and -not [System.IO.Path]::IsPathRooted($Path)) { return $false }
+    try {
+        $rootFull = [System.IO.Path]::GetFullPath($ProjectRoot).TrimEnd('\', '/')
+        $pathFull = [System.IO.Path]::GetFullPath($(if ($kind -eq 'absolute') { $Path } else { Join-Path $rootFull $Path })).TrimEnd('\', '/')
+    }
+    catch {
+        return $false
+    }
+
+    # Case semantics come from the volume, through the one path-identity primitive, never from the OS family.
+    # 'distinct' when undetermined (and Ordinal when the primitive is unreachable): a doubtful path is outside.
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue)) {
+        $pathIdentityHelper = Join-Path $PSScriptRoot 'continuous-co-review/path-identity.ps1'
+        if (Test-Path -LiteralPath $pathIdentityHelper -PathType Leaf) { . $pathIdentityHelper }
+    }
+    $comparison = [System.StringComparison]::Ordinal
+    if (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue) {
+        try { $comparison = Get-ContinuousCoReviewPathComparison -Path $rootFull -WhenUndetermined 'distinct' } catch { $comparison = [System.StringComparison]::Ordinal }
+    }
+    if ([string]::Equals($pathFull, $rootFull, $comparison)) { return $true }
+    $lexicallyInside = $false
+    foreach ($separator in @([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)) {
+        if ($pathFull.StartsWith($rootFull + $separator, $comparison)) { $lexicallyInside = $true }
+    }
+    if (-not $lexicallyInside) { return $false }
+
+    # Round 1, F3: the comparison above is lexical, so a junction or symlink below the root would pass while it leads
+    # into another checkout. Every existing component below the root is classified by the one reparse-point policy
+    # (read and called, not changed); a component that redirects is outside, and so is any answer that cannot be
+    # established (the policy unreachable, or a component that cannot be read). Cloud placeholders redirect nothing.
+    if (-not (Get-Command -Name 'Get-SpecrewReparseTagDisposition' -ErrorAction SilentlyContinue)) {
+        $reparsePolicy = Join-Path $PSScriptRoot 'continuous-co-review/reparse-tag-policy.ps1'
+        if (Test-Path -LiteralPath $reparsePolicy -PathType Leaf) { . $reparsePolicy }
+    }
+    if (-not (Get-Command -Name 'Get-SpecrewReparseTagDisposition' -ErrorAction SilentlyContinue)) { return $false }
+    $walked = $rootFull
+    $separators = [char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+    foreach ($segment in @($pathFull.Substring($rootFull.Length).Split($separators, [System.StringSplitOptions]::RemoveEmptyEntries))) {
+        $walked = Join-Path $walked $segment
+        if (-not (Test-Path -LiteralPath $walked)) { break }
+        try {
+            if ([string](Get-SpecrewReparseTagDisposition -Path $walked).disposition -ceq 'refuse-link') { return $false }
+        }
+        catch {
+            return $false
+        }
+    }
+    return $true
+}
+
+function ConvertTo-SpecrewIdentityFeaturePath {
+    # F-206 T023 (bug list item 23): the tracked identity file (.squad/identity/now.md) carries the feature path
+    # relative to the project, with forward slashes, so a clone elsewhere, or another machine, reads its own
+    # checkout and never another one. A path outside the project, or none, is recorded as '(none)'.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][AllowEmptyString()][string]$FeaturePath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($FeaturePath) -or $FeaturePath -eq '(none)') { return '(none)' }
+    if (-not (Test-SpecrewPathInsideProject -ProjectRoot $ProjectRoot -Path $FeaturePath)) { return '(none)' }
+    $rootFull = [System.IO.Path]::GetFullPath($ProjectRoot)
+    $pathFull = [System.IO.Path]::GetFullPath($(if ((Get-SpecrewPathRootKind -Path $FeaturePath) -eq 'absolute') { $FeaturePath } else { Join-Path $rootFull $FeaturePath }))
+    $relative = [System.IO.Path]::GetRelativePath($rootFull, $pathFull) -replace '\\', '/'
+    if ([string]::IsNullOrWhiteSpace($relative) -or $relative -eq '.') { return '(none)' }
+    return $relative
+}
+
 function Get-SpecrewSessionStateFromFrontmatter {
     param(
         [Parameter(Mandatory = $true)]
@@ -666,6 +766,22 @@ function Sync-SpecrewPendingVerdictStopArtifact {
     $lines.Add(('Multi-boundary gap: {0}' -f ([bool]$pendingState.IsMultiBoundaryGap).ToString().ToLowerInvariant())) | Out-Null
     $lines.Add(('Recorded at: {0}' -f $recordedAt)) | Out-Null
     $lines.Add('') | Out-Null
+    # Feature 206 T036 (FR-018, bug list item 44): at the closeout arrival, name what the governance check will refuse
+    # in the hardening gate once the verdict moves plan.md to complete, so the human sees it before approving.
+    if ($toMarkerBoundary -ceq 'iteration-closeout' -and (Get-Command -Name 'Get-SpecrewCloseoutOpenHardeningItems' -ErrorAction SilentlyContinue)) {
+        try {
+            $closeoutPaths = Resolve-SpecrewCrossingMirrorPaths -ProjectRoot $ProjectRoot -FeatureRef ([string]$SessionState.feature_ref) -IterationNumber ([string]$SessionState.iteration_number)
+            if ($null -ne $closeoutPaths -and -not [string]::IsNullOrWhiteSpace([string]$closeoutPaths.IterationDir)) {
+                $openItems = @(Get-SpecrewCloseoutOpenHardeningItems -IterationDirectory ([string]$closeoutPaths.IterationDir) -ProjectRoot $ProjectRoot)
+                if ($openItems.Count -gt 0) {
+                    $lines.Add('Open in quality/hardening-gate.md (name these in the packet''s What Needs Your Review; the governance check refuses a complete iteration that still has them):') | Out-Null
+                    foreach ($item in $openItems) { $lines.Add(('- {0}' -f $item)) | Out-Null }
+                    $lines.Add('') | Out-Null
+                }
+            }
+        }
+        catch { $null = $_ }
+    }
     $lines.Add('After rendering the packet, stop. Do not record authorization yourself; the Stop/UserPromptSubmit verdict capture writes authorization only after the human replies.') | Out-Null
     $lines.Add('') | Out-Null
     # W45 (2026-08-22): the spurious re-ask. On a host whose capture lands only at Stop, the controller
@@ -1992,7 +2108,10 @@ function Invoke-SpecrewBoundaryStateSync {
             ArtifactStateId   = $null
         }
     }
-    Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $sessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState) -AdditionalFrontmatter $identityAdditionalFrontmatter -PreferredBody $IdentityBody -UsePreferredBody:(-not [string]::IsNullOrWhiteSpace($IdentityBody)) -SchemaVersion 'v1'
+    # F-206 T023 (bug list item 23): the tracked identity file records the feature path relative to the project.
+    $identitySessionState = $sessionState.PSObject.Copy()
+    $identitySessionState.feature_path = ConvertTo-SpecrewIdentityFeaturePath -ProjectRoot $paths.ProjectRoot -FeaturePath ([string]$sessionState.feature_path)
+    Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $identitySessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState) -AdditionalFrontmatter $identityAdditionalFrontmatter -PreferredBody $IdentityBody -UsePreferredBody:(-not [string]::IsNullOrWhiteSpace($IdentityBody)) -SchemaVersion 'v1'
 
     Add-SpecrewBoundarySyncLedgerEntry -ProjectRoot $paths.ProjectRoot -SessionState $sessionState
 

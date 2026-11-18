@@ -1,0 +1,41 @@
+# Frozen legacy iterations (feature 206, FR-006/FR-007): delivered but never formally closed. An entry is
+# judged by no validator check, open or closed, and is not "closed". No entry may be added after closed_on.
+schema: v1
+closed_on: 2026-11-10
+entries:
+  - iteration: 048-beta-before-stable-sdlc/001
+    reason: reached retro with an accepted review, never formally closed
+  - iteration: 197-continuous-co-review/001
+    reason: reached retro with an accepted review, never formally closed
+  - iteration: 198-beta2-hardening/008
+    reason: blocked on release steps that happened outside the iteration (T029 merge handoff, T067 post-publication validation)
+  - iteration: 141-design-gate-runtime-hardening/006
+    reason: closed before dashboards were rendered automatically
+  - iteration: 141-design-gate-runtime-hardening/007
+    reason: closed before dashboards were rendered automatically
+  - iteration: 141-design-gate-runtime-hardening/008
+    reason: closed before dashboards were rendered automatically
+  - iteration: 174-hook-driven-session-bootstrap/006
+    reason: closed before dashboards were rendered automatically
+  - iteration: 174-hook-driven-session-bootstrap/008
+    reason: closed before dashboards were rendered automatically
+  - iteration: 174-hook-driven-session-bootstrap/009
+    reason: closed before dashboards were rendered automatically
+  - iteration: 174-hook-driven-session-bootstrap/010
+    reason: closed before dashboards were rendered automatically
+  - iteration: 174-hook-driven-session-bootstrap/011
+    reason: closed before dashboards were rendered automatically
+  - iteration: 182-work-kind-branch-governance/002
+    reason: closed before dashboards were rendered automatically
+  - iteration: 182-work-kind-branch-governance/003
+    reason: closed before dashboards were rendered automatically
+  - iteration: 182-work-kind-branch-governance/004
+    reason: closed before dashboards were rendered automatically
+  - iteration: 197-continuous-co-review/003
+    reason: closed before dashboards were rendered automatically
+  - iteration: 197-continuous-co-review/004
+    reason: closed before dashboards were rendered automatically
+  - iteration: 197-continuous-co-review/005
+    reason: closed before dashboards were rendered automatically
+  - iteration: 198-beta2-hardening/003
+    reason: closed before dashboards were rendered automatically
