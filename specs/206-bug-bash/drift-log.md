@@ -131,3 +131,16 @@
   a merge commit, no squash, no rebase, the branch kept. The merge commit is `d5f4af87` (11:08:32Z), first parent
   `d3e33550f`, second parent `62497cf9`.
 - **Class closure**: NONE — a recorded, maintainer-authorized exception.
+
+## DRIFT-206-009 — CI on main after the merge: one rerun of co-review-service under the standing exception
+
+- **Recorded**: 2026-11-18, after the merge, on the 206 branch only.
+- **What happened**: Specrew CI run `44291950782` on main's merge commit `d5f4af87`, Deterministic gate job
+  `134761766660`, failed 1 of 131 suites. The only failure was `tests/continuous-co-review/unit/co-review-service.Tests.ps1:129`
+  ("a FAILED lease owner-handoff STOPS the spawned supervisor": a supervisor process was still alive). The Contract lane was
+  skipped because it depends on the gate.
+- **Rerun**: once, under the standing exception (DRIFT-206-003), with `gh run rerun 44291950782 --failed`. Attempt 2
+  succeeded on all six jobs. The other workflows on main were green on their first attempt: Test `44291950961`,
+  Cross-Platform Validation `44291950876` (8 of 8) and Specrew Project Sync `44291950875`. The publish workflow runs on
+  tags only and did not run.
+- **Class closure**: NONE — a sighting of bug list item 13 (HO-206-8), feature 203's to fix.
