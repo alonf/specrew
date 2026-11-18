@@ -899,8 +899,9 @@ with the plan.
     skipped, a path and a leaf match, each caller's own case, and a feature's first sync after another feature's
     closeout expects specify.
   - **Acceptance:** the suite green; `project-path-resolution-regression` green on the merged tree with now.md at 203.
-  - **Trace:** B5F-093 (T030's finding 2); proposal 166 (concurrent development hygiene), FR-008 (backward-compatible
-    readers for the ledger split).
+  - **Trace:** B5F-093 (T030's finding 2); proposal 166 (concurrent development hygiene): FR-008 (backward-compatible
+    readers for the ledger split), FR-008a (the ledger split builds on this reader) and FR-010 (no repository-wide guard
+    asserts one feature's names), per its amendment on main (`c35392cd9`).
   - **Depends:** T030's merge commit.
   - **Owns:** `scripts/internal/sync-boundary-state.ps1`, `scripts/internal/session-recovery.ps1`,
     `scripts/internal/coordinator-resume.ps1`, `scripts/specrew-review.ps1`, `tests/unit/**`.
