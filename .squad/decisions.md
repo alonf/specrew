@@ -29583,6 +29583,252 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Auth Commit Hash**: c758ac1c8eb1083901bb6bf7f40abebe5f025cb1
 - **Recorded At**: 2026-10-24T22:55:05Z
 
+## 2026-11-09T22:40:05Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7a4e6d7ad28332ee0e94335bf696dda3eccff322
+- **Recorded At**: 2026-11-09T22:40:04Z
+
+## 2026-11-09T22:48:11Z — Boundary sync warning: specify
+
+- **Boundary Type**: specify
+- **Latest Recorded Boundary**: specify
+- **Recorded At**: 2026-11-09T22:48:11Z
+- **Warning**: Expected next boundary 'clarify' but received 'specify'.
+
+## 2026-11-09T22:48:12Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 700e6127556b0f2bcb56cc247c474ed84b01144a
+- **Recorded At**: 2026-11-09T22:48:11Z
+
+## 2026-11-09T23:31:47Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 6d85718a87c9be71dbb6298364cfdb1cc6fb6d9b
+- **Recorded At**: 2026-11-09T23:31:45Z
+
+## 2026-11-10T00:20:10Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 04ef9a7282123d1a61785ed256cd6f7e65489fbe
+- **Recorded At**: 2026-11-10T00:20:09Z
+
+## 2026-11-10T00:49:04Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 0140eff0389904591a3cc92ac9e71055cccae297
+- **Recorded At**: 2026-11-10T00:49:03Z
+
+## 2026-11-10T01:15:11Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 12837d26335d1cb8e52dd0c51fd0fe765b768667
+- **Recorded At**: 2026-11-10T01:15:10Z
+
+## 2026-11-12T09:37:35Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: b56aaeda2ac85d7cc5eda7b47ce1787868934ebc
+- **Recorded At**: 2026-11-12T09:37:31Z
+
+## 2026-11-12T16:21:06Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: ee98b23d20b3ac0b15281b0608ef62e0e0e0bb12
+- **Recorded At**: 2026-11-12T16:21:00Z
+
+## 2026-11-12T16:56:30Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 262b5ac449fa551a7a81f9a691cc7df088e67ec1
+- **Recorded At**: 2026-11-12T16:56:23Z
+
+## 2026-11-12T23:54:05Z — Boundary sync warning: clarify
+
+- **Boundary Type**: clarify
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-11-12T23:54:05Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'clarify'.
+
+## 2026-11-12T23:54:07Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 881bc45bd91513e01a7f3976a794f0ed68cc0c7d
+- **Recorded At**: 2026-11-12T23:54:06Z
+
+## 2026-11-13T12:29:40Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7d3b55b9e38f19ac453a94455476a18ede7fb96c
+- **Recorded At**: 2026-11-13T12:29:18Z
+
+## 2026-11-13T13:22:30Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 6ab542455d1790fb1e5f1d3c5dca8aa06e004655
+- **Recorded At**: 2026-11-13T13:22:20Z
+
+## 2026-11-13T13:59:11Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: f23f8941868a31fd3e4c2214e641db5dd1b77d45
+- **Recorded At**: 2026-11-13T13:59:03Z
+
+## 2026-11-14T23:25:10Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: fa65488d70588198dbf3adab6419789bd498fb94
+- **Recorded At**: 2026-11-14T23:24:58Z
+
+## 2026-11-15T01:56:00Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 4eac9d1370bb4eb380d1d8485f7a689285761a85
+- **Recorded At**: 2026-11-15T01:55:49Z
+
+## 2026-11-15T02:28:04Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 57f1499611f2bb9d597b8f9546f99b7b88cf6a5c
+- **Recorded At**: 2026-11-15T02:27:55Z
+
+## 2026-11-15T10:16:16Z — Boundary sync warning: clarify
+
+- **Boundary Type**: clarify
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-11-15T10:16:16Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'clarify'.
+
+## 2026-11-15T10:16:18Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 9f4544745c679424031377f538d450385091b451
+- **Recorded At**: 2026-11-15T10:16:16Z
+
+## 2026-11-15T15:36:51Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 005601ae4dfa14f2082d1b6afefc71d75e0dcda1
+- **Recorded At**: 2026-11-15T15:36:42Z
+
+## 2026-11-15T19:25:37Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 2875445c426efcccfab39ee2ad41d42502b5396b
+- **Recorded At**: 2026-11-15T19:25:25Z
+
+## 2026-11-15T23:59:04Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 3c4a17d3256bf74dc748af39965e858cca04dc8f
+- **Recorded At**: 2026-11-15T23:58:54Z
+
+## 2026-11-16T10:33:33Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 018c14c6e48ccd9f57016898ce3bf6cfb061629d
+- **Recorded At**: 2026-11-16T10:33:22Z
+
+## 2026-11-16T12:28:46Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: f1ed7c6a1d9ba2e89c72aaa17fd2b7c0e7d64fc5
+- **Recorded At**: 2026-11-16T12:28:35Z
+
+## 2026-11-16T13:32:02Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: cb7da34a8863a4705e87d4313e2eca28386d1289
+- **Recorded At**: 2026-11-16T13:31:52Z
+
+## 2026-11-16T18:56:00Z — Ruling: feature 205 closes at iteration 003; iteration 004's scope becomes a follow-up feature
+
+- **Type**: ruling
+- **Affected Requirement**: TG-003 (spec Amendment A4); proposal 220 FR-002, FR-003, FR-006 to FR-012, FR-014
+- **Affected Iteration**: specs\205-workshop-lens-order (no iteration 004)
+- **Approving Human**: Alon Fliess (2026-11-16 20:56 local, typed to the reviewer session and relayed under the wider delegation: "OK for both", answering "205: close now, 004 as follow-up")
+- **Rationale**: The maintainer's merge order is 206, then 205, then 203, and it cannot hold while 205's iteration 004 waits for 203. Feature 205's own FR-001 to FR-032 are delivered in iterations 001 to 003. Of iteration 004's scope, only the amendment flow needs 203's code: its typed receipts live in workshop-authority-store.ps1, which 203 changes. This is a scope decision, not a boundary approval, and not a go to merge.
+- **Next Action**: Records only. The spec amendment, proposal 220 marked partially-shipped, the INDEX rows, follow-up-seed.md, then the governed path to feature closeout. Provenance: DRIFT-205-INTAKE-008.
+- **Recorded At**: 2026-11-16T18:56:00Z
+
+## 2026-11-16T19:52:16Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 205-workshop-lens-order
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7f841071f065ea6e22fed1771ce1476214934c93
+- **Recorded At**: 2026-11-16T19:52:03Z
 ## 2026-11-10T01:36:41Z — Boundary sync: specify
 
 - **Boundary Type**: specify

@@ -1,6 +1,6 @@
 ---
 name: "specrew-design-workshop"
-description: "Run Specrew's per-lens design workshop and collaborative design-analysis. Use whenever you work the design lenses for a feature: at specify/intake (the lens workshop) and at the design-analysis stop (co-design the architecture), and RE-INVOKE at the start of EACH new lens (architecture, data, ui-ux, security, integration, devops, requirements/NFR, observability, component). Triggers: design, design lens, lens workshop, design-analysis, architecture, trade-offs, co-design, explore options, decompose, or moving from one lens to the next. Tells you to facilitate each lens as a discussion, surface diagrams the human can actually SEE (console ASCII inline; mermaid/html to a file with a clickable file:/// link), co-design components/responsibilities/flows WITH the human instead of handing over finished options, capture the agreements, and which per-lens md to load."
+description: "Run Specrew's per-lens design workshop and collaborative design-analysis. Use whenever you work the design lenses for a feature: at specify/intake (the lens workshop) and at the design-analysis stop (co-design the architecture), and RE-INVOKE at the start of EACH new lens (requirements/NFR, ui-ux, security, data, integration, devops, architecture, component, observability). Triggers: design, design lens, lens workshop, design-analysis, architecture, trade-offs, co-design, explore options, decompose, or moving from one lens to the next. Tells you to facilitate each lens as a discussion, surface diagrams the human can actually SEE (console ASCII inline; mermaid/html to a file with a clickable file:/// link), co-design components/responsibilities/flows WITH the human instead of handing over finished options, capture the agreements, and which per-lens md to load."
 ---
 
 # specrew-design-workshop
@@ -19,11 +19,17 @@ guarantee a fresh reload per turn, **re-invoke this skill (or re-read it) at the
 ## The Big Picture (read this first, every time)
 
 You are facilitating a design conversation with a human, **one lens at a time**. The lenses live in
-`extensions/specrew-speckit/knowledge/design-lenses/` (deployed under the project's design-lens catalog):
-`architecture-core`, `component-design`, `requirements-nfr`, `ui-ux`, `data-storage`, `security-compliance`,
-`integration-api`, `devops-operations`, `observability-resilience`, `code-implementation`. For each lens you work:
+`extensions/specrew-speckit/knowledge/design-lenses/` (deployed under the project's design-lens catalog), and that
+catalog's `index.yml` is the one definition of their order: `product-domain`, `requirements-nfr`, `ui-ux`,
+`security-compliance`, `data-storage`, `integration-api`, `devops-operations`, `architecture-core`,
+`component-design`, `observability-resilience`, `code-implementation` - problem space first, then the lenses whose
+questions span both spaces, then the solution space. Agendas list their lenses in this order.
 
-1. **Load that lens's md** (`design-lenses/<lens-id>.md`) for its `## Design Decision Points` and
+**If any list disagrees with index.yml, index.yml wins; a confirmed agenda keeps the order it was confirmed in.**
+For each lens you work:
+
+1. **Load that lens's md** (`design-lenses/<lens-id>.md`) for its `## Design Decision Points` (tagged
+   `### Problem questions` and `### Solution questions`) and
    `## Workshop Conduct` — that is the lens's focused agenda. Do not improvise it from memory.
 2. **Facilitate** the discussion for that lens (the method below).
 3. **Record** the decisions + agreement.
@@ -107,7 +113,11 @@ before any technical lens or the applicability questionnaire. It is NOT a row in
    current workaround; existing system/context; constraints; outcomes; MVP/non-goals/vision;
    alternatives at Standard/Deep), and **tag every material statement** with its evidence quality
    (`known` / `assumed` / `unknown` / `research-needed`; a `research-needed` carries `load_bearing`).
-   Honest tags prevent confident product fiction.
+   Honest tags prevent confident product fiction. **Ask the compliance or regulatory regime at every depth**
+   (area 9: the named regulation, or "none"; it has no default, so never fill it in yourself). At Light, show
+   areas 10 to 14 (data residency, carry-over, where it runs, who operates it, budget) as **one recommendation
+   block** in the same turn, each line with its default and reason; at Standard and Deep ask them. Record all six
+   under their area keys, "not stated" included: later lenses show them as handed-forward lines.
 5. **No batch confirmation (FR-009).** The phase cannot be satisfied by approving an agenda or a batch
    "confirm all". It needs scoped product-domain confirmation, or an explicit, honestly recorded
    "you decide" / "skip". Record the provenance (`human-confirmed` / `human-delegated` /
@@ -159,7 +169,7 @@ run-cadence, and the full conduct. The conduct in brief:
    `implementation-rules.schema.json` (beside the lens in the design-lens catalog), plus the human-readable
    `workshop/code-implementation.md`; record the lens in `lens-applicability.json`. (Like `product-domain`,
    you author the record by hand following the schema -- you do NOT call a PowerShell writer; the lens
-   helper validates, it is not invoked mid-workshop.) Reviewer setup is part of this capture: use the reviewer
+   helper validates, it is not invoked mid-workshop, except `Get-SpecrewCodeStackFreshnessLines`, the one read-only call that prints each stack's last-checked line, FR-030.) Reviewer setup is part of this capture: use the reviewer
    choice the human made at agenda confirmation (ask it here only if it was not asked then: list the live hosts and
    present the marked default), record one concrete host + authorization reference, and run the explicit
    `specrew review --host ... --authorization-ref ...` setup command. Never leave a completed code lens with
@@ -201,11 +211,22 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    ```text
    Workshop agenda — <N> lenses
 
+   🟦 Problem space
    <lens-id> (<full | medium | light>) — <the decision this lens will ask you to make for THIS feature>
+
+   🟪 Both spaces
+   <lens-id> (<full | medium | light>) — <the decision …>
+
+   🟧 Solution space
    <lens-id> (<full | medium | light>) — <the decision …>
    ...
    Skipped: <lens-id> — <why it does not apply here>
    ```
+
+   **The three headings (FR-032)** come from each lens's `space` tag in index.yml: problem space, both spaces,
+   solution space, in that order, index.yml order inside each, and a heading with no selected lens left out. The
+   agenda command below renders them for you (UTF-8, so the markers survive the paste). The text label carries the
+   meaning; the coloured marker only helps the eye, so a host that cannot draw it loses nothing.
 
    Fill ONE line per applicable lens with its depth and the **concrete decision it raises** (not just the lens
    name); render the whole filled block in your message, THEN ask the human to confirm or adjust it as visible
@@ -258,6 +279,8 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    lenses" never chooses the reviewer. The code-implementation lens then records the host the human named, or the
    default they confirmed, without asking again.
 3. **Per-lens facilitated discussion — open with a presentation + an OPEN question, never a menu first (A4/FR-025, A8/FR-041b).**
+   **Problem questions first.** Inside every lens, raise its `### Problem questions` before its
+   `### Solution questions`, so the facts that drive a choice are on the table before the choice is asked.
    The **first turn of every lens** MUST be you *presenting* the lens — its decision points, and as it develops
    its diagram / component map — followed by an **open, free-text question** ("how should we approach this?",
    "what are your constraints?"). Do **NOT** open a lens with an `AskUserQuestion` / structured menu: that is the
@@ -266,6 +289,9 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    prose and typed numbered choices. On every other host the same choices remain visible prose with a typed reply;
    do not switch to a structured menu after rendering. Binary
    test: did this lens open with a rendered presentation, or with a menu? Open with the presentation.
+   **Head the lens with its group's marker (FR-032).** The opening turn's heading repeats the marker of the agenda
+   group the lens sits in, with the lens id (for example `🟦 <lens-id>` for a problem-space lens), so the human sees which space
+   the lens works in. The marker is one per group, never one per lens.
    **One selected lens = one lens turn.** Do NOT bundle several selected lenses into one combined presentation
    and one "confirm all" question, even for a tiny feature or light-depth lenses. A lens turn may summarize the
    already-confirmed agenda, but it must focus on exactly one lens's decision points, ask for that lens's answer,
@@ -296,7 +322,7 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    human-confirmed binding. If the human intentionally changes a binding, reconcile every affected lens record
    to the same value before moving on; never leave two durable answers for one architectural fact.
    **Pace a dense lens — after presenting, you MUST offer all-at-once OR one-at-a-time (A8/FR-041b UX, every host).**
-   A lens with several decision points (architecture-core, component-design, security-compliance) lands as an
+   A lens with several decision points (security-compliance, architecture-core, component-design) lands as an
    overwhelming **wall** if you present everything and end with one open question that secretly bundles five
    subjects — and a numbered list of subjects reads like pickable options when it is not. So on a dense lens
    (**three or more** decision points) your closing move **MUST** offer the human a **pacing choice** — *answer it
@@ -308,6 +334,19 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    the current lens, raise its decision points (from its
    md), offer options where useful, capture the human's needs + decisions + explicit agreement, and **iterate
    until the human says "move on"** before the next lens.
+
+   **Show a lens's recommendations once, as one block, closed by one reply (FR-026, FR-027).** A lens's
+   recommendation lines are its questions with a "Light: recommend" suffix (at Light only; at Standard and Deep
+   they are asked, with the recommended answer shown) and every line under its `## Handed Forward From Earlier
+   Lenses` (at every depth). Render them **once, as one list**, in the lens's presenting turn, after its
+   questions. Each line states the recommended answer, its reason in a few words, and where the answer goes (the
+   spec.md section or the later lens). Fill each handed-forward line from the earlier lens's record as
+   "<lens>: <answer>", or "<lens>: not stated" when that is the answer or that lens did not run. **Never turn the
+   block into one prompt per line**, and never re-ask a line the human did not change. The same typed reply that
+   answers the lens's questions settles the block: "accept" takes every line as shown, and a changed line is part
+   of that reply. When **every** open item in a lens is a recommendation line, "accept" closes the lens as
+   "move on" does; this is the only reply besides "move on" and "skip" that closes a lens, and only in that case.
+   Record each accepted or changed line in the lens's record with its source.
 
    **When their reply is not the closing phrase, SAY WHAT YOU RECORDED AND WHAT IS STILL NEEDED — in one
    line, before anything else** (FR-028). A human who answers a lens with "yes" has answered; the lens still

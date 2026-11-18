@@ -12,24 +12,31 @@ Specrew-operational questions instead of copying source text.
 
 ## Current Lenses
 
-- `architecture-core.md` - architecture framing, stakeholders, constraints,
-  volatility, and decision records.
-- `requirements-nfr.md` - measurable quality attributes, constraints, and
-  requirement-discovery gaps.
-- `data-storage.md` - databases, state ownership, storage choices, consistency,
-  migrations, and retention.
+In `index.yml` order, which is the one workshop order (problem space first); `index.yml` also gives each lens
+its `space` (problem, solution or both):
+
+- `product-domain.md` - users and stakeholders, pain and current workaround,
+  constraints, outcomes, MVP and non-goals (the required first phase).
+- `requirements-nfr.md` - measurable quality attributes, constraints, scope,
+  and requirement-discovery gaps.
 - `ui-ux.md` - UI references, flows, state, paging/sorting/grouping, async
   behavior, accessibility, and themes.
-- `devops-operations.md` - hosting, IaC, CI/CD, environments, secrets, rollout,
-  and operability.
-- `integration-api.md` - service contracts, REST, GraphQL, gRPC, events,
-  queues, versioning, and compatibility.
 - `security-compliance.md` - identity, authorization, privacy, auditability,
   threat surfaces, and regulatory constraints.
-- `observability-resilience.md` - logging, metrics, traces, health, alerts,
-  error handling, retry/idempotency, and recovery.
+- `data-storage.md` - databases, state ownership, storage choices, consistency,
+  migrations, and retention.
+- `integration-api.md` - service contracts, REST, GraphQL, gRPC, events,
+  queues, versioning, and compatibility.
+- `devops-operations.md` - hosting, IaC, CI/CD, environments, secrets, rollout,
+  and operability.
+- `architecture-core.md` - architecture framing, stakeholders, decomposition,
+  volatility, and decision records.
 - `component-design.md` - layering, component responsibility, coupling,
   cohesion, DI, schema decoupling, and extension patterns.
+- `observability-resilience.md` - logging, metrics, traces, health, alerts,
+  error handling, retry/idempotency, and recovery.
+- `code-implementation.md` - how the code is written: the code-rules catalog,
+  the per-feature implementation-rules manifest, and dependency policy (runs last).
 
 ## Adding A New Area
 

@@ -22,6 +22,12 @@ before planning locks one path.
 
 ## Design Decision Points
 
+### Problem questions
+
+No problem questions: binding constraints and scope are owned by requirements-nfr; architecture-core chooses the structure they drive.
+
+### Solution questions
+
 - Which **design method / decomposition style** governs the structure (for example DDD bounded-contexts,
   IDesign volatility-based, modular monolith, microservices, or layered)? Decide it explicitly with the
   human — discuss the candidates and trade-offs, recommend a default where the architecture dial is low, and
@@ -29,8 +35,6 @@ before planning locks one path.
 - What are the major building blocks and their responsibilities?
 - Which areas are volatile and should be isolated behind data, interfaces, or
   extension points?
-- Which constraints are binding, and which are preferences?
-- What is deliberately out of scope for this iteration?
 - Which option best balances simplicity, reversibility, and future cost?
 
 ## Workshop Conduct

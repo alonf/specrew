@@ -75,6 +75,26 @@
 - What happens when [boundary condition]?
 - How does system handle [error scenario]?
 
+## Problem Context
+
+<!--
+  ACTION REQUIRED: Fill each line from the design workshop's answers, including "not stated" where that was the
+  answer, so the gap stays visible. The workshop questions name these lines as where their answers go; keep the
+  names as they are. Write "not applicable" for a line no lens of this feature asked.
+-->
+
+- **Regulation and compliance**: [named regulation, or "none" (product-domain); obligations it makes NFRs (requirements-nfr)]
+- **Data residency**: [where the data must stay, or "not stated"]
+- **Systems and data carried over**: [existing systems, data or formats to keep working with, or "not stated"]
+- **Where it runs**: [fixed platforms, environments or hosts, or "not stated"]
+- **Who operates it, and when**: [who runs and supports it, in which hours, or "not stated"]
+- **Budget**: [money, quota or running-cost limits, or "not stated"]
+- **Users of the interface**: [the UI's users: skills, devices, context of use]
+- **Threat actors**: [who might attack it, or "not stated"]
+- **Data inventory**: [what data exists, how sensitive it is, how much and how fast it grows]
+- **Outside systems and their limits**: [systems and contracts to honour; their limits, quotas and SLAs]
+- **Operating needs**: [what operators must diagnose; SLO and alerting; expected failures; what must never be logged]
+
 ## Requirements *(mandatory)*
 
 <!--

@@ -49,3 +49,8 @@ claims:
     claim_start_time: "2026-10-13T12:39:49Z"
     last_refresh_time: "2026-10-24T21:56:17Z"
     branch_name: "202-beta4-1-ux-stabilization"
+  - feature_id: "205-workshop-lens-order"
+    claimed_by: "alon@ALONBLADE"
+    claim_start_time: "2026-11-09T22:40:04Z"
+    last_refresh_time: "2026-11-09T22:40:04Z"
+    branch_name: "205-workshop-lens-order"

@@ -1,0 +1,73 @@
+schema_version: "1.0"
+depth: light
+depth_reason: >-
+  Later feature in a known product; an internal methodology change whose problem and maintainer ruling are
+  already recorded in proposal 220. Competitive or alternatives discovery would add nothing.
+context_scope: feature_standalone
+product_id: null
+product_context_ref: null
+areas:
+  users_and_stakeholders: >-
+    The human in a Specrew design workshop (maintainer and downstream adopters) and the crew agent that
+    facilitates it. Harmed: a human asked to choose a structure before its drivers are known; maintainers
+    whose four lens-order definitions drift.
+  pain_and_workaround: >-
+    architecture-core runs before requirements-nfr; the order is defined four times (skill, index.yml,
+    methodology Band 2, 203's confirmed agenda) and no two agree; the binding-constraints question is asked
+    by two lenses. Workaround: the crew picks an order per feature.
+  existing_context: Extension of the shipped design workshop (features 176 and 177); not a replacement.
+  constraints: >-
+    Proposal 220 iteration 1 only; iteration 2 waits for feature 203 to merge (typed-act capture). Do not
+    touch C:\Dev\specrew-b4f-142 or the 203 pin. Feature number 204 is reserved for init/bootstrap work.
+    FR-013: features past or mid-workshop keep their confirmed agenda and order.
+  outcomes: >-
+    One lens order defined in index.yml; a parity test fails on any second definition; problem-space
+    lenses run ahead of solution-space lenses.
+  mvp: >-
+    index.yml as the single order with a space per lens; problem/solution sections in every lens file;
+    architecture-core's constraint and scope questions moved to requirements-nfr; skill and methodology read
+    the one order; FR-001 parity test; FR-013 migration. The workshop stays single-pass.
+  non_goals: >-
+    The two-pass split (FR-002/FR-003); end-of-lens back-check; amendments and bindings flow; both final
+    sweeps; FR-014 fixtures; new lenses or questions; Proposal 162 split; automatic influence detection.
+  open_workshop_question: >-
+    With a single pass, a mixed lens (data-storage, security-compliance, integration-api, ui-ux,
+    devops-operations) still asks its solution questions before architecture-core runs. Options for how
+    iteration 1 orders whole lenses are to be raised as their own question at the lens that owns it.
+  rollout: Ships in the next beta; only agendas confirmed after the release use the new order.
+  scope_amendment_2026_11_10: >-
+    Amendment (original text kept): the non-goal 'new lenses or questions' applies to iteration 1. Iteration 2 is
+    problem-space completeness (filling thin problem sides of existing lenses; its own short workshop decides new
+    questions vs a new lens); iteration 1 only lists the gaps seen per lens while tagging. Iteration 3 is the
+    back-check, amendments and sweeps, still waiting for 203.
+statements:
+  - text: Workshop humans are asked structural questions before the quality attributes that drive them.
+    area: pain_and_workaround
+    evidence: known
+  - text: The lens order is defined in four places and no two agree.
+    area: pain_and_workaround
+    evidence: known
+  - text: architecture-core and requirements-nfr both ask the binding-constraints question.
+    area: pain_and_workaround
+    evidence: known
+  - text: The feature extends the shipped workshop from features 176 and 177.
+    area: existing_context
+    evidence: known
+  - text: Scope is proposal 220 iteration 1; the two-pass split, back-check, amendments and sweeps are iteration 2, after 203 merges.
+    area: mvp
+    evidence: known
+  - text: Features past or mid-workshop keep their confirmed agenda and order.
+    area: constraints
+    evidence: known
+  - text: Only agendas confirmed after the release use the new order.
+    area: rollout
+    evidence: known
+  - text: The feature has three iterations; iteration 2 fills thin problem-space questions, iteration 3 is back-check, amendments and sweeps after 203 merges.
+    area: scope_amendment_2026_11_10
+    evidence: known
+skipped:
+  - area: alternatives
+    reason: Light depth; the status quo is four disagreeing order definitions, no external alternative applies.
+follow_up_research: []
+confirmation: human-confirmed
+confirmation_scope: lens-question

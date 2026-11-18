@@ -1,0 +1,32 @@
+schema_version: "1.0"
+context_scope: "feature_standalone"
+resolved_stack: "powershell"
+selections:
+  - id: "code-rule.testing-posture"
+    checked: true
+    decision: "Test-first: tests/unit/lens-order-parity.tests.ps1 (script-style, pure text) is written first and must fail on today's disagreeing orders before any surface changes. It covers full/partial lists, the shipped-text sweep and exemptions, deployed-copy equality, FR-005 a/b/c, and the Design Decision Points extractor. It reports every mismatch, then exits 1. Extend tests/integration/workshop-agenda-confirmation.tests.ps1 for the relative-order refusal and the FR-013 old-agenda resume. Run every existing workshop test locally and report the results. Register as named specrew-ci.yml steps the two new/extended files plus every existing workshop test that covers a touched file and passes. An already-red workshop test is reported to the human as a finding with its failure, never fixed or omitted silently."
+    enforcement: [review, test]
+  - id: "code-rule.idiomatic-error-handling"
+    checked: true
+    decision: "The agenda writer refuses through the existing New-SpecrewWorkshopAgendaRefusal, naming the out-of-order lenses and the index.yml order, with one action, and never reorders. The parity test collects all mismatches and does not throw on the first."
+    enforcement: [review, test]
+  - id: "code-rule.validation-boundaries"
+    checked: true
+    decision: "The relative-order check runs only at agenda confirmation in confirm-workshop-agenda.ps1. Confirmed agendas are never re-validated (FR-013)."
+    enforcement: [review, test]
+custom_rules:
+  - id: "custom.repo-script-test-style"
+    text: "New and extended tests follow this repo's script-style convention: Set-StrictMode, Assert-True/Write-Fail helpers, an exit code, and a named step in specrew-ci.yml."
+    provenance: "from-example-project"
+    scope: "tests (source: this repo tests/unit/*.tests.ps1, 108 of 127 script-style)"
+dependency_policy:
+  stance: "use-existing-no-new-dependency"
+reviewer_preference:
+  mode: "human-selected"
+  host: "codex"
+  source: "code-implementation-workshop"
+  authorization_ref: "workshop-205-workshop-lens-order"
+  rationale: "Human chose codex at agenda confirmation and confirmed it in this lens; the code author is Claude, so codex is independent."
+provenance:
+  confirmation: "human-confirmed"
+  confirmation_scope: "lens-question"

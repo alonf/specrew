@@ -241,6 +241,64 @@ jobs:
         timeout-minutes: 30
         run: pwsh -NoProfile -File ./tests/f198-regression-suite.ps1
 
+      # Feature 205 (FR-021): the lens-order parity test plus every existing workshop test that covers a file 205
+      # touches and is not already in the F-198 registry above (workshop-agenda-confirmation, lens-conduct-delivery,
+      # specify-workshop-routing and seven more already run there).
+      - name: Workshop lens order - parity (index.yml is the one order; FR-001/FR-005)
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/unit/lens-order-parity.tests.ps1
+
+      - name: Workshop lens order - agent-led workshop replay
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/integration/agent-led-workshop-replay.tests.ps1
+
+      - name: Workshop lens order - agenda vocabulary (skill copies + agenda writer)
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/integration/workshop-agenda-vocabulary.tests.ps1
+
+      - name: Workshop lens order - intake completion survives the agenda
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/integration/workshop-intake-completion-survives-agenda.tests.ps1
+
+      - name: Workshop lens order - material packet language
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/integration/workshop-material-packet-language.tests.ps1
+
+      - name: Workshop lens order - code-implementation lens
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/unit/code-implementation-lens.tests.ps1
+
+      - name: Workshop lens order - applicability selector (always-on order)
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/unit/lens-applicability-selector.tests.ps1
+
+      - name: Workshop lens order - product-domain lens
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/unit/product-domain-lens.tests.ps1
+
+      - name: Workshop lens order - workshop delegation
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/unit/workshop-delegation.tests.ps1
+
+      - name: Workshop lens order - workshop question tool
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/unit/workshop-question-tool.tests.ps1
+
+      # Feature 205 iteration 002 (FR-028, FR-029): the workshop length budget and the question consumers.
+      - name: Workshop length budget and question consumers (FR-028/FR-029)
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/unit/workshop-length-budget.tests.ps1
+
+      # Feature 205 iteration 003 (FR-030, SC-011): the code lens's dated per-stack lines and their stale marker.
+      - name: Code lens freshness (FR-030/SC-011)
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/unit/code-lens-freshness.tests.ps1
+
+      # Feature 205 iteration 003 (FR-032): the agenda grouped by space, written as UTF-8.
+      - name: Workshop agenda grouping (FR-032)
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/unit/workshop-agenda-grouping.tests.ps1
+
       - name: Tier-2 production harness contract dry run (zero provider spend)
         shell: pwsh
         run: pwsh -NoProfile -File ./tests/manual/review-production-harness-dry-run.ps1
