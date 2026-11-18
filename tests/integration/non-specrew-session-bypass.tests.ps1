@@ -190,6 +190,19 @@ function Read-SpecrewRoadmapDefinition { param([string]`$ProjectRoot) [pscustomo
 function Get-SpecrewRoadmapProgress { param([object]`$RoadmapDefinition, [object[]]`$FeatureRecords) [pscustomobject]@{ warnings = @() } }
 "@ | Set-Content -LiteralPath (Join-Path $projectRoot 'scripts\internal\dashboard-renderer.ps1') -Encoding UTF8
 $null = New-Item -ItemType Directory -Path (Join-Path $projectRoot 'external-history') -Force
+# Feature 206 T009 (FR-008): the dashboard check judges an iteration only when iteration closeout stamped it
+# on or after the check's since date (2026-05-26); both fixture iterations are stamped so the check reaches them.
+@'
+closed:
+  - feature: 017-sample
+    iteration: 002
+    closed_at: 2026-11-01T10:00:00Z
+    closed_at_source: closeout
+  - feature: 017-sample
+    iteration: 003
+    closed_at: 2026-11-01T10:00:00Z
+    closed_at_source: closeout
+'@ | Set-Content -LiteralPath (Join-Path $projectRoot '.specrew\closed-iterations.yml') -Encoding UTF8
 
 $gitInitOutput = @(& git -C $projectRoot init --quiet 2>&1)
 if ($LASTEXITCODE -ne 0) {

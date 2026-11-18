@@ -370,3 +370,34 @@ tests/integration/cycle-reset-mirror.tests.ps1
 tests/unit/partial-signoff-refusal-names-the-sequence.tests.ps1
 tests/unit/authority-capture-never-drops-silently.tests.ps1
 tests/integration/agent-led-workshop-replay.tests.ps1
+
+# Feature 206 (bug bash): new suites written by its tasks (T001, T002, T003, T006, T008, T009, T011, T012; iteration 002: T020, T022, T023, T025, T024). Per-round cadence is proposed with
+# 206's own verification plan before its review round; until then they are release-cadence.
+tests/unit/recovery-choice-no-console.tests.ps1
+tests/unit/overclaim-dirty-check-separator.tests.ps1
+tests/unit/instruction-classifier-managed-blocks.tests.ps1
+tests/unit/iteration-closed-definition.tests.ps1
+tests/unit/legacy-frozen-judged-by-nothing.tests.ps1
+tests/unit/closed-check-since-and-ruling.tests.ps1
+tests/unit/review-verdict-names-status.tests.ps1
+tests/unit/nightly-tracking-issue.tests.ps1
+tests/unit/start-written-files-record.tests.ps1
+tests/unit/fresh-clone-first-start.tests.ps1
+tests/unit/resume-path-inside-project.tests.ps1
+tests/unit/squad-probe-temp-folder.tests.ps1
+tests/unit/init-dry-run-names-project.tests.ps1
+tests/unit/sc001-fixture-identity.tests.ps1
+tests/unit/no-node-preset-for-this-repo.tests.ps1
+tests/unit/record-before-approval.tests.ps1
+tests/unit/deferred-task-verdict.tests.ps1
+tests/unit/closeout-dashboard-redraw.tests.ps1
+tests/unit/closeout-completed-and-open-rows.tests.ps1
+tests/unit/release-script-refuses-unasked-publish.tests.ps1
+
+# Feature 206 T015 (maintainer ruling 2026-11-12): a script suite no lane ran before the test census, too slow for
+# the per-push CI step (98 s alone here).
+tests/integration/validator-hardening-iteration1.ps1
+
+# Feature 206 T021 (SC-002; maintainer ruling 2026-11-12, release manifest, not per push): its fixtures copy only
+# what git does not ignore and live in a temp folder; green in the review preflight's layout.
+tests/integration/validator-hardening-iteration2.ps1

@@ -540,10 +540,17 @@ function Get-SpecrewIterationRecord {
         [Parameter(Mandatory = $true)][string]$FeatureId,
         [Parameter(Mandatory = $true)][string]$FeatureTitle,
         [Parameter(Mandatory = $true)][string]$IterationDirectory,
-        [AllowEmptyCollection()][object[]]$BoundaryCommits
+        [AllowEmptyCollection()][object[]]$BoundaryCommits,
+        [AllowNull()][string]$ProjectRoot,
+        [AllowNull()][hashtable]$ClosedIndex,
+        [AllowNull()][AllowEmptyCollection()][string[]]$FrozenKeys
     )
 
     $iterationName = Split-Path -Leaf $IterationDirectory
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
+        # specs/<feature>/iterations/<NNN> -> project root
+        $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $IterationDirectory)))
+    }
     $iterationLabel = Format-SpecrewIterationIdentifier -FeatureRef $FeatureId -IterationRef $iterationName
     $featureNumberValue = $null
     $featureNumberText = Get-SpecrewFeatureNumber -FeatureRef $FeatureId
@@ -597,12 +604,16 @@ function Get-SpecrewIterationRecord {
         $completedAt = $boundaryCompletedAt
     }
 
-    $isClosed = ($statePhase -match '(?i)closed|complete') -or ($iterationStatus -match '(?i)closed')
-    if (-not $isClosed -and (Test-Path -LiteralPath $reviewPath -PathType Leaf)) {
+    # F-206 (FR-008a): closure has one definition, Test-SpecrewIterationClosed (index, or Iteration Status
+    # complete/abandoned; frozen entries never closed). The review verdict is read for display only.
+    $closedArguments = @{ ProjectRoot = $ProjectRoot; Feature = $FeatureId; Iteration = $iterationName }
+    if ($null -ne $ClosedIndex) { $closedArguments['ClosedIndex'] = $ClosedIndex }
+    if ($PSBoundParameters.ContainsKey('FrozenKeys') -and $null -ne $FrozenKeys) { $closedArguments['FrozenKeys'] = $FrozenKeys }
+    $isClosed = [bool](Test-SpecrewIterationClosed @closedArguments)
+    if (Test-Path -LiteralPath $reviewPath -PathType Leaf) {
         try {
             $reviewLines = @(Get-SpecrewMarkdownContent -Path $reviewPath)
             $reviewVerdict = [string](Get-SpecrewMarkdownMetadataValue -Lines $reviewLines -Label 'Overall Verdict')
-            $isClosed = $reviewVerdict -match '(?i)accepted'
         }
         catch {
             Add-SpecrewDashboardWarning -Message ("Skipping review verdict for '{0}' because review.md could not be read cleanly: {1}" -f $IterationDirectory, $_.Exception.Message)
@@ -704,6 +715,8 @@ function Get-SpecrewFeatureRecords {
 
     $boundaryCommits = @(Get-SpecrewGitBoundaryCommits -ProjectRoot $ProjectRoot)
     $branchName = Get-SpecrewGitBranch -ProjectRoot $ProjectRoot
+    $closedIndex = Get-SpecrewClosedIterationIndex -ProjectRoot $ProjectRoot
+    $frozenKeys = @(Get-SpecrewLegacyFrozenIterationKeys -ProjectRoot $ProjectRoot)
     $isMainBranch = $branchName -in @('main', 'master')
 
     $features = New-Object System.Collections.Generic.List[object]
@@ -732,7 +745,7 @@ function Get-SpecrewFeatureRecords {
                     ForEach-Object {
                         $iterationDirectoryPath = $_.FullName
                         try {
-                            Get-SpecrewIterationRecord -FeatureId $featureDirectory.Name -FeatureTitle $featureTitle -IterationDirectory $iterationDirectoryPath -BoundaryCommits $boundaryCommits
+                            Get-SpecrewIterationRecord -FeatureId $featureDirectory.Name -FeatureTitle $featureTitle -IterationDirectory $iterationDirectoryPath -BoundaryCommits $boundaryCommits -ProjectRoot $ProjectRoot -ClosedIndex $closedIndex -FrozenKeys $frozenKeys
                         }
                         catch {
                             Add-SpecrewDashboardWarning -Message ("Skipping iteration artifact '{0}' because it could not be parsed cleanly: {1}" -f $iterationDirectoryPath, $_.Exception.Message)

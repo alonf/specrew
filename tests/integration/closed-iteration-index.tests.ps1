@@ -148,8 +148,8 @@ $rebuildE2ETest = @"
 if (Test-Path -LiteralPath `$scratchRoot) { Remove-Item -Recurse -Force -LiteralPath `$scratchRoot }
 `$null = New-Item -ItemType Directory -Path (Join-Path `$scratchRoot 'specs\044-stub\iterations\001') -Force
 `$null = New-Item -ItemType Directory -Path (Join-Path `$scratchRoot 'specs\045-stub\iterations\002') -Force
-Set-Content -LiteralPath (Join-Path `$scratchRoot 'specs\044-stub\iterations\001\state.md') -Value "**Current Phase**: iteration-closeout`n" -Encoding UTF8
-Set-Content -LiteralPath (Join-Path `$scratchRoot 'specs\045-stub\iterations\002\state.md') -Value "**Current Phase**: complete`n" -Encoding UTF8
+Set-Content -LiteralPath (Join-Path `$scratchRoot 'specs\044-stub\iterations\001\state.md') -Value "**Iteration Status**: complete`n" -Encoding UTF8
+Set-Content -LiteralPath (Join-Path `$scratchRoot 'specs\045-stub\iterations\002\state.md') -Value "**Iteration Status**: iteration 002 is closed`n" -Encoding UTF8
 & pwsh -NoProfile -NoLogo -File '$validatorScript' -ProjectPath `$scratchRoot -RebuildClosedIndex 2>&1 | Out-Null
 `$indexPath = Join-Path `$scratchRoot '.specrew\closed-iterations.yml'
 if (-not (Test-Path -LiteralPath `$indexPath -PathType Leaf)) { Write-Host 'NO_INDEX'; return }

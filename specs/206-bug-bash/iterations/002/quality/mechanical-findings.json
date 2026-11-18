@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/206-bug-bash/spec.md",
+  "iterationRef": "specs/206-bug-bash/iterations/002",
+  "generatedAt": "2026-11-15T11:01:32Z",
+  "generator": {
+    "name": "specrew-iteration-scaffold",
+    "version": "1.0.0"
+  },
+  "findings": []
+}

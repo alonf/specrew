@@ -1,5 +1,93 @@
 ## 2026-08-03 — F-198 iteration-011 phase 2: APPROVE WITH INSTRUCTIONS — tag basis re-cut to authorization-integrity
 
+### 2026-11-17 — Verdict: 206 iteration 002 gap ledger - every open item deferred to the next bug bash
+
+- **Decision ID**: f206-i002-gap-ledger-deferrals
+- **Type**: defer
+- **Affected Iteration**: specs\206-bug-bash\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-17T21:42:16Z
+- **Next Action**: Each item waits as a bug list item (`specs/206-bug-bash/bug-list.md`) for the next bug bash; item
+  86, round 4's major, is marked first.
+- **Disposition**: The open items in iteration 002's review.md Gap Ledger, accepted with the maintainer's typed
+  `approved for review-signoff` (2026-11-17, captured 21:42:16Z) on a record that lists each one as deferred:
+  (1) round 4's four findings, bug list items 86 to 89, carried when the maintainer typed `stop the review here`;
+  (2) round 3's eight findings not fixed, items 75 to 82, with the design question item 74 ("206 round 3: fix four",
+  2026-11-17); (3) round 2's F7 to F9, items 63 to 65 ("OK for both", 2026-11-16); (4) round 1's F8, a note:
+  SC-001's and SC-002's scripts run in CI and the release sweep, not in the review preflight; (5) items 15, 16, 19,
+  20, 28 and 35, cut with Option B (2026-11-15); (6) items 36 and 38, later by the plan, and items 40, 42 and 43,
+  feature 203's code, a hand-over or after its merge.
+
+### 2026-11-14 — Verdict: 206 iteration 001 gap ledger - every open item deferred to iteration 002
+
+- **Decision ID**: f206-i001-gap-ledger-deferrals
+- **Type**: defer
+- **Affected Requirement**: FR-003, FR-009, FR-011, FR-012, FR-013, FR-014, SC-001, SC-002
+- **Affected Iteration**: specs\206-bug-bash\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-14T19:00:00Z
+- **Next Action**: Fix each item in iteration 002, behind a failing test where it is a defect.
+- **Disposition**: The open items in iteration 001's review.md Gap Ledger, classified at the maintainer's typed
+  `fix the record as proposed - round 1's three notes go to iteration 002 with round 4's` (2026-11-14), on the
+  crew's proposal of the same day.
+  (1) Round 4's five minor findings: iteration 002, by the maintainer's ruling before round 4 ("Round 4 is the last:
+  whatever it finds that is not a blocker goes to iteration 002", 2026-11-14); finding 5 waits with the others.
+  (2) Round 1's three partial notes not raised again (plan.md's stale note on unruled `abandoned`, the T003 and T015
+  rows, the notifier adopting any open issue with its label): iteration 002, by the same reply.
+  (3) SC-001, SC-002 and T003's remainder (maintainer, option 1, 2026-11-12 and 2026-11-13), T016 (FR-013) and T017
+  (FR-014) (the approved plan), bug list items 12 and 15 to 30, and DRIFT-206-I001-010, which feature 206 does not
+  close without.
+  The requirement-scoped items are also registered one requirement per entry below.
+
+### 2026-11-14 — Verdict: 206 iteration 001 - FR-003 gap deferred to iteration 002 (round 4, finding 3)
+
+- **Decision ID**: f206-i001-defer-fr003-malformed-marker
+- **Type**: defer
+- **Affected Requirement**: FR-003
+- **Affected Iteration**: specs\206-bug-bash\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-14T19:00:00Z
+- **Next Action**: Iteration 002 fixes it behind a failing test.
+- **Disposition**: A malformed `>>> ... <<<` managed-block opener is treated as balanced (`finding-5cfaa2b2f67ea55b`).
+  Deferred by the maintainer's round 4 ruling (2026-11-14); see `f206-i001-gap-ledger-deferrals`.
+
+### 2026-11-14 — Verdict: 206 iteration 001 - FR-009 gaps deferred to iteration 002 (round 4, findings 4 and 5)
+
+- **Decision ID**: f206-i001-defer-fr009-notifier-gaps
+- **Type**: defer
+- **Affected Requirement**: FR-009
+- **Affected Iteration**: specs\206-bug-bash\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-14T19:00:00Z
+- **Next Action**: Iteration 002 fixes both behind failing tests.
+- **Disposition**: An unexpected validator exception writes no message hash (`finding-42d18d3781d59c95`), and
+  overlapping notifier runs can open two tracking issues (`finding-d249cc05e6ee6910`). Deferred by the maintainer's
+  round 4 ruling (2026-11-14); see `f206-i001-gap-ledger-deferrals`.
+
+### 2026-11-14 — Verdict: 206 iteration 001 - FR-011 gaps deferred to iteration 002 (round 4, findings 1 and 2)
+
+- **Decision ID**: f206-i001-defer-fr011-census-scanner
+- **Type**: defer
+- **Affected Requirement**: FR-011
+- **Affected Iteration**: specs\206-bug-bash\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-14T19:00:00Z
+- **Next Action**: Iteration 002 fixes both behind failing tests.
+- **Disposition**: `steps:` inside a YAML block scalar is read as steps (`finding-175c2ab8a756a10e`), and a comment
+  right after `;` still counts as a registration (`finding-2f7f4713967f972f`). Deferred by the maintainer's round 4
+  ruling (2026-11-14); see `f206-i001-gap-ledger-deferrals`.
+
+### 2026-11-14 — Verdict: 206 iteration 001 - FR-013 and FR-014 deferred to iteration 002 (T016, T017)
+
+- **Decision ID**: f206-i001-defer-fr013-fr014-planned
+- **Type**: defer
+- **Affected Requirement**: FR-013
+- **Affected Iteration**: specs\206-bug-bash\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-11-14T19:00:00Z
+- **Next Action**: Iteration 002 delivers T016 (FR-013) and T017 (FR-014).
+- **Disposition**: The approved plan places FR-013 and FR-014 in iteration 002; see `f206-i001-gap-ledger-deferrals`.
+
 ### 2026-10-25 — Verdict: corrected defer entry for feature 001 iteration 011 (FR-054)
 
 - **Decision ID**: defer-fr054-immutability-guardrail
@@ -29741,3 +29829,207 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 7f841071f065ea6e22fed1771ce1476214934c93
 - **Recorded At**: 2026-11-16T19:52:03Z
+## 2026-11-10T01:36:41Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 1aebddc38d792217e1a3c0c06bfe4093d7333ae1
+- **Recorded At**: 2026-11-10T01:36:40Z
+
+## 2026-11-10T02:10:31Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7f9cf310c16c67192b4d560c02f2b1c11f4f8d82
+- **Recorded At**: 2026-11-10T02:10:29Z
+
+## 2026-11-10T22:19:03Z — Constraint change detected: capacity_per_iteration
+
+- **Change Key**: constraint-46b0b7611e70230f7684
+- **Boundary Attempt**: plan
+- **Artifact**: .specrew/iteration-config.yml
+- **Previous Value**: 20
+- **Current Value**: 22
+- **Previous Auth Commit**: 7f9cf310c16c67192b4d560c02f2b1c11f4f8d82
+- **Current Auth Commit**: 435332da6c44c7a1a608a2b10b68ce36e23cf5ba
+- **Authority**: This record makes the edit visible; it does not authorize the change.
+
+## 2026-11-10T22:19:04Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 435332da6c44c7a1a608a2b10b68ce36e23cf5ba
+- **Recorded At**: 2026-11-10T22:19:03Z
+
+## 2026-11-10T23:29:40Z — Constraint change detected: capacity_per_iteration
+
+- **Change Key**: constraint-4b0a17f39ad004af00ec
+- **Boundary Attempt**: plan
+- **Artifact**: .specrew/iteration-config.yml
+- **Previous Value**: 22
+- **Current Value**: 20
+- **Previous Auth Commit**: 435332da6c44c7a1a608a2b10b68ce36e23cf5ba
+- **Current Auth Commit**: 0e4400503a219954f6bfcfb32f4ecf0a739f7ec6
+- **Authority**: This record makes the edit visible; it does not authorize the change.
+
+## 2026-11-10T23:29:40Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-11-10T23:29:40Z
+- **Warning**: Expected next boundary 'tasks' but received 'plan'.
+
+## 2026-11-10T23:29:41Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 0e4400503a219954f6bfcfb32f4ecf0a739f7ec6
+- **Recorded At**: 2026-11-10T23:29:40Z
+
+## 2026-11-10T23:58:14Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: efdb9ed6fb7db0223f8fb268e11c5265c62ab98e
+- **Recorded At**: 2026-11-10T23:58:13Z
+
+## 2026-11-11T00:33:51Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 82797acfec791ba33df4f204b7292f4a93d9d138
+- **Recorded At**: 2026-11-11T00:33:50Z
+
+## 2026-11-14T18:38:26Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: b8d3b8f2be96482756e89eb6a1d7c16bcbf48210
+- **Recorded At**: 2026-11-14T18:38:14Z
+
+## 2026-11-14T20:50:39Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 78de04288fed934eefd1a4f1bad74c4e0dbfddbc
+- **Recorded At**: 2026-11-14T20:50:07Z
+
+## 2026-11-14T21:24:11Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 825b186f88196f90a536374f2420ab21cebf93cf
+- **Recorded At**: 2026-11-14T21:24:00Z
+
+## 2026-11-15T10:54:00Z — Boundary sync warning: clarify
+
+- **Boundary Type**: clarify
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-11-15T10:54:00Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'clarify'.
+
+## 2026-11-15T10:54:02Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: e827a9af101034b05f2f910d7bbefa65861f43dc
+- **Recorded At**: 2026-11-15T10:54:00Z
+
+## 2026-11-15T13:25:59Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 373a7a2d1df0c0de736a6f516b9de5a886e707a7
+- **Recorded At**: 2026-11-15T13:25:49Z
+
+## 2026-11-15T15:20:12Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 120530da19bbdbb366b0ea7f40b3f9c354168180
+- **Recorded At**: 2026-11-15T15:20:01Z
+
+## 2026-11-15T16:47:19Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 0e8a108ec1c1724f4ea693d375be7c40710116fd
+- **Recorded At**: 2026-11-15T16:47:08Z
+
+## 2026-11-17T20:16:46Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 1d685ce25bbf85a3bf0400d3b57b11bdf198c5be
+- **Recorded At**: 2026-11-17T20:16:31Z
+
+## 2026-11-17T21:59:27Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 52c45561836ea1654a6632455fb59f00f3a8447c
+- **Recorded At**: 2026-11-17T21:59:16Z
+
+## 2026-11-17T23:46:24Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: c26f99908d3644eb2476566b5fa5a2a3307b9496
+- **Recorded At**: 2026-11-17T23:46:14Z
+
+## 2026-11-17T23:49:27Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-11-17T23:49:27Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'iteration-closeout'.
+
+## 2026-11-17T23:49:38Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 44d7c71b87e336e45b28bab4ef46207d792981a4
+- **Recorded At**: 2026-11-17T23:49:28Z
+
+## 2026-11-18T01:14:12Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 206-bug-bash
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: eca038dec746d669356e31542b1f9ee083d153f8
+- **Recorded At**: 2026-11-18T01:14:05Z

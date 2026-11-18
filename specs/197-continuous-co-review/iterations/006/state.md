@@ -5,11 +5,19 @@
 **Iteration**: 006
 **Baseline Ref**: 7333f2b5
 **Current Phase**: retro
-**Iteration Status**: retro
+**Iteration Status**: abandoned
 **Last Completed Task**: T082–T086 all delivered (done); T085 live-dispatcher e2e — PASSED (all 6 conditions); 3 first-run failures FIXED
 **Tasks Remaining**: review-signoff never formally executed — iteration 006 was SUPERSEDED by iteration 007 (real-reviewer wiring on a real deployed project) before formal retro/closeout (+ a lingering-child watch-item carried to the maintainer's real-host e2e)
 **In Progress**: — (e2e complete)
 **Updated**: 2026-06-24
+
+## Disposition (2026-11-11, recorded by feature 206, T007)
+
+**Abandoned, superseded by iteration 007, by the maintainer's ruling of 2026-11-10.** Iteration 006's work was
+delivered and carried into iteration 007 before its review-signoff was formally executed, so no review verdict
+was ratified and none is recorded here. `Current Phase` is left as it was. `plan.md` keeps `Status: retro`:
+this iteration has a `retro.md`, and the validator accepts only
+`retro` or `complete` for a plan with one; the iteration's status is the `Iteration Status` above.
 
 ## T085 live-dispatcher e2e — PASSED; 3 first-run failures FIXED (2026-06-24)
 

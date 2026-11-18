@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: abandoned
 **Capacity**: 17/20 story_points
 **Started**: 2026-07-30
 **Completed**:

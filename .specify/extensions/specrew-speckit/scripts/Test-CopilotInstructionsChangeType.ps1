@@ -107,12 +107,16 @@ function Get-CopilotInstructionsDocumentParts {
 function Test-CopilotInstructionsChangeType {
     [CmdletBinding(DefaultParameterSetName = 'Content')]
     param(
+        # An empty side is a valid input: a file absent at the baseline, or one holding only Specrew's managed
+        # block once that block is stripped.
         [Parameter(ParameterSetName = 'Content', Mandatory = $true)]
         [AllowNull()]
+        [AllowEmptyString()]
         [string]$BeforeContent,
 
         [Parameter(ParameterSetName = 'Content', Mandatory = $true)]
         [AllowNull()]
+        [AllowEmptyString()]
         [string]$AfterContent,
 
         [Parameter(ParameterSetName = 'Paths', Mandatory = $true)]

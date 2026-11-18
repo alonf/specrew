@@ -1,0 +1,69 @@
+{
+  "schema_version": "1.0",
+  "feature": "206-bug-bash",
+  "iteration": "002",
+  "sealed_at": "2026-11-18T01:07:24.0593848+00:00",
+  "sealed_files": [
+    {
+      "path": "dashboard.md",
+      "sha256": "745892d17feb86e81689a3374872d4123063f3bda5345a8b0da99a6c929ac07a"
+    },
+    {
+      "path": "design-analysis.md",
+      "sha256": "7c1e91b015b63913dd826f1f8c0b4bc12a90926aa1f6403dbd3dfde6f8584534"
+    },
+    {
+      "path": "drift-log.md",
+      "sha256": "356cef49fab9cbf3403bd8900943973b216a320636c79272ef683bd380205566"
+    },
+    {
+      "path": "plan.md",
+      "sha256": "7f620bf6ff18f25f45eec13442c6eaab1d566346ea54c3f447faf12851680712"
+    },
+    {
+      "path": "quality/hardening-gate.md",
+      "sha256": "9c3a597fdc25a35427f38c74d4f125832b86de090008ac589490bc7288daa94b"
+    },
+    {
+      "path": "quality/mechanical-findings.json",
+      "sha256": "49d0efc2666d749c26360a5092c55946bde5d148b88cefa2196fe49b3b58b78f"
+    },
+    {
+      "path": "quality/quality-evidence.md",
+      "sha256": "f848af574de5626dd90b95d3bd49ddcb61ec7e371530befa3fb08ce2633803b5"
+    },
+    {
+      "path": "retro.md",
+      "sha256": "8cdf67cb764ec1754e4cee0e3c1f424087e4791d92d36061778c44932f033d0d"
+    },
+    {
+      "path": "review-scope-round-1.md",
+      "sha256": "772df2593f6556fca44eaa9b8e0ce2ee8980aea917fa51eb906e8c5fec7af05b"
+    },
+    {
+      "path": "review-scope-round-2.md",
+      "sha256": "4983204ea139b70de0128f7d4b4e7e656c96aaf8b51e11d1b49ebaa88fa6d02b"
+    },
+    {
+      "path": "review-scope-round-3.md",
+      "sha256": "940c85984cc56bf8f26c05f9c9453f8f73a33b57e8cde37ae5d003d8ba0b38f0"
+    },
+    {
+      "path": "review-scope-round-4.md",
+      "sha256": "7b708b8ac6d918c54b0cccab06b85498348234d02929ddd1dd65474fee8cc526"
+    },
+    {
+      "path": "review.md",
+      "sha256": "def81a048e9aecbea3d91eb1fa78e865b9b5ca0bdfd81210438a6e8fa6237719"
+    },
+    {
+      "path": "state.md",
+      "sha256": "d68ed5c17674e7b1d11a9999cfcda2e90d1a6862cdce58880794d5d69f8f1e2c"
+    },
+    {
+      "path": "tasks-progress.yml",
+      "sha256": "bcd5c73ea8c0061ab416769942ff194a39c81ceceed2a6c9ce4b18aeaec66932"
+    }
+  ],
+  "source": "iteration-closeout-authorization"
+}
