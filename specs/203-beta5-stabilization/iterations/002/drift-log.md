@@ -951,7 +951,11 @@ The following resolution strategies remain available if drift is detected later 
   were removed by their exact paths.
 - **Against DRIFT-073's estimate** (about 14 s to about 5 s with all three proposed changes): T025 built two of the
   three, one git snapshot per hook run (23 to 12 git processes) and one transcript tail read per hook run, and they
-  give about 1.1 s. The third, the providers in one process or their stores loaded once, is not in T025. By DRIFT-073's
-  breakdown, each provider is its own `pwsh` process, and script loading before each provider's work took 0.75, 1.07
-  and 1.75 s, so most of the remaining Stop time is there. Placing that change is the maintainer's.
-- **Class closure**: NONE — a measurement; T025's launcher half (T006) and its own sweep are still to come.
+  give about 1.1 s. The third is named in T025's Work ("the stores load once", `tasks.md:834`) but not in its
+  Acceptance line (`:841`), and it is not built. By DRIFT-073's breakdown, each provider is its own `pwsh` process, and
+  script loading before each provider's work took 0.75, 1.07 and 1.75 s, so most of the remaining Stop time is there.
+  The reviewer session declined to rule that part away: dropping a named part of a task's Work is the maintainer's
+  decision. The crew is answering the reviewer session's scope questions (what the line meant, a cheap form inside the
+  current process layout, the one-process form, a recommendation), and T025 is not done until that is decided.
+- **Class closure**: NONE — a measurement; T025's third change, its launcher half (T006) and its own sweep are still to
+  come.
