@@ -239,7 +239,9 @@ workflows green on `ff6fe55e`). This is not a boundary approval and not a go to 
   The home hook files showed 0 differences.
 - CI on `0050aacc` was green on all three workflows: Specrew CI 44046637244, Test 44046637280 and Cross-Platform
   Validation 44046637250. Ubuntu Validation (job 133913839392) ran on "Image: ubuntu-26.04", "Version:
-  20261111.196.1", and logged "Using the runner's PowerShell: /usr/bin/pwsh" and "PowerShell 7.6.10".**Bug-list candidate** (for feature 206's list, through the reviewer session): the Ubuntu validation job installs
+  20261111.196.1", and logged "Using the runner's PowerShell: /usr/bin/pwsh" and "PowerShell 7.6.10".
+
+**Bug-list candidate** (for feature 206's list, through the reviewer session): the Ubuntu validation job installs
 PowerShell with dpkg on every run. It fails when the runner image's libicu version is not one the package accepts,
 and it has no retry, no pinned image and no fallback install.
 
@@ -248,3 +250,77 @@ feature-closeout` a second time. The hook recorded nothing, because no crossing 
 correctly: a typed phrase is refused when nothing is waiting for it.
 
 **Class closure**: NONE. The CI workflow's install step belongs to the repository's CI (feature 206's list), not to 205.
+
+## DRIFT-205-INTAKE-012 — main taken in after feature 206; 205's lanes parked; the rerun list gains reviewer-hook-suppression
+
+**Recorded**: 2026-11-18. This is a routine step in the maintainer's merge order (206, then 205, then 203), relayed by
+the reviewer session. It is not a boundary approval and not a go to merge into main. That go, and the maintainer's word
+on the administrator bypass, come separately.
+
+**The merge**: `d62c6ca5` merges `origin/main` (`e6732b278`) into this branch with a merge commit, so the pushed history
+is kept. The merge base was `d3e33550f`.
+
+**The first attempt**: an earlier local merge of `d5f4af878` (`495a2ab9`) was never pushed. Main's lane guard,
+`tests/unit/every-suite-is-named-by-a-lane.tests.ps1`, then required the verification plan to name exactly feature
+206's six lanes, so no plan that also named 205's lanes could pass. The maintainer decided the fix on main at 20:13
+local ("main guard fix: 206 crew, small PR off main") and gave its merge go at 23:25 (pull request #3916, main
+`e6732b278`). The guard now pins no feature's lanes. It requires at least one active lane, lane ids unique across the
+plan and the parked-lanes file, and that every suite a lane names exists. The local merge was set aside with
+`git reset --keep` and the merge redone once on the new main, so the branch carries one merge commit.
+
+Five files conflicted, all records or configuration, no code:
+
+- `.specrew/closed-iterations.yml`: both features' closed iterations, in `closed_at` order (205's 001 to 003, 206's
+  001 and 002). 206's `closed_at_source` lines are kept as written.
+- `.squad/events/lifecycle-events.jsonl`: the shared base, then both sides' appended events (205's 24 and 206's 20,
+  none shared), ordered by `recorded_at` compared as text. The result is 237 lines, the base's 193 plus 44.
+- `.squad/identity/now.md`: main's version. It records the latest closeout, 206's on 2026-11-18. 205's closeout on
+  2026-11-16 is earlier and stays in 205's own records.
+- `.specrew/review/signoff-gate/latest.json`: main's version. It holds only the latest gate decision, which is 206's
+  (2026-11-17). 205's sign-off evidence stays in its sealed iteration records.
+- `.specrew/verification-plan.json`: main's version, unchanged, with 206's six lanes active. 205's two lanes,
+  `iteration-002-governance-205` and `f205-lens-order-suites`, are parked unchanged in
+  `.specrew/verification-plan.signoff-lanes.json`, and the note in that file says so. No lane id is in both files. 205
+  is closed, so it needs no active lane. This is the reviewer session's layout, which the 206 crew tested read-only.
+
+The `.specify` hash record (`.specrew-extension-runtime.json`) merged without a conflict. It was checked against the
+merged files: 0 drifted and 0 missing.
+
+**Checks before the push** (all on the committed merge):
+
+- markdownlint: clean.
+- Governance on the whole project: it fails only on the standing derived-block item for 205's iterations 001 to 003.
+  Every other iteration passes, 206's two among them, and 205's seals hold.
+- Lanes:
+  - `f206-census-guard`, which includes every-suite-is-named-by-a-lane: green (20 s).
+  - `f206-structural-guards`: green (11 s).
+  - `f206-deployed-hash-record`: green (1 s).
+  - `f205-lens-order-suites`, run from the parked-lanes file: green (93 s).
+  - `f206-unit-suites`: green (550 s).
+  - `f206-governance-206` is expected red in this worktree, as ruled (see the sighting below).
+- Not run, as ruled:
+  - `f206-changed-integration`: it runs the module publish suite against the real PowerShellGet folder, and CI's
+    Windows publish job is its evidence.
+  - `iteration-002-governance-205`: it fails only on the standing derived-block item, which the whole-project run
+    above already shows.
+- Home hook files: 0 differences before and after.
+
+**Sighting for the next bug bash**: on the first local merge, 206's governance lane failed in this worktree. Validating
+206's iteration 002 explicitly reported "review.md says the review was accepted, but the active review campaign has no
+completed, valid campaign result". This worktree's local review store has 205's campaign active, not 206's. The
+reviewer session ruled it is not a merge defect and is already on 206's bug list (the validator judges against the
+local review store; review freshness is lost away from the store that ran the review). CI's fresh clone is its check.
+It is one more reason one feature's lanes should not be active in another feature's plan.
+
+**The rerun rule** (the reviewer session, under the wider delegation). The maintainer's words, at 19:00 local on
+2026-11-17: "rerun: add reviewer-hook-suppression for 205 and 206". When case 1 of the reviewer-hook-suppression test
+fails alone, the failed job may be rerun once and the sighting recorded with its run and job ids. Case 1 is the stdout
+read that feature 203 fixed in T017. A second failure of the same job stops the work. The test joins
+co-review-service.Tests.ps1:129, empty-result-retry and HookRenderDedupe I3a and I4b, on the same terms. It ends when
+T017 reaches this branch through main.
+
+**Also fixed**: in DRIFT-205-INTAKE-011, the "Bug-list candidate" paragraph had run into the last list item. A blank
+line now separates them, and no words changed.
+
+**Class closure**: NONE. Taking main in is routine, the guard defect was fixed on main, and the rerun rule is temporary
+until 203 is on main.
