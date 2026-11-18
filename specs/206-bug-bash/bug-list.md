@@ -70,6 +70,7 @@ Two independent causes.
 | 44185036150 | 1 | 2026-11-17 | `1b40bb44` (206) | ubuntu-latest | failed ("retries once and recovers", the only failure; job 134401278883); rerun once under the standing exception, attempt 2 green (DRIFT-206-I002-025) |
 | 44202679172 | 1 | 2026-11-17 | `44d7c71b` (206) | ubuntu-latest | failed ("retries once and recovers", the only failure; job 134463069183); rerun once under the standing exception, attempt 2 green (DRIFT-206-006) |
 | 44299443481 | 2 | 2026-11-18 | `a847b2b0` (206, records-only, after the merge) | ubuntu-latest | failed ("does NOT retry a non-empty result", expected 1 spawn, got 2; the only failure; job 134791308128); attempt 1 had failed at Lint's setup on HTTP 429; attempt 3, the exception's one rerun, green (job 134798023244) (DRIFT-206-010) |
+| 44401878043 | 1 | 2026-11-18 | `31370299` (206, records-only, after the merge) | ubuntu-latest | failed ("retries once and recovers", the only failure; job 135149798942); rerun once under the standing exception, attempt 2 green (job 135158138435) (DRIFT-206-013) |
 
 - **Four sightings across two branches (2026-11-14).** The standing rerun exception covers item 13 only, so this
   recurrence stopped 206's work until the reviewer ruled a single rerun. The reviewer is asking the maintainer

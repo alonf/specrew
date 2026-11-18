@@ -209,3 +209,18 @@
     `e6732b27` and `00cc646b`. The branch was kept.
   - Main gained exactly two files: the proposal and the index.
 - **Class closure**: NONE — a recorded, maintainer-authorized exception, the third after DRIFT-206-008 and -011.
+
+## DRIFT-206-013 — the closing CI record: one rerun on `31370299`; main green on both merges
+
+- **Recorded**: 2026-11-19, on the 206 branch only. This is the last 206 records commit.
+- **Rerun**: Specrew CI run `44401878043` on `31370299` (DRIFT-206-011's commit), Deterministic gate job
+  `135149798942`, failed 1 of 131 suites. The only failure was `empty-result-retry.Tests.ps1`, case "retries once and
+  recovers". It was rerun once under the standing exception. Attempt 2 was green on all six jobs (gate
+  `135158138435`, Contract lane `135168262754`). Bug list item 3's table has the row.
+- **Main, first attempt each**:
+  - `e6732b27` (#3916): Specrew CI `44401470911` 6/6, Cross-Platform Validation `44401470714` 8/8, Test
+    `44401470592`.
+  - `c35392cd` (#3917): Specrew CI `44407730253` 6/6, Cross-Platform Validation `44407730214` 8/8, Test
+    `44407730351`.
+- **206 branch**: `d372578b` (DRIFT-206-012) was green on all three workflows on its first attempt.
+- **Class closure**: NONE — a sighting of bug list item 3.
