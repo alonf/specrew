@@ -324,3 +324,32 @@ line now separates them, and no words changed.
 
 **Class closure**: NONE. Taking main in is routine, the guard defect was fixed on main, and the rerun rule is temporary
 until 203 is on main.
+
+## DRIFT-205-INTAKE-013 — feature 205 merged into main with the administrator bypass
+
+**Recorded**: 2026-11-19. The maintainer, relayed by the reviewer session under the wider delegation. Their words,
+typed in the reviewer session at 00:06 local on 2026-11-19: "205 merge: open the PR, merge commit, use --admin". The
+reviewer had told them the branch was merged with main at `e6732b278` and pushed as `c75f467f`, that CI was still
+running, and that this one line would cover opening the pull request, the merge, and the bypass of the required
+review. It took effect only after CI on `c75f467f` was green.
+
+- **CI on the head `c75f467f`**: green on every job. Specrew CI 44403958600, Test 44403958474, Cross-Platform
+  Validation 44403958424.
+- **Pull request #3918**, from `205-workshop-lens-order` to main (then `c35392cd9`, which had moved by proposal 166
+  documentation only and did not conflict):
+  - Every check was green on 30 reported jobs, from runs 44408942519, 44408942380 and 44408942376 and the head's runs.
+  - GitHub reported it MERGEABLE, and BLOCKED only by the required approving review, which the pull request's author
+    cannot give. That review is what the bypass covers.
+- **Re-check just before the merge**: the head was still `c75f467f`, main was still `c35392cd9`, and the pull request
+  was open.
+- **The merge**: `gh pr merge 3918 --merge --admin --match-head-commit c75f467f`, a merge commit with no squash and no
+  rebase. The branch was not deleted. Main is `a78ac54cf` ("Merge pull request #3918 from
+  alonf/205-workshop-lens-order"), with parents `c35392cd9` and `c75f467f`, merged at 00:39 local (22:39:47Z on
+  2026-11-18).
+- **Main's push runs on `a78ac54cf`**: green on every job. Specrew CI 44413709185 (6 jobs), Test 44413709013,
+  Cross-Platform Validation 44413708903 (8 jobs), Specrew Project Sync 44413708933. The issue-event Squad runs on the
+  same commit show green heartbeats, and their triage and assign jobs skipped as designed; they are not push CI.
+
+**Scope**: this one pull request and this one merge. No release, tag or publish.
+
+**Class closure**: NONE. The bypass was the maintainer's explicit decision for this merge, as for feature 206's.
