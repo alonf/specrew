@@ -1070,3 +1070,34 @@ The following resolution strategies remain available if drift is detected later 
   Nothing to fix. A candidate for the hand-back note: one "new test file" lane that runs all four.
 - **Next**: a full sweep of the new tip, then the gated push of that exact revision.
 - **Class closure**: the existing guard caught it before any push; the batch gap is the proposed practice above.
+
+### DRIFT-041 — T025's scope decided by the maintainer: build the navigator reorder; "the stores load once" is met; one process deferred
+
+- **Decision** (the maintainer, typed in the reviewer session at 11:36 local on 2026-11-18, relayed by the reviewer
+  session under the wider delegation): "203 T025: build the navigator reorder; stores load once is met; defer one
+  process". It answers the reviewer session's scope question, which DRIFT-037's correction raised: T025's Work named
+  "the stores load once", its Acceptance did not, and dropping a named part of a task is the maintainer's.
+- **"The stores load once" is met per provider process.** The crew measured it on 2026-11-18 on an instrumented
+  scratch copy of `1696482a3`. Each provider loads its stores once; the only repeats are five files loaded twice inside
+  one process (`ProjectMetadataAccessor` in conformance; `path-identity`, `process-tree`, `hook-health-receipt` and
+  `host-support-tier` in the navigator), together under about 0.1 s. Loading inside a process is cheap:
+  `shared-governance.ps1` (506 KB) 72 ms, the HumanAuthorityStore chain 216 ms. DRIFT-073's "script loading 0.75,
+  1.07 and 1.75 s" turned out to be mostly pwsh start-up, the navigator's whole co-review stack (1.1 s) and first-call
+  compilation.
+- **The navigator reorder** (built in T025, RED first): on a Stop, the navigator's scope check took 1.2 to 1.3 s, and
+  nearly all of it is `Test-ReviewCampaignCoverageDeltaHasImplementation`: 0.8 to 1.0 s and eight git calls
+  (merge-base with the trunk, a diff, a whole-tree status, check-ignore). It ran before the 25 ms read of whether a stop
+  is open. The reviewer session's routine conditions:
+  - authority, stage and identity keep today's order;
+  - only the coverage check moves after the open-stop read;
+  - an open stop still gets the scope check, and the scope check still decides;
+  - an unreadable store keeps today's order and note;
+  - every test that pins a changed reason is listed, with the reasons before and after.
+
+  About 0.5 SP, taken from the stated buffer as an overrun on record (as DRIFT-022); T025's row stays 5.0 SP.
+- **One process deferred** to the follow-up feature: B5F-092 (`docs/beta5-findings.md`) carries the numbers, the
+  size and what could break, and the plan's "Moved out" list names it.
+- **Records amended**: T025's Work, Acceptance and Owns in `tasks.md`, and its row and the "Moved out" list in
+  `plan.md`, each quoting the decision.
+- **Class closure**: NONE — a scope decision; the reorder lands as its own RED and fix, then its own measurement,
+  sweep and push.

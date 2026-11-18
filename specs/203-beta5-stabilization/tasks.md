@@ -833,6 +833,11 @@ with the plan.
   - **Work:** about 19 s of hooks per turn (DRIFT-073): each hook run takes one git snapshot and one transcript tail
     read and hands them to the providers; the stores load once. T006's launcher half (the plain-text launcher
     refusals, DRIFT-046) travels in the same push and sweep; the crew asks the maintainer before running the deployer.
+    **Amended (the maintainer, relayed: "203 T025: build the navigator reorder; stores load once is met; defer one
+    process", 11:36 local on 2026-11-18; DRIFT-041):** the co-review navigator reads whether a review stop is open
+    before its expensive scope check (the coverage delta and its git calls), so a Stop with no open stop pays for
+    neither; authority, stage and identity keep today's order. "The stores load once" is met per provider process
+    (DRIFT-041's measurements). The providers in one process are deferred to the follow-up feature (B5F-092).
   - **RED:** a Stop run through the dispatcher with a git shim that counts invocations (24 today) and a reader count
     (five transcript reads today); each change behind its own red count.
   - **Measure:** DRIFT-073's method: the Stop and prompt hooks through the deployed launcher on a scratch copy, the
@@ -840,14 +845,18 @@ with the plan.
     before (re-measured on the tree T025 starts from; 14.1 s Stop and 4.8 s prompt medians on `5cb83329`) and after.
   - **Acceptance:** one snapshot and one tail read per hook run, every hook check still runs; the numbers reported.
     If the medians do not fall, T025 is not done on the crew's say and goes to the maintainer with the numbers. No
-    numeric target is set.
+    numeric target is set. **Amended (DRIFT-041):** a Stop with no open review stop makes no coverage-delta git call;
+    an open stop during implement still gets the scope check and today's block; an unreadable stop store keeps today's
+    order and note; the Stop median falls again after the reorder, measured as above, or the numbers go to the
+    maintainer.
   - **Trace:** Gap Ledger (DRIFT-073); FR-027 (the launcher half).
   - **Depends:** T020, T021 (same providers).
   - **Owns:** `extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1`,
     `extensions/specrew-speckit/scripts/specrew-*-provider.ps1`, `extensions/specrew-speckit/scripts/shared-governance.ps1`,
     `extensions/specrew-speckit/scripts/turn-end-store.ps1`, `scripts/internal/specrew-*.ps1`,
     `scripts/internal/bootstrap/*.ps1`, `scripts/internal/deploy-refocus-hooks.ps1`, their `.specify` copies and the
-    hash record, `tests/unit/**`, `tests/integration/**`.
+    hash record, `tests/unit/**`, `tests/integration/**`. **Widened by the amendment (DRIFT-041):**
+    `scripts/internal/continuous-co-review/worktree-navigator.ps1` and `tests/continuous-co-review/unit/**`.
 
 ### Phase 12: measurement, merge, checks
 
