@@ -417,3 +417,7 @@ closed:
     iteration: 001
     closed_at: 2026-11-15T01:12:21Z
     closed_at_source: closeout
+  - feature: 206-bug-bash
+    iteration: 002
+    closed_at: 2026-11-18T01:07:19Z
+    closed_at_source: closeout
