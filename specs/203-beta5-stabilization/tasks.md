@@ -887,6 +887,23 @@ with the plan.
   - **Trace:** the maintainer's decision, 2026-11-16 12:22 (`f203-i002-merge-main-before-review`).
   - **Depends:** T015 to T026; feature 206 on main.
   - **Owns:** the whole tree for the merge.
+- [ ] T031 [owner: Implementer] [sp: 1.0] [US1] **The boundary sync reader answers for the session's own feature.**
+  - **Work:** added by the maintainer, relayed ("203 add task: feature-aware boundary sync reader, about 1 SP", 20:08
+    local on 2026-11-18; DRIFT-044), inside T030's merge work, since the merge push cannot be green without it. After
+    a feature takes main in, decisions.md ends with another feature's later boundary syncs, and every reader of "the
+    latest" by position read that feature's state. `Get-LatestSpecrewBoundarySyncState` takes `-FeatureRef` and returns
+    that feature's own last entry; the stale-session check, the boundary sync, the review command and the resume
+    snapshot pass their feature; a caller that cannot tell it keeps the by-position answer.
+  - **RED:** a merged decisions.md with another feature's later feature-closeout; the session's feature resolves its own
+    last sync; pinned: no feature keeps by-position, a feature with no entry gets none, sync-warning entries stay
+    skipped, a path and a leaf match, each caller's own case, and a feature's first sync after another feature's
+    closeout expects specify.
+  - **Acceptance:** the suite green; `project-path-resolution-regression` green on the merged tree with now.md at 203.
+  - **Trace:** B5F-093 (T030's finding 2); proposal 166 (concurrent development hygiene), FR-008 (backward-compatible
+    readers for the ledger split).
+  - **Depends:** T030's merge commit.
+  - **Owns:** `scripts/internal/sync-boundary-state.ps1`, `scripts/internal/session-recovery.ps1`,
+    `scripts/internal/coordinator-resume.ps1`, `scripts/specrew-review.ps1`, `tests/unit/**`.
 - [ ] T027 [owner: Implementer] [sp: 0.25] [US2] **F6: the live `stop the review here`.**
   - **Work:** at the first stop of this iteration's review campaign, on the pin at `da78b600` (the engine advanced at
     T014), the maintainer answers `stop the review here` if that is their answer; the crew reads the disposition's

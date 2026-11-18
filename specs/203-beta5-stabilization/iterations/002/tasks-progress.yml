@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "203-beta5-stabilization"
 iteration: "002"
-updated_at: "2026-11-18T11:46:51.6550795Z"
+updated_at: "2026-11-18T21:37:58.2514100Z"
 tasks:
   T017:
     title: "The agent invoker loses an exited child's output: `worktree-reviewer.ps1:1598` takes stdout only if the read task already finished, without waiting; the likely cause of `empty-result-retry` and `reviewer-hook-suppression` case 1 (DRIFT-014, DRIFT-016). Wait for both reads, bounded, after exit; report an unfinished read. Test red first (a child writing several MB and exiting at once). First in the batch (the maintainer's \"203 rerun: add reviewer-hook-suppression; T017 first\", 15:48 local); if the RED needs a seam, the extra 0.25 SP comes from the stated buffer as an overrun"
@@ -73,6 +73,12 @@ tasks:
     title: "Merge main into 203 before the review campaign (a merge, not a rebase): resolve the conflicts, regenerate the `.specify` hash record, run the full sweep. After T015 to T026, before the campaign. Condition: feature 206 is on main; before merging, the crew tells the reviewer session, which confirms with the maintainer what is on main and whether 205 is taken. Fallback if 206 is not on main: the merge moves after closeout and the crew asks the maintainer for the red-push allowance then (Notes, The merge). 1.5 SP is the crew's judgment (1.0 to 2.0)"
     status: "pending"
     started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T031:
+    title: "The boundary sync reader answers for the session's own feature: Get-LatestSpecrewBoundarySyncState takes -FeatureRef and returns that feature's last entry; the stale-session check, the boundary sync, the review command and the resume snapshot pass their feature, and a caller that cannot tell it keeps the last entry by position. Added by the maintainer (\"203 add task: feature-aware boundary sync reader, about 1 SP\", 20:08 local on 2026-11-18, relayed; DRIFT-044) inside T030's merge work, since the merge push cannot be green without it"
+    status: "in-progress"
+    started_at: "2026-11-18T21:37:58.2476483Z"
     completed_at: ""
     blocked_reason: ""
   T027:

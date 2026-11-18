@@ -71,6 +71,15 @@ next bug bash.
   (DRIFT-040). The guards that judge test files are listed in iteration 002's DRIFT-040: lane naming, home isolation,
   the host-coupling firewall, and CI's PSScriptAnalyzer errors. A single lane that runs all four makes the miss
   impossible. Not built in 203.
+- **Tests added on main before 203 merges.** Any test that calls `Add-SpecrewBoundaryAuthorization` directly with a
+  captured evidence source needs a cited typed turn (`tests/support/cited-typed-turn.ps1`), because 203's FR-022
+  refuses a captured verdict without one. Any test that names a hook-writing entry point (the updater, init, start, the
+  hooks command or the deployer) needs a private home or a `# specrew-test-home: not-a-writer - <why>` line, because
+  203's `test-home-isolation` guard requires it. Both were added to main's tests at 203's merge of main (T030, DRIFT-044).
+- **For proposal 166: two home-safety rules for start-running tests.** 206's lane guard
+  (`every-suite-is-named-by-a-lane.tests.ps1`: each start-running script points `SPECREW_USER_PROFILE_PATH` at a temp
+  file) and 203's `test-home-isolation` (a private home or the not-a-writer line) both guard tests that run Specrew's
+  entry points. They should become one rule.
 
 ## Fixed in 203, for Completeness
 

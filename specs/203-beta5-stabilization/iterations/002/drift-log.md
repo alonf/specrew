@@ -1180,3 +1180,56 @@ The following resolution strategies remain available if drift is detected later 
   - The navigator reorder (`2de23bb06`) reaches the live hooks only at a pin advance (DRIFT-042), which is also the
     maintainer's.
 - **Class closure**: NONE — a task closure and an open item.
+
+### DRIFT-044 — T030 part one: main (206 and its lane guard fix) merged in; three cross-feature findings; T031 added and built
+
+- **The merge** (the reviewer session's word, 13:48 local on 2026-11-18, "206 is on main"; part one is local only):
+  - The first attempt merged `d5f4af878` and stopped on a rule disagreement. Main's
+    `every-suite-is-named-by-a-lane` pinned 206's review layout: the plan names exactly 206's six lanes, and the
+    parked file equals `d3e33550`'s plan byte for byte. That bound every branch taking main in.
+  - The reviewer session confirmed it as a defect in 206's guard. The maintainer decided "main guard fix: 206 crew,
+    small PR off main" (20:13 local, relayed), and it landed as `e6732b278`.
+  - The staged merge was aborted and redone once on `e6732b278`, reusing the six resolved blobs byte for byte (the
+    conflicted files are identical at both heads). It is merge commit `2f0032da8`, whose message lists each
+    resolution.
+  - The hash record was regenerated from the merged blobs, with all 174 entries checked. The plan files follow the
+    ruled layout: active = 203's ten lanes, unchanged; parked = 203's parked file plus `iteration-003-governance-202`
+    and 206's six lanes, with no lane id in both files.
+  - One slip, corrected before any commit: my first union of `lifecycle-events.jsonl` dropped events. ConvertFrom-Json
+    had already turned `recorded_at` into a date, and the date parse failed. The file was restored from the merge
+    stages and redone reading `recorded_at` as text: 35 events.
+- **The reading** (the reviewer session's condition): three functions were changed by both sides, in disjoint regions:
+  `Add-SpecrewBoundaryAuthorization`, `Test-IterationGovernance` and `Invoke-SpecrewBoundaryStateSync`. 206's
+  `Get-SpecrewRecordApprovalState` and 203's `Get-SpecrewPlanCrossingState` follow one rule, and
+  `finding-e2ef0515b3bc7a8f` is fixed on main (`d1e428b98`).
+- **Finding 1, a 206 test that 203's engine refuses**: `closeout-dashboard-redraw` (206 T035) recorded a captured
+  closeout verdict with no cited turn, which FR-022 refuses. It was adapted as T004 adapted its own callers, in
+  `34366dba0` (2 of 2). This is the reviewer session's ruling: it cannot be made on main.
+- **Finding 3, main's tests under 203's home guard**: `test-home-isolation` flagged seven files from main. Each was read
+  for what it runs: none deploys hooks, and the three that run `specrew-start.ps1 -NoLaunch` point
+  `SPECREW_USER_PROFILE_PATH` at a temp file first. One not-a-writer line each, in `da6701012`; the guard passes 5 of 5.
+- **Finding 2, the latest boundary sync is another feature's** (B5F-093): after the merge the decisions ledger ended
+  with 206's feature-closeout, and four readers took it as 203's state. `project-path-resolution-regression`, now in
+  per-push CI, refused a fresh clone as stale.
+  - The facts: re-anchor rewrites only per-machine files, and no governed action writes a 203 sync before
+    review-signoff.
+  - **The maintainer added T031** ("203 add task: feature-aware boundary sync reader, about 1 SP", typed in the
+    reviewer session at 20:08 local on 2026-11-18, relayed), inside T030's merge work.
+  - RED `7a3a803e5` (red 10 of 12), fix `b4450c497` (12 of 12); the four test-file guards pass on the new suite.
+  - **The expected-next check changed:** the boundary sync's expected-next check now reads the feature's own last sync,
+    so a feature's first sync after another feature's closeout expects the first boundary (specify), and a first
+    recorded sync elsewhere writes a warning entry instead of passing silently. This is pinned in the suite.
+- **B5F-036's two suites** on the merged tree, alone: `validator-hardening-iteration2` green (206 fixed it) in 889 s,
+  near the 900 s limit that run used; it leaves the sweep's known-red list and runs under the sweep's 1,500 s suite
+  limit. `project-path-resolution-regression` no longer loops (206's fix) and is green once T031 is in.
+- **Capacity**:
+  - T031 is a new row at 1.0 SP: task rows 21.0 of 20, over capacity by the maintainer's scope addition.
+  - **Correction to DRIFT-041**: its "about 0.5 SP, taken from the stated buffer" was wrong. The buffer stood at
+    about 0.3 SP after DRIFT-022, DRIFT-023, DRIFT-025 and DRIFT-026, so T025's navigator reorder overran it by about
+    0.2 SP. The buffer is spent.
+- **Records**: T031 in `tasks.md` and the plan (traced to B5F-093 and proposal 166 FR-008; the maintainer prioritised
+  166 at 20:14). B5F-093 is in `docs/beta5-findings.md`. The hand-back note gains two lines: main's tests before 203
+  merges need the cite and the marker, and the two home-safety rules should become one (proposal 166).
+- **Next**: part one's batch in a temp worktree. Part two (205 on main, the full sweep, the push) waits for the
+  reviewer session's word.
+- **Class closure**: findings 1 and 3 by their own suites, now green; finding 2 by T031's suite.

@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: executing
-**Capacity**: 20/20 story_points
+**Capacity**: 21/20 story_points
 **Started**: 2026-11-16
 **Completed**:
 
@@ -64,6 +64,7 @@ B5F-083 and the end-to-end phase-line test (T023), the hook cost DRIFT-073 (T025
 | T025 | F3, the hook cost (DRIFT-073): one git snapshot and one transcript tail read per hook run, handed to the providers; the stores loaded once. Measured as DRIFT-073 measured it: the Stop and prompt hooks through the deployed launcher on a scratch copy of the tree, the same payload, a typed prompt appended to a copy of a real 53 MB transcript, ten turns per engine, median and worst; on `5cb83329` the medians were 14.1 s Stop and 4.8 s prompt per turn. Done when: structurally, proven by tests committed red first, each hook run takes one git snapshot and one transcript tail read and hands them to the providers, the stores load once, and every hook check still runs; measured, the before figures re-measured on the tree T025 starts from and the after figures reported, median and worst. If the medians do not fall, T025 is not done on the crew's say and goes to the maintainer with the numbers. No numeric target is set; one is the maintainer's to set if they want it. T006's launcher half (plain-text refusals, DRIFT-046) travels in the same push and sweep. Amended (the maintainer, relayed: "203 T025: build the navigator reorder; stores load once is met; defer one process", 11:36 local on 2026-11-18; DRIFT-041): the co-review navigator reads whether a review stop is open before its coverage-delta scope check, so a Stop with no open stop makes no coverage-delta git call, and an open stop still gets the scope check and today's block; "the stores load once" is met per provider process; the providers in one process go to the follow-up feature (B5F-092); done when the Stop median falls again, or the numbers go to the maintainer | Gap Ledger: DRIFT-073; FR-027 (launcher half) | US3 | 5.0 | Implementer | extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1, extensions/specrew-speckit/scripts/specrew-*-provider.ps1, extensions/specrew-speckit/scripts/shared-governance.ps1, extensions/specrew-speckit/scripts/turn-end-store.ps1, scripts/internal/specrew-*.ps1, scripts/internal/bootstrap/*.ps1, scripts/internal/deploy-refocus-hooks.ps1, scripts/internal/continuous-co-review/worktree-navigator.ps1 (DRIFT-041), .specify/extensions/specrew-speckit/**, tests/unit/**, tests/integration/**, tests/continuous-co-review/unit/** (DRIFT-041) | planned | | | |
 | T026 | The t008 lane's time and the three slow suites: measure `f203-i001-t008-suites` (838 of 900 s on `da78b600`), `message-identity`, `review-loop-stops` and `review-budget-loop` (at the 1,500 s cap on `aa06b3e5b`) against round D finding 1's whole-transcript read before any limit moves; widened by "203 sweep: yes" (DRIFT-023), +0.25 from the buffer: each suite alone at two or three older commits, and the same suites under a sweep-shaped load (alone 356 to 390 s, in the sweep past 1,500 s, DRIFT-024); no throttle or limit changed; after Phase 8's push, before Phase 9 | Gap Ledger: DRIFT-087 | US1 | 0.5 | Implementer | specs/203-beta5-stabilization/iterations/002/** | planned | | | |
 | T030 | Merge main into 203 before the review campaign (a merge, not a rebase): resolve the conflicts, regenerate the `.specify` hash record, run the full sweep. After T015 to T026, before the campaign. Condition: feature 206 is on main; before merging, the crew tells the reviewer session, which confirms with the maintainer what is on main and whether 205 is taken. Fallback if 206 is not on main: the merge moves after closeout and the crew asks the maintainer for the red-push allowance then (Notes, The merge). 1.5 SP is the crew's judgment (1.0 to 2.0) | the maintainer's decision, 2026-11-16 12:22 (`f203-i002-merge-main-before-review`) | US1 | 1.5 | Implementer | ** | planned | | | |
+| T031 | The boundary sync reader answers for the session's own feature: Get-LatestSpecrewBoundarySyncState takes -FeatureRef and returns that feature's last entry; the stale-session check, the boundary sync, the review command and the resume snapshot pass their feature, and a caller that cannot tell it keeps the last entry by position. Added by the maintainer ("203 add task: feature-aware boundary sync reader, about 1 SP", 20:08 local on 2026-11-18, relayed; DRIFT-044) inside T030's merge work, since the merge push cannot be green without it | B5F-093; proposal 166 FR-008 | US1 | 1.0 | Implementer | scripts/internal/sync-boundary-state.ps1, scripts/internal/session-recovery.ps1, scripts/internal/coordinator-resume.ps1, scripts/specrew-review.ps1, tests/unit/** | planned | | | |
 | T027 | F6: the live `stop the review here` on the pin at `da78b600` (the engine advanced at T014, iteration 001) at this iteration's first review stop, reading its disposition's `authorization_ref` (owed from T014, DRIFT-092 departure B); see Notes, Review and pin sequence | FR-045, FR-011 | US2 | 0.25 | Implementer | specs/203-beta5-stabilization/iterations/002/** | planned | | | |
 | T028 | Copilot and Codex capture walk before the merge, manual with records: a verdict typed after a compaction, a quoted phrase and a pasted phrase, on each host, after the pin advance; the maintainer types, the crew prepares and records (Notes, The walk) | FR-042, FR-045 | US2 | 1.0 | Implementer | specs/203-beta5-stabilization/iterations/002/** | planned | | | |
 | T029 | Spec amendment: US4 to US7, FR-012, FR-013 and FR-044 marked moved to the follow-up feature; the traceability table and the capacity model amended | TG-003 | US1 | 0.25 | Spec Steward | specs/203-beta5-stabilization/spec.md, specs/203-beta5-stabilization/tasks.md | done | Claude | 0.25 | applied with this plan; the governance check accepts the moved requirements with no code change (dry run, DRIFT-007) |
@@ -76,7 +77,7 @@ B5F-083 and the end-to-end phase-line test (T023), the hook cost DRIFT-073 (T025
 | Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
 | Iteration Bounding | scope | The maintainer fixed the scope (option 1); any change to it is theirs. |
 | Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
-| Overcommit Threshold | 1.0 | Task rows 20.0 of 20. The 2.0 SP review buffer is not a task row; with it the stated total is 22.0 SP. |
+| Overcommit Threshold | 1.0 | Task rows 21.0 of 20 since T031 (1.0 SP, the maintainer's scope addition of 2026-11-18 20:08, DRIFT-044): over capacity by 1.0. The 2.0 SP review buffer is not a task row and is spent (Rework below); with it the stated total was 22.0 SP. |
 | Defer Strategy | manual | Any deferral is the maintainer's decision. |
 | Calibration Enabled | true | Retro compares actuals to these estimates. |
 
@@ -114,7 +115,7 @@ B5F-083 and the end-to-end phase-line test (T023), the hook cost DRIFT-073 (T025
 | Implementation | 16.5 | T015 to T025 |
 | Merge | 1.5 | T030, main merged in before the campaign (judgment) |
 | Review | budget | The feature plan's `## Review budget`, `iteration-002`: rounds 4, host order codex, copilot, claude, infra_failure_cap 2; T027 at the first stop |
-| Rework | 2.0 | The review buffer, not a task row (option 1): stated total 22.0 SP. Used on record: 0.7 for the four fixes of the red Phase 8 sweep (DRIFT-022) and 0.25 for T026's widening (DRIFT-023); about 1.05 left |
+| Rework | 2.0 | The review buffer, not a task row (option 1): stated total 22.0 SP. Used on record: 0.7 for the four fixes of the red Phase 8 sweep (DRIFT-022), 0.25 for T026's widening (DRIFT-023), about 0.5 for the two T015 CI fixes (DRIFT-025) and about 0.25 for T026 as run (DRIFT-026), about 0.3 left; then about 0.5 for T025's navigator reorder (DRIFT-041), which overran it by about 0.2 (DRIFT-044 corrects DRIFT-041's "from the stated buffer"). None left |
 | Walk | 1.25 | T027 and T028 |
 
 ## Traceability Summary
@@ -130,7 +131,7 @@ B5F-083 and the end-to-end phase-line test (T023), the hook cost DRIFT-073 (T025
 
 ## Notes
 
-- **Capacity:** task rows 20.0 of 20 SP. The review buffer of 2.0 SP is stated here and in the Phase Baseline, not
+- **Capacity:** task rows 21.0 of 20 SP since T031 was added (DRIFT-044), 20.0 before it. The review buffer of 2.0 SP is stated here and in the Phase Baseline, not
   as a task row, as the maintainer chose ("option 1 it is", 2026-11-16 11:49 local, relayed): **the stated total with
   the buffer is 22.0 SP**, 2.0 over the 20 baseline. The capacity check counts task rows only (DRIFT-007). T023 went
   from 1.5 to 0.75 SP and T030 (1.5) was added on the maintainer's "203: 1" (12:22 local, relayed; DRIFT-011);
