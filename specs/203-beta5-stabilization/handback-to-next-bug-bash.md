@@ -80,6 +80,12 @@ next bug bash.
   (`every-suite-is-named-by-a-lane.tests.ps1`: each start-running script points `SPECREW_USER_PROFILE_PATH` at a temp
   file) and 203's `test-home-isolation` (a private home or the not-a-writer line) both guard tests that run Specrew's
   entry points. They should become one rule.
+- **A reviewer's authorization reference is never checked against a record (bug-bash candidate).**
+  `Test-ContinuousCoReviewReviewerAuthorization` (`reviewer-authorization-gate.ps1`) treats any non-empty
+  `authorization_ref` in `.specrew/reviewer-hosts.json` as an explicit authorization and never resolves it. At 203's
+  second merge of main, 203's workshop hash and 205's `workshop-205-workshop-lens-order` both satisfied it (iteration
+  002 DRIFT-045). Not fixed in 203. For proposal 166, the same catalog is per project and each feature's workshop
+  rewrites it, so the last merge wins.
 
 ## Fixed in 203, for Completeness
 

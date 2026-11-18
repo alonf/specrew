@@ -1233,3 +1233,36 @@ The following resolution strategies remain available if drift is detected later 
 - **Next**: part one's batch in a temp worktree. Part two (205 on main, the full sweep, the push) waits for the
   reviewer session's word.
 - **Class closure**: findings 1 and 3 by their own suites, now green; finding 2 by T031's suite.
+
+### DRIFT-045 — T030 part two: main with 205 merged in; the reviewer catalog's codex reference kept as 203's; the known-red list emptied
+
+- **The merge** (the reviewer session's word at 00:40 local on 2026-11-19: "205 is on main", `a78ac54cf`, under the
+  maintainer's merge go of 00:06): merge commit `93b36d034` (parents `3531a5515`, `a78ac54cf`). The home hook files were
+  hashed first. Six conflicts, each resolution listed in the merge message:
+  - `.squad/active-features.yml` and `.specrew/closed-iterations.yml`: both features' entries.
+  - `.squad/events/lifecycle-events.jsonl`: two blocks, each the deduplicated union in `recorded_at` order. 206's
+    event of 15 Nov 16:47 was on both sides, because 205 had merged 206 too.
+  - The parked-lanes file: 203's 14 lanes plus 205's two, none also active.
+  - One hash-record entry (`design-workshop.md`) recomputed from the merged blob, and all 174 entries checked.
+  - `.specrew/reviewer-hosts.json` (below).
+- **The reviewer catalog** (a stop, then the reviewer session's ruling, option 1): both sides changed only codex's
+  `authorization_ref`:
+  - base: `workshop-202-beta4-1-ux-stabilization`;
+  - 203's workshop (`fe1b9ac0c`): `9cf4941286e3612614fee43468e0ec6d4f5c551ca184e07ee52b4bab3b7c16e8`, which 203's
+    records cite;
+  - 205's workshop (`7a4e6d7ad`): `workshop-205-workshop-lens-order`.
+
+  Everything the engine acts on (model, adapter, allowed, rank, fallback) is identical on both sides, and
+  `Test-ContinuousCoReviewReviewerAuthorization` accepts any non-empty reference without resolving it. So the campaign
+  behaves the same either way: the difference is provenance. 203's value is kept, because 203 uses the catalog next and
+  205 is closed. For proposal 166: a per-project catalog that each feature's workshop rewrites (the last merge wins),
+  and a gate that never resolves the reference. The second is a hand-back candidate, not fixed here.
+- **On the merged tip**: every-suite-is-named-by-a-lane, test-home-isolation and host-coupling-firewall exit 0.
+  test-home-isolation flags none of 205's tests, so there was no marker commit. PSScriptAnalyzer found 0 errors in the
+  nine changed scripts, and T031's suite passed 12 of 12.
+- **The known-red list emptied** (the reviewer session's ruling, before the sweep): both B5F-036 entries were removed
+  from `tools/maintenance/sweep/known-red.txt`, so the sweep runs both suites under its own 1,500 s limit and is the
+  evidence that they are green on the merged tree. B5F-036 is closed by 206's fixes, which arrived through the merge.
+  Alone on the part-one tree, `validator-hardening-iteration2` took 835 to 889 s. Its time under the sweep's load is
+  reported, and above 1,200 s it goes to the reviewer session before the push.
+- **Class closure**: NONE — a merge record; the full sweep, the push and CI follow and are recorded when they conclude.
