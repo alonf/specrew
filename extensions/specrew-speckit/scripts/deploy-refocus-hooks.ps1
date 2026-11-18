@@ -404,7 +404,9 @@ function Get-SpecrewHookCommand {
             # Feature 203 T002 follow-up (DRIFT-016): the command only finds and runs the project's generated launcher
             # (Install-ProjectHookLauncher), which holds the baked binding and the live-engine pin check. Inline, they
             # made the encoded command longer than cmd.exe's 8,191-character limit, and every hook failed.
-            $scriptText = ('$projectRoot = [Environment]::GetEnvironmentVariable(''{0}''); if ([string]::IsNullOrWhiteSpace($projectRoot)) {{ exit 0 }}; $launcher = Join-Path $projectRoot ''{1}''; if (-not (Test-Path -LiteralPath $launcher -PathType Leaf)) {{ throw "Specrew hook launcher not found at ''$launcher''." }}; & $launcher -Event ''{2}''' -f $escapedVariable, $escapedLauncher, $escapedEvent)
+            # Feature 203 T025 (T006's launcher half, DRIFT-018): a missing launcher is refused in plain text with exit 1. A throw
+            # here reached the host as CLIXML with ANSI color codes, because the command runs through -EncodedCommand.
+            $scriptText = ('$projectRoot = [Environment]::GetEnvironmentVariable(''{0}''); if ([string]::IsNullOrWhiteSpace($projectRoot)) {{ exit 0 }}; $launcher = Join-Path $projectRoot ''{1}''; if (-not (Test-Path -LiteralPath $launcher -PathType Leaf)) {{ [Console]::Error.WriteLine("Specrew could not find its hook launcher at ''$launcher'', so it recorded nothing from this turn. Your earlier approvals and answers are unchanged. To fix it, the crew can redeploy this project''s hooks with specrew update. Should it do that?"); exit 1 }}; & $launcher -Event ''{2}''' -f $escapedVariable, $escapedLauncher, $escapedEvent)
             $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($scriptText))
             return ('pwsh -NoProfile -ExecutionPolicy Bypass -EncodedCommand {0}' -f $encoded)
         }

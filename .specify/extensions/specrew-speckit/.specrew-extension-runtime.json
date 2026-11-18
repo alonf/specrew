@@ -268,7 +268,7 @@
     },
     {
       "path": "scripts/deploy-refocus-hooks.ps1",
-      "sha256": "ee07b80c956f32df371f06347b407dc21b21fa54fba33f01e1ea7f8ddcd32834"
+      "sha256": "8a6e6ae65fd2532555f09a82e189dc28e7e46ab75bfc088e69f2914920602c38"
     },
     {
       "path": "scripts/deploy-speckit-extension.ps1",
