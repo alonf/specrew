@@ -1586,6 +1586,12 @@ protected set, and none has changed on 203's branch since the merge base `df1141
   meets any crew whose last round ends with findings and whose review record is pushed before its verdict, as SC-009
   now allows. Recorded in DRIFT-206-I002-022.
 
+## 69, a sighting at iteration 002's closeout (2026-11-18)
+
+- The iteration-closeout arrival named two open hardening fields. The crew filled them, pushed, and ran the sync
+  again. The second sync wrote a second "Boundary sync: iteration-closeout" entry in `.squad/decisions.md`, a warning
+  entry ("Expected next boundary 'feature-closeout' but received 'iteration-closeout'") and a second lifecycle event.
+  The warning is wrong: the crossing it re-recorded was still pending. Recorded in DRIFT-206-006.
 ## Iteration 002 Intake
 
 Carried from iteration 001 by name, with the decision that carried each (`.squad/decisions.md`,

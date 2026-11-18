@@ -84,3 +84,22 @@
   kinds; one that is not clearly so is not.
 - **Unchanged**: `.squad/active-features.yml` is in no commit; the rule does not relax a review round's head or widen
   the item 13 rerun exception.
+
+## DRIFT-206-006 — iteration 002's closeout: two arrival syncs (bug list item 69, a sighting) and one rerun of empty-result-retry
+
+- **Recorded**: 2026-11-18, after the iteration-closeout verdict, here rather than in iteration 002's drift log,
+  which the closeout seal covers (iteration 001's post-seal drift entry forced a reseal, DRIFT-206-I001-031 to -033).
+- **Two arrival syncs**: the first iteration-closeout sync (23:46:14Z, at `c26f9990`) named two open items in
+  `quality/hardening-gate.md`: Post-Implementation Verification pending, and Verified At not recorded. This is the
+  arrival listing T036 built. The crew filled both before the verdict (`44d7c71b`) so the seal taken at capture covers
+  them. One sync attempt before the push refused on `pushed-head` with no write. After the push, the sync ran again
+  (23:49:28Z, at `44d7c71b`).
+  - The second sync wrote a second "Boundary sync: iteration-closeout" entry in `.squad/decisions.md`, a "Boundary
+    sync warning" ("Expected next boundary 'feature-closeout' but received 'iteration-closeout'") and a second
+    lifecycle event. Bug list item 69, a sighting.
+  - The maintainer's verdict (captured 01:07:19Z) authorized the second crossing; the boundary commit is `0f6313ed`.
+- **CI**: Specrew CI run `44202679172` on `44d7c71b`, job Deterministic gate `134463069183`, failed 1 of 131. The only
+  failure was `tests/continuous-co-review/unit/empty-result-retry.Tests.ps1`. It was rerun once under the standing
+  exception (DRIFT-206-003), and attempt 2 succeeded. This is the second sighting that night, after `1b40bb44`
+  (DRIFT-206-I002-025); bug list item 3, feature 203's to fix.
+- **Class closure**: NONE — sightings of bug list items 69 and 3.
