@@ -594,7 +594,10 @@ function Get-ReviewBoundarySyncWarning {
 
     $warnings = [System.Collections.Generic.List[string]]::new()
     $reviewVerdict = Get-MetadataValue -Path $ReviewPath -Label 'Overall Verdict'
-    $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $ProjectRoot
+    # Feature 203 T031 (B5F-093): the review's own feature's last sync (the feature folder above iterations/<n>/); another
+    # feature's later closeout merged in from main must not quiet this feature's sync warning.
+    $reviewFeatureRef = Split-Path -Leaf (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $ReviewPath)))
+    $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $ProjectRoot -FeatureRef $reviewFeatureRef
     if ($reviewVerdict -match '^(?i)accepted$') {
         if ($null -eq $latestBoundary -or [string]$latestBoundary.boundary_type -notin @('review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')) {
             $warnings.Add('WARN: Accepted review artifacts exist, but lifecycle state is not synced to review-signoff or a later boundary.') | Out-Null

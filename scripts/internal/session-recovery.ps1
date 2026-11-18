@@ -132,7 +132,11 @@ function Get-SpecrewSessionStateSnapshot {
     $promptState = Get-SpecrewPromptSessionState -ProjectRoot $ProjectRoot
     $contextState = Get-SpecrewStartContextSessionState -ProjectRoot $ProjectRoot
     $identityState = Get-SpecrewIdentitySessionState -ProjectRoot $ProjectRoot
-    $decisionsState = Get-LatestSpecrewBoundarySyncState -ProjectRoot $ProjectRoot
+    # Feature 203 T031 (B5F-093): the decisions ledger is read for the session's own feature (the first of the prompt, the
+    # start context and the identity file that names one), so another feature's later sync merged in from main is not
+    # read as this session's state. With no session feature known, the last sync by position, as before.
+    $sessionFeatureRef = @($promptState, $contextState, $identityState | Where-Object { $null -ne $_ -and -not [string]::IsNullOrWhiteSpace([string]$_.feature_ref) } | ForEach-Object { [string]$_.feature_ref } | Select-Object -First 1)
+    $decisionsState = if ($sessionFeatureRef.Count -gt 0) { Get-LatestSpecrewBoundarySyncState -ProjectRoot $ProjectRoot -FeatureRef $sessionFeatureRef[0] } else { Get-LatestSpecrewBoundarySyncState -ProjectRoot $ProjectRoot }
     $states = @(
         foreach ($candidate in @($promptState, $contextState, $identityState, $decisionsState)) {
             if ($null -ne $candidate) {

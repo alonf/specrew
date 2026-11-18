@@ -168,7 +168,8 @@ function Get-CoordinatorResumeSnapshot {
         $null
     }
 
-    $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $resolvedProjectRoot
+    # Feature 203 T031 (B5F-093): the session feature's own last sync; with no feature known, the last by position.
+    $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $resolvedProjectRoot -FeatureRef $featureRef
     $validatorSummary = Get-ValidatorWarningSummary -ProjectRoot $resolvedProjectRoot
 
     # F-174 iter-10 (T008): read the rolling handover + run the SHARED reconciliation (re-compute the CURRENT

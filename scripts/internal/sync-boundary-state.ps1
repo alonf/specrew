@@ -1407,9 +1407,17 @@ function Publish-SpecrewConstraintChangeRecords {
 }
 
 function Get-LatestSpecrewBoundarySyncState {
+    # Feature 203 T031 (B5F-093): with -FeatureRef, the last "Boundary sync:" entry whose Feature Ref names that feature
+    # (compared by its last path segment, so 'specs/203-x' and '203-x' match); none for that feature returns $null, never
+    # another feature's entry. After a feature takes main in, decisions.md holds other features' later entries, and the
+    # last entry by position was another feature's state. Without -FeatureRef the answer is the last entry by position, as
+    # before; a caller that cannot tell the session's feature passes none and keeps that answer.
     param(
         [Parameter(Mandatory = $true)]
-        [string]$ProjectRoot
+        [string]$ProjectRoot,
+
+        [AllowNull()]
+        [string]$FeatureRef
     )
 
     $paths = Get-SpecrewSessionStatePaths -ProjectRoot $ProjectRoot
@@ -1418,6 +1426,31 @@ function Get-LatestSpecrewBoundarySyncState {
     }
 
     $lines = @(Get-Content -LiteralPath $paths.DecisionsPath -Encoding UTF8)
+    if (-not [string]::IsNullOrWhiteSpace($FeatureRef)) {
+        $wantedFeature = (([string]$FeatureRef).Trim() -replace '\\', '/').TrimEnd('/').Split('/')[-1]
+        for ($headingIndex = $lines.Count - 1; $headingIndex -ge 0; $headingIndex--) {
+            if ($lines[$headingIndex] -notmatch '^## .* — Boundary sync: ') { continue }
+            $entryValues = @{}
+            for ($index = $headingIndex + 1; $index -lt $lines.Count -and $lines[$index] -notmatch '^## '; $index++) {
+                if ($lines[$index] -match '^- \*\*(.+?)\*\*:\s*(.+?)\s*$') { $entryValues[$Matches[1]] = $Matches[2] }
+            }
+            if (-not $entryValues.ContainsKey('Boundary Type')) { continue }
+            $entryFeature = [string]$entryValues['Feature Ref']
+            if ([string]::IsNullOrWhiteSpace($entryFeature) -or $entryFeature -eq '(none)') { continue }
+            if ((($entryFeature.Trim() -replace '\\', '/').TrimEnd('/').Split('/')[-1]) -cne $wantedFeature) { continue }
+            return [pscustomobject]@{
+                boundary_type    = [string]$entryValues['Boundary Type']
+                feature_ref      = $entryFeature
+                iteration_number = if ($entryValues['Iteration Number'] -and $entryValues['Iteration Number'] -ne '(none)') { [string]$entryValues['Iteration Number'] } else { $null }
+                task_id          = if ($entryValues['Task ID'] -and $entryValues['Task ID'] -ne '(none)') { [string]$entryValues['Task ID'] } else { $null }
+                auth_commit_hash = if ($entryValues['Auth Commit Hash'] -and $entryValues['Auth Commit Hash'] -ne '(none)') { [string]$entryValues['Auth Commit Hash'] } else { $null }
+                recorded_at      = if ($entryValues['Recorded At']) { [string]$entryValues['Recorded At'] } else { $null }
+                active           = 'true'
+            }
+        }
+        return $null
+    }
+
     $startIndex = -1
     for ($index = $lines.Count - 1; $index -ge 0; $index--) {
         if ($lines[$index] -match '^## .* — Boundary sync: ') {
@@ -1941,7 +1974,9 @@ function Invoke-SpecrewBoundaryStateSync {
         -FeatureRef $effectiveFeatureRef `
         -IterationNumber $effectiveIterationNumber
 
-    $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $paths.ProjectRoot
+    # Feature 203 T031 (B5F-093): the previous commit is this feature's own last sync, not another feature's later one
+    # merged in from main; with no feature known, the last entry by position as before.
+    $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $paths.ProjectRoot -FeatureRef $effectiveFeatureRef
     $effectiveAuthCommitHash = Resolve-SpecrewBoundaryAuthCommitHash -ProjectRoot $paths.ProjectRoot -AuthCommitHash $AuthCommitHash
     try {
         if ($null -ne $latestBoundary -and -not [string]::IsNullOrWhiteSpace([string]$latestBoundary.auth_commit_hash)) {
