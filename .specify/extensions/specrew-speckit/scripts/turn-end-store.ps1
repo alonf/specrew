@@ -673,6 +673,28 @@ function Test-SpecrewTurnMessageVisible {
     return $actualText.Contains($expectedText, [StringComparison]::Ordinal)
 }
 
+function ConvertTo-SpecrewFileUrlLocalPath {
+    # A file URL's local path, or $null when it has none (203 iteration 002 DRIFT-048). On Linux and macOS the engine
+    # writes 'file:///' plus an absolute path, which has four slashes, and System.Uri reads 'file:////tmp/x' as a UNC
+    # host "tmp" - so the packet reader reported a file that exists as missing (Specrew CI's Linux gate, run
+    # 44443396665). Windows keeps System.Uri's reading unchanged (file:///C:/..., UNC forms). Elsewhere the path is "/"
+    # plus the URL's path with its leading slashes collapsed, then percent-decoded; an empty authority and "localhost"
+    # (RFC 8089) are local, any other host and an empty path have no local path. -Platform exists so every case can be
+    # tested on every OS; callers leave it to the platform they run on.
+    [OutputType([string])]
+    param(
+        [AllowNull()][string] $Url,
+        [ValidateSet('Windows', 'Posix')][string] $Platform = $(if ([System.IO.Path]::DirectorySeparatorChar -eq '\') { 'Windows' } else { 'Posix' })
+    )
+    if ([string]::IsNullOrWhiteSpace($Url)) { return $null }
+    if ($Platform -ceq 'Windows') { return [System.Uri]::new($Url).LocalPath }
+    $match = [regex]::Match($Url, '^(?i:file)://(?<authority>(?i:localhost)(?=/|$))?(?<path>/.*)?$')
+    if (-not $match.Success) { return $null }
+    $rest = ([string]$match.Groups['path'].Value).TrimStart('/')
+    if ($rest.Length -eq 0) { return $null }
+    return ('/' + [System.Uri]::UnescapeDataString($rest))
+}
+
 function Get-SpecrewReviewTargetLinks {
     # Every review link a message carries, as written (text) and as a local path (path; $null when it cannot be
     # resolved). ONE reader for the three places that need it - the packet validator, the meaning lines and the
@@ -692,7 +714,11 @@ function Get-SpecrewReviewTargetLinks {
     foreach ($match in [regex]::Matches($Message, 'file:///(?:[^\s<>"''`\[\](){}|]|\([^\s<>"''`\[\](){}|]*\))+')) {
         $url = ([string]$match.Value).TrimEnd('.', ',', ';', ':', '!', '?', '*')
         $path = $null
-        try { $path = [System.IO.Path]::GetFullPath([System.Uri]::new($url).LocalPath) } catch { $path = $null }
+        try {
+            $local = ConvertTo-SpecrewFileUrlLocalPath -Url $url
+            if (-not [string]::IsNullOrEmpty($local)) { $path = [System.IO.Path]::GetFullPath($local) }
+        }
+        catch { $path = $null }
         $links.Add([pscustomobject]@{ text = $url; path = $path })
     }
     # An angle-wrapped destination runs to its '>' whatever it holds; a bare one keeps balanced parentheses.
