@@ -128,7 +128,15 @@ next bug bash.
   sweeps, timed out at 1,500 s in the sweep of `8bd3d15ee`, and took 1,491 s alone. Each approval-reuse case takes about
   315 s and each closed-iteration case about 96 s (iteration 002 DRIFT-048). It sits in the release list only, in no
   per-push CI step. Wanted: split it by case family, or share the validator fixture runs, so that it sits well inside
-  its limit.
+  its limit. The investigation found variation, not a regression: alone, the approval-reuse cases took 189 to 317 s each
+  across four runs while the closed-iteration cases held at about 95 s (B5F-094, with the per-case table).
+- **A committed feature claim declines a collaborator's `specrew start`, and per-push CI meets it** (B5F-095,
+  iteration 002 DRIFT-049). `project-path-resolution-regression` builds a fresh checkout as a collaborator receives it.
+  On a branch whose tracked `.squad/active-features.yml` claims the feature for someone else, start declines with no
+  override, so Specrew CI's Linux gate is red on 203 and would be on any feature with a committed claim. F-051 commits
+  claims on purpose, 205 left its claim committed and unreleased, 206 never committed one, and main's file holds 11
+  never-released claims of merged features. Wanted: the maintainer's rule on whether claims belong in the tree, and on
+  whether a collaborator may start or take over a claimed feature; proposal 166's ground.
 
 ## Seen on a released install, 0.40.0-beta41
 

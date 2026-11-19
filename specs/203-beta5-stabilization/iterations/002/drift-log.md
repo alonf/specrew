@@ -1423,3 +1423,57 @@ The following resolution strategies remain available if drift is detected later 
     and the limit stays at 1,500 s. A control run on `f30f5ea3d` follows, alone, under the same conditions, to tell
     the environment from these commits. One thing outside the code differs: WSL's virtual machine has been up since the
     Linux checks at about 04:45, and both fast runs were before that.
+- **The validator suite's slowness, investigated** (the reviewer session's ruling, time-boxed to two full runs; all
+  alone, in a temp worktree with the home redirected and each output line timestamped):
+  - A control on `f30f5ea3d`, 1,124 s, with WSL's virtual machine up as it was for the 1,491 s run. The closed-iteration
+    cases matched within a few seconds; the three approval-reuse cases took 192 to 204 s against 312 to 317 s.
+  - The bisect: `f30f5ea3d` with `8bd3d15ee`'s `verification-plan.json`, 1,111 s, with approval-reuse at 189 to
+    201 s. So the plan file is not the cause.
+  - A repeat on `8bd3d15ee`, 1,194 s, with approval-reuse at 206 to 212 s. So these commits are not the cause either.
+    The 1,491 s run, the first after a full sweep, was variation, and it fell on the approval-reuse cases only.
+  - Recorded as candidate B5F-094, with the per-case table in `docs/beta5-findings.md`. There is no fix and no limit
+    change: a limit change is the maintainer's. Until the maintainer rules on the limit or the cause is removed, a
+    sweep's timeout on this one suite is read against its lone run.
+
+### DRIFT-049 — CI on `a204dd3de`: the Linux fix holds, and the gate stops on a committed feature claim (B5F-095), a rule disagreement with the maintainer; T023 (ii) built
+
+- **The push** `16756e2fd..a204dd3de` (08:07:51 local on 2026-11-19): Cross-Platform 44469926691 and Test
+  44469926597 green on every job. In Specrew CI 44469926488, Lint, the self-leak firewall, the Publish suite and the
+  Windows `.cmd`-shim suites are green. The Deterministic gate (ubuntu, job 135378834858) is red, and the Contract lane
+  was skipped after it.
+- **DRIFT-048's fix holds on Linux:** the gate passed `agent-led-workshop-replay` and the workshop steps, and reached
+  the F-206 census step for the first time on 203; `feature-018-render-budget` was green there (3 s).
+- **The red**: `project-path-resolution-regression`, "specrew start --no-launch (default path) exited with code 1".
+  Start said 203 "is already claimed by" the maintainer's user on one machine, "Start declined; no active session lock
+  was recorded".
+  - The suite (206 T015 and T024) builds its fixture from the repository's non-ignored files and names the fixture's
+    branch after the feature the copied identity file names, "as a collaborator receives it".
+  - 203's tracked `.squad/active-features.yml` carries 203's claim, so on the CI runner's identity
+    `Test-FeatureClaimConflict` finds a conflict.
+  - Main passes because its identity file names 206, which has no claim. Locally the claimant is the same identity, so
+    the sweep is green; in WSL the suite stopped earlier, at the missing uv and Node.
+- **Stopped, with no rerun and no fix:** the crew judged it a disagreement between two rules, not a 203 code defect,
+  and the reviewer session agreed. 206's suite asserts that a collaborator's fresh checkout starts; the claim rule
+  declines a start on a feature claimed by someone else, with no override. The reviewer session put it to the
+  maintainer, with a recommendation that 203 stop carrying its claim in the tree.
+- **The crew's reads for that decision** (reported to the reviewer session):
+  - 203's claim entered at `a1ffc6867` (the specify bookkeeping), and every boundary sync since rewrites it
+    (`sync-boundary-state.ps1:371-383`; `Update-FeatureClaim` re-adds a missing claim). The crew's bookkeeping commits
+    took it with the sync's other writes, and nothing in the engine or the ignore rules leaves it out.
+  - The gate preflight classes `.squad` paths as governance records, so an uncommitted claim does not block a sync.
+    The validator does not read the file.
+  - With 203's claim out of the tracked file, the suite would pass on a foreign identity by reading.
+  - The premise needed a correction: 205 committed its claim and never released it (`700e61275`); 206 never committed
+    one. F-051's design commits claims on purpose as the cross-machine coordination surface
+    (`scripts/internal/feature-claims.ps1:6-8`), so leaving them out is a departure from it, not a return to practice.
+  - Main's file holds 11 never-released claims of merged features (B5F-014's class).
+  - Recorded as candidate B5F-095, and in the hand-back note.
+- **T023 (ii)** (`9cfe60605`): `record-phase-line-sync-and-check.tests.ps1`, the boundary sync's state-truth gate and
+  the governance check together over the review sign-off and retro sequences. It was green on its first run (8 of 8),
+  so it is recorded as a pinning test. The two "requires the next phase line" cases assert that the stale message is
+  present, so the suite fails if the rule stops firing. It is named in lane `f203-i001-suites`, and the new-file guards
+  and PSScriptAnalyzer are clean.
+- **Waiting on**: the maintainer's ruling on the claim. T030 stays in progress until CI is green on both Linux jobs. The
+  campaign waits for that, T023 (ii)'s push and the reviewer session's word.
+- **Class closure**: NONE — a rule disagreement with the maintainer and a candidate finding. The suite that catches it
+  (`project-path-resolution-regression` on a foreign identity) is in per-push CI.
