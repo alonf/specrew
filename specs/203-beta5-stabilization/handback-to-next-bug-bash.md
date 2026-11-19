@@ -86,15 +86,6 @@ next bug bash.
   second merge of main, 203's workshop hash and 205's `workshop-205-workshop-lens-order` both satisfied it (iteration
   002 DRIFT-045). Not fixed in 203. For proposal 166, the same catalog is per project and each feature's workshop
   rewrites it, so the last merge wins.
-
-## Fixed in 203, for Completeness
-
-- **Item 8 (HO-206-5), suites that rewrite the real home's hook files**: B5F-039, test first (`77bd4a2e2`, `b69cc5caf`),
-  guard `tests/unit/test-home-isolation.Tests.ps1`.
-- **Item 13 (HO-206-8), a supervisor still running after a failed lease handoff**: 203 T015 part 1 (RED `5388a5f13`,
-  fix `fcafd224f`), guard `co-review-service.Tests.ps1`.
-- **Item 61, campaign findings demoted for a missing "Failure scenario:" clause**: B5F-017, `d3ab3f21c`, guard
-  `reviewer-prompt-contract.Tests.ps1` (its context at line 119 renders the campaign prompt).
 - **Main's workshop tests need a findable typed turn before 203 merges.** A workshop receipt is used only when it names
   a typed turn that can be found, whose text it matches (203 T013, B5F-066). Fixtures that write a receipt with no turn
   (`Write-SpecrewWorkshopAuthorityReceipt` without `-TurnIdentity`, or a hand-written row) are refused on 203. Two of
@@ -104,3 +95,12 @@ next bug bash.
   `Add-ValidatorStopMessage` is missing from the lift), and only the parked lane `f202-i003-suites` names it. No CI
   job, active lane or release list runs it. 203 fixed it on its branch (DRIFT-046); main keeps the red until 203 merges.
   Candidate: a guard that every parked lane's suites also run somewhere, or a CI step that runs the parked lanes.
+
+## Fixed in 203, for Completeness
+
+- **Item 8 (HO-206-5), suites that rewrite the real home's hook files**: B5F-039, test first (`77bd4a2e2`, `b69cc5caf`),
+  guard `tests/unit/test-home-isolation.Tests.ps1`.
+- **Item 13 (HO-206-8), a supervisor still running after a failed lease handoff**: 203 T015 part 1 (RED `5388a5f13`,
+  fix `fcafd224f`), guard `co-review-service.Tests.ps1`.
+- **Item 61, campaign findings demoted for a missing "Failure scenario:" clause**: B5F-017, `d3ab3f21c`, guard
+  `reviewer-prompt-contract.Tests.ps1` (its context at line 119 renders the campaign prompt).
