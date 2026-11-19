@@ -174,7 +174,17 @@ function New-ScratchProject {
         lens = 'product-domain'; phase = 'product-domain'; agenda_status = 'pending-confirmation'; question = 'Fixture question?'
         message_hash = $messageHash; artifact_path = (Join-Path $feature 'lens-applicability.json')
     } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $scratch '.specrew/handover/workshop-question.json') -Encoding UTF8
-    $null = Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response 'The product framing matches.' -HostKind 'test' -SourceEvent 'UserPromptSubmit'
+    # Feature 203 (T013, B5F-066; adapted at 203's merge of main, T030): a receipt is used only when it names the typed
+    # turn the human's reply came from, so the fixture writes that turn (the shape Claude records for a typed message)
+    # with 203's helper, loaded in its own module scope as 203's workshop suites load it.
+    $typedTurnModule = New-Module -Name 'WorkshopAgendaGroupingTypedTurnFixture' -ArgumentList (Join-Path $RepoRoot 'tests\support\cited-typed-turn.ps1') -ScriptBlock {
+        param($HelperPath)
+        . $HelperPath
+        Export-ModuleMember -Function New-SpecrewTypedTurnFixture
+    }
+    $turn = New-SpecrewTypedTurnFixture -ProjectRoot $scratch -Text 'The product framing matches.'
+    Remove-Module -ModuleInfo $typedTurnModule
+    $null = Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response 'The product framing matches.' -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -TurnIdentity ([string]$turn.TurnIdentity)
     Set-Content -LiteralPath (Join-Path $feature 'workshop/product-domain.md') -Value '# Product domain' -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $feature 'workshop/product-domain.yml') -Value 'depth: light' -Encoding UTF8
     return $scratch

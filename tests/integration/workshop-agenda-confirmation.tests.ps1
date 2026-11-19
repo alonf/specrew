@@ -378,10 +378,14 @@ try {
     foreach ($lens in $legacySelected) {
         $legacyState = Get-SpecrewWorkshopLifecycleState -ProjectRoot $scratch -FeatureRef $legacyFeature
         Assert-True ($legacyState.status -eq 'active' -and $legacyState.current_lens -eq $lens) ("FR-013: the old-order confirmed agenda resumes at '{0}' in its own order (got {1}/{2})" -f $lens, $legacyState.status, $legacyState.current_lens)
+        # Feature 203 (T013, B5F-066; adapted at 203's merge of main, T030): the receipt names the typed turn it came from,
+        # written with 203's helper, since a receipt with no findable typed turn is not used.
+        $legacyReply = 'We agreed on {0}.' -f $lens
+        $legacyTurn = New-SpecrewTypedTurnFixture -ProjectRoot $scratch -Text $legacyReply
         $receipt = [ordered]@{
             schema_version = '1'; receipt_id = ('receipt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)); feature_ref = $legacyFeature; iteration_number = ''
-            phase = 'lens'; lens = $lens; question_hash = 'q'; response_hash = 'r'; confirmation = 'human-confirmed'; confirmation_scope = 'lens-question'
-            source_event = 'UserPromptSubmit'; host_kind = 'claude'; recorded_at = '2026-11-10T00:00:00Z'
+            phase = 'lens'; lens = $lens; question_hash = 'q'; response_hash = (Get-SpecrewWorkshopAuthorityHash -Text $legacyReply); confirmation = 'human-confirmed'; confirmation_scope = 'lens-question'
+            source_event = 'UserPromptSubmit'; host_kind = 'claude'; recorded_at = '2026-11-10T00:00:00Z'; turn_identity = [string]$legacyTurn.TurnIdentity
         }
         ($receipt | ConvertTo-Json -Compress) | Add-Content -LiteralPath $authorityPath -Encoding UTF8
         $closeOutput = @(& pwsh -NoProfile -File $lensWriter -ProjectRoot $scratch -FeatureRef $legacyFeature -Lens $lens -Decision 'We agreed to keep the existing layering.' -Depth 'medium' -Agenda @('An open question?') 2>&1)
