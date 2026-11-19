@@ -208,6 +208,36 @@ fixed in 203.
     bookkeeping stays uncommitted until the verdict) is easier to remember and gets over-applied. Wanted: the sync's
     refusal says which paths are the agent's to commit and which are the engine's to leave. **Still in the merged tree:
     not checked.**
+- **M. The review command** ("Desktop M: pass it", typed in the reviewer session at 21:18 local on 2026-11-19,
+  relayed). M2 to M4 are the class that proposal 142's amendment addresses (every refusal names its governed repair).
+  - **M1. Reviewer majors cannot gate.** The release does not ask the reviewer for a failure scenario, and the engine
+    demotes any major without one ("[demoted to minor: no concrete failure scenario, so it cannot gate; reported as
+    major by the reviewer]"). On two downstream projects over two weeks this was most findings of most rounds: 14 of 18
+    and 12 of 14 in the latest rounds. Among them were a revoked membership's refresh token working again after the
+    member was re-added, a public service identity able to read another site's sign-in secret, and a required denial
+    audit that production never reaches. They were fixed because the humans read the reports, not because a gate held.
+    This is the strongest downstream sighting of 206's bug-list item 61, and a reason for 203's fix to reach a release
+    soon. **Still in the merged tree: no.** `d3ab3f21c` (203 T008) is in it: the prompt asks for the literal
+    `Failure scenario:` clause (`reviewer-candidate-prompt.md:51`, `worktree-reviewer.ps1:1171`), and a stated scenario
+    keeps its severity. The demotion of a major *without* one remains (`review-result-ingestor.ps1:193`). A question of
+    its own for the next bug bash: should such a major be demoted silently at all, or returned to the reviewer?
+  - **M2. `specrew review --iteration 003` from PowerShell is refused with the bare code
+    `review-campaign-active-iteration-unresolved`.** PowerShell binds the bare argument as the number 3, and the
+    identity check wants a string of three or more digits. Leaving the argument out, or `--iteration=003`, works. The
+    same function gives a plain message for a missing feature and none for the iteration. **Still in the merged tree:
+    yes** (`specrew-review.ps1:332` keeps the argument as passed; `review-authority-core.ps1:316` requires a
+    `[string]` matching `^[0-9]{3,}$`; `review-campaign-orchestrator.ps1:2673` throws the bare code).
+  - **M3. "allowance-exhausted" with a typed round approval captured and unspent: the output does not say that
+    `--approve-round` turns it into a round.** **Still in the merged tree: no, not in this form.** 203's T008 removed
+    `--approve-round` (the budget approved with the implementation pays for the rounds; `specrew-review.ps1:340`
+    refuses the flag in plain words), and the allowance-exhausted text now names the typed reset reply
+    (`specrew-review.ps1:1597-1604`).
+  - **M4. "verification-command-failed:<id>:diagnostics-require-command-scoped-disclosure" without the derived
+    diagnosis on the console** (exit code, duration, timed out or not, the environment names the plan allowed). The
+    cause in that run was a test that failed only in a clean Windows checkout (a line-ending assumption), found only by
+    running the command by hand. **Still in the merged tree: not checked in full.** The orchestrator builds the
+    diagnosis beside the sealed reason (`review-campaign-orchestrator.ps1:495-501`) and carries it into the round's
+    outcome (`:2265`, `:2437-2480`); whether it reaches the console on this path was not traced.
 
 ## Fixed in 203, for Completeness
 
