@@ -152,10 +152,38 @@ function Read-PointerFeature {
     return [string](Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json).feature_directory
 }
 # The validator's closure rule, loaded from its file so the text asserted is the text shipped.
-$validatorText = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions/specrew-speckit/scripts/validate-governance.ps1') -Raw -Encoding UTF8
-$fnStart = $validatorText.IndexOf('function Test-SessionStateBoundaryCanonical {')
-$fnEnd = $validatorText.IndexOf("`nfunction ", $fnStart + 10)
-Invoke-Expression $validatorText.Substring($fnStart, $fnEnd - $fnStart)
+# Lifted by dependency (203 T030, at 203's merge of main): the rule, every validator function it calls (transitively), and
+# the top-level assignments of the script variables those functions use. Feature 206 made the rule call its new
+# Add-ValidatorStopMessage, which reads $script:ValidatorStopMessages; a lift of the one function by text broke on that,
+# and the next helper the rule gains is lifted the same way.
+$validatorAst = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $repoRoot 'extensions/specrew-speckit/scripts/validate-governance.ps1'), [ref]$null, [ref]$null)
+$validatorFunctions = @{}
+foreach ($definition in $validatorAst.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)) {
+    if (-not $validatorFunctions.ContainsKey($definition.Name)) { $validatorFunctions[$definition.Name] = $definition }
+}
+$lifted = [ordered]@{}
+$pending = [System.Collections.Generic.Queue[string]]::new()
+$pending.Enqueue('Test-SessionStateBoundaryCanonical')
+while ($pending.Count -gt 0) {
+    $name = $pending.Dequeue()
+    if ($lifted.Contains($name)) { continue }
+    $lifted[$name] = $validatorFunctions[$name]
+    foreach ($call in $validatorFunctions[$name].FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] }, $true)) {
+        $called = $call.GetCommandName()
+        if ($called -and $validatorFunctions.ContainsKey($called) -and -not $lifted.Contains($called)) { $pending.Enqueue($called) }
+    }
+}
+$scriptVariables = @($lifted.Values | ForEach-Object {
+        $_.FindAll({ param($node) $node -is [System.Management.Automation.Language.VariableExpressionAst] -and $node.VariablePath.IsScript }, $true) |
+            ForEach-Object { $_.VariablePath.UserPath -replace '^script:', '' }
+    } | Sort-Object -Unique)
+foreach ($statement in $validatorAst.EndBlock.Statements) {
+    if ($statement -is [System.Management.Automation.Language.AssignmentStatementAst] -and $statement.Left -is [System.Management.Automation.Language.VariableExpressionAst] -and
+        $statement.Left.VariablePath.IsScript -and $scriptVariables -contains ($statement.Left.VariablePath.UserPath -replace '^script:', '')) {
+        Invoke-Expression $statement.Extent.Text
+    }
+}
+foreach ($definition in $lifted.Values) { Invoke-Expression $definition.Extent.Text }
 function Invoke-ClosureRule {
     param([string]$Root)
     # It reports through Write-Host (the information stream) and returns a count; the contradiction lines are kept.
