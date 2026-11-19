@@ -1304,3 +1304,39 @@ The following resolution strategies remain available if drift is detected later 
   suites green alone. No test file was added, so the inventory guards are not owed.
 - **Class closure**: cause 1 and cause 2 by their own suites, now green; the parked-lane blind spot is a hand-back
   candidate.
+
+### DRIFT-047 — The sweep of `f30f5ea3d`: one wall-clock budget red, pushed on the reviewer session's ruling; the reviewer order kept (the maintainer); desktop candidates H to K passed on
+
+- **The sweep** (02:41 to 04:20 local on 2026-11-19, Throttle 3, 1,500 s per suite; git sampled every 2 minutes, 49
+  samples, all ok):
+  - 338 suites, 1 failed, 0 known red, 0 spanned standby.
+  - All ten lanes exit 0: `f203-i001-suites` 555 s, the t008 lane 597 s, `f203-i001-carried` 208 s.
+  - Home hook files: 0 changed before or during, 0 written to the redirected home, and the crew's 12-file hash
+    identical.
+  - The three suites DRIFT-046 fixed are green. B5F-036's two suites are green: `project-path-resolution-regression`
+    143 s, `validator-hardening-iteration2` 976 s, under the 1,200 s mark.
+- **The one red**: `tests/integration/feature-018-render-budget.ps1`, a wall-clock budget of 1,500 ms for one dashboard
+  snapshot and render.
+  - It took 2,113 ms in the sweep, and 1,894 ms (red) then 1,292 ms (green) alone on the same revision.
+  - It was green in the sweep of `876874a72` with the same renderer. `f30f5ea3d` differs from that revision only by
+    two test-only fixes and records, and the renderer's only change since 203's last push is 206's `4c543c1a3`, already
+    in `876874a72`.
+  - It is 206's bug-list item 11 ("sits on its 1.5 s budget"), carried in 206's seed for the next bug bash.
+- **Ruling** (the reviewer session's, routine, options (a) with (d)): `f30f5ea3d` is pushed as swept, with no
+  re-sweep. If CI fails only on this suite, that is a timing case under the maintainer's standing rerun exception: one
+  rerun of the failed job, recorded. Anything else red stops the push. The absolute budget inside a per-push CI step is
+  a hand-back line.
+- **The reviewer order** (the maintainer, typed in the reviewer session at 02:48 local on 2026-11-19, relayed): "203
+  reviewer order: A".
+  - The granted order is kept: codex, copilot, claude, 4 rounds. There is no re-grant and no lifecycle step back.
+  - It was decided on the crew's facts: the order is in the before-implement grant; both hosts launch on this machine;
+    a failed launch spends nothing; a clean round ends the review.
+  - Codex's own lines in `adedce10e` have two other reads: the crew's review and correction, and the reviewer
+    session's own read.
+  - The campaign starts after this push is green on CI and T023 (ii) is done, on the reviewer session's word. If
+    Codex's round 1 is clean, the crew tells the reviewer session before anything moves toward sign-off.
+- **Desktop candidates** (the maintainer, typed in the reviewer session at 02:48, "Desktop H, I and J: pass them", and
+  at 03:10, "Desktop K: pass it", relayed): defects met on a released 0.40.0-beta41 install. They are recorded in the
+  hand-back note's new section "Seen on a released install, 0.40.0-beta41", each with whether the merged tree still has
+  it. None is fixed in 203.
+- **Class closure**: NONE — a sweep record, two maintainer decisions and hand-back candidates; the push and CI follow.

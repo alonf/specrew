@@ -95,6 +95,65 @@ next bug bash.
   `Add-ValidatorStopMessage` is missing from the lift), and only the parked lane `f202-i003-suites` names it. No CI
   job, active lane or release list runs it. 203 fixed it on its branch (DRIFT-046); main keeps the red until 203 merges.
   Candidate: a guard that every parked lane's suites also run somewhere, or a CI step that runs the parked lanes.
+- **An absolute wall-clock budget inside a per-push CI step.** `tests/integration/feature-018-render-budget.ps1` gives
+  one dashboard render 1,500 ms. It took 2,113 ms in 203's sweep of `f30f5ea3d`, and 1,894 then 1,292 ms alone on the
+  same revision; it was green in the sweep before, with the same renderer. 206 put it in Specrew CI's per-push step
+  for the script suites (F-206 T015), so a slow runner can fail a push on the margin. It is already 206's bug-list item
+  11 ("sits on its 1.5 s budget"). Wanted: a relative budget, a retry with the median, or its own non-blocking job
+  (iteration 002 DRIFT-047).
+
+## Seen on a released install, 0.40.0-beta41
+
+Defects the maintainer met on a downstream project running the released 0.40.0-beta41, passed to the next bug bash
+("Desktop H, I and J: pass them" and "Desktop K: pass it", typed in the reviewer session at 02:48 and 03:10 local on
+2026-11-19, relayed). Each line says whether 203's merged tree (`f30f5ea3d`) still has it, from a short read; none is
+fixed in 203.
+
+- **H1. A reviewer host whose command on PATH is only an npm shim is refused at launch, after the preflight passed.**
+  `Resolve-ReviewWindowsProcessLaunch` throws `runtime-command-shim-unsupported:<command>` for a `.cmd` that is not the
+  one accepted PowerShell form. Two projects hit it with codex. Wanted: the preflight checks launchability, and the
+  refusal names the fix (a native executable first on PATH). **Still in the merged tree: yes.** The Windows port's
+  preflight checks only the job-object capability and the snapshot; the resolver runs at launch
+  (`review-windows-runtime-port.ps1:164`).
+- **H2. A validator message that misleads.** "plan.md status is stale: retro.md exists" reads as "the Status must be
+  retro" where the engine itself advances plan.md's Status at each approval and the agent may not edit it. **Still in
+  the merged tree: yes.** The text is unchanged (`validate-governance.ps1:5380`); 206's T034 exempts the pending-approval
+  case but not the wording.
+- **H3. The cited-run freshness rule judges a closed, sealed iteration against the live tree,** so a later commit makes
+  a sealed iteration fail. The review preflight skips the rule (`SPECREW_REVIEW_PREFLIGHT`); a hand run of the validator
+  does not. **Still in the merged tree: probably yes.** By a short read, the rule's only exemption is the preflight
+  marker (`validate-governance.ps1:1315-1349`); not run.
+- **I. A completed design workshop cannot be reopened for a scope revision.** `confirm-workshop-agenda` refuses unless
+  the agenda is pending confirmation, and `repair-workshop-controller-state` throws the bare code
+  `workshop-repair-only-pending-state-supported`; the only route is a new feature record. Wanted: a governed
+  scope-revision path, and a refusal in plain words. **Still in the merged tree: yes**
+  (`confirm-workshop-agenda.ps1:130`, `repair-workshop-controller-state.ps1:106`).
+- **J1. `specrew start` crashes in a fresh worktree of a governed project.** With no start context and no saved start
+  prompt, the session state comes from the identity file or the decisions log; the decisions log's state has no
+  `feature_path`, and `Get-SpecrewLateBoundaryIssues` reads `$SessionState.feature_path` under strict mode ("The
+  property 'feature_path' cannot be found on this object"). **Still in the merged tree: yes, by reading**
+  (`session-recovery.ps1`, strict mode at :1; the decisions state, T031's reader included, carries no `feature_path`).
+- **J2. A feature created in a second worktree cannot receive typed-reply receipts from the session that created
+  it,** because the session's captured turns belong to the first folder; the workshop then refuses "no typed human
+  reply receipt" and nothing says why. **Still in the merged tree: not checked** (it needs two worktrees).
+- **K. A second feature cannot begin while another feature is open in the same folder.** The most serious of the set:
+  with I and J1 it leaves no governed route for a mid-feature scope revision on the release. Wanted: `--resume-feature`
+  switches the session's feature (or refuses and says why); the workshop hook resolves the feature of the open workshop
+  question, not the last synced feature; a governed "park this feature, start another" step. The same assumption as
+  203's T031 reader (one current feature per folder); proposal 166's ground.
+  - **K1.** `specrew start --resume-feature <other>` keeps the session's old feature_ref, boundary and iteration and
+    replaces only feature_path, so the start context names feature A with feature B's path; it exits 0 and says
+    nothing. **Still in the merged tree: yes** (`specrew-start.ps1:3376-3386`).
+  - **K2.** The prompt hook takes the open workshop question's feature from the session's feature_ref and falls back to
+    the branch only when it is blank, so feature B's pre-specify question is never registered and the agenda refuses
+    "Product-domain has no typed human reply receipt" with nothing naming the cause. **Still in the merged tree: yes**
+    (`HandoverStore.ps1:1874`, `specrew-bootstrap-provider.ps1:707`).
+  - **K3.** Only the new feature's first boundary sync moves the anchor, and it comes after the workshop that needs it.
+    **Still in the merged tree: not checked separately** (it follows from K1 and K2).
+  - **K4.** On the recovery prompt after a branch switch: option A re-anchors to the old feature over the
+    `--resume-feature` given, option B drops the resume, and only `--recover` keeps the named feature, which then gives
+    K1's mixed state. **Still in the merged tree: yes, by reading** (`Resolve-SpecrewRecoverySelection`); the no-console
+    loop of the sighting is 206's fix, merged into 203.
 
 ## Fixed in 203, for Completeness
 
