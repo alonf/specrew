@@ -1406,3 +1406,20 @@ The following resolution strategies remain available if drift is detected later 
 - **Standing practice from now** (the reviewer session's ruling): when a change touches path, URL, process-launch or
   line-ending handling, or after a merge of main that brings new per-push CI suites, the Linux subset runs in WSL
   before the push, by this method.
+- **The sweep of `8bd3d15ee`** (about 05:52 to 07:38 local, Throttle 3, 1,500 s per suite; git sampled every 2
+  minutes, 54 samples, all ok):
+  - 338 suites, 2 failed, 0 known red, 0 spanned standby. All ten lanes exit 0, and the home hook files are unchanged.
+  - Before the sweep, the Windows targeted suites on `491d0f4c9` were 15 of 15 green. `boundary-reader-conformance`
+    was red only under the crew's batch helper, which runs a Pester file with `-File`; through Invoke-Pester, as the
+    sweep runs it, it is 20 of 20.
+  - `feature-018-render-budget`: 2,555 ms against 1,500. Covered by item 11's ruling (DRIFT-047).
+  - `validator-hardening-iteration2` timed out at 1,500 s after 7 PASS lines and no FAIL. It had taken 951 s on
+    `876874a72` and 976 s on `f30f5ea3d`, both in full sweeps.
+  - Run alone on `8bd3d15ee` (07:40 to 08:05 local; temp worktree, home redirected, each output line timestamped):
+    green in 1,491 s, with output steady throughout. Each approval-reuse case took about 315 s, each closed-iteration
+    case about 96 s, the classifier cases about 1 s each and the two specrew-start cases 29 and 6 s. The case after the
+    sweep's last PASS took 96 s like its neighbours, so the suite was slow, not stuck.
+  - Ruling (the reviewer session's, routine, (b) then (a)): `8bd3d15ee` is pushed as swept with these records on top,
+    and the limit stays at 1,500 s. A control run on `f30f5ea3d` follows, alone, under the same conditions, to tell
+    the environment from these commits. One thing outside the code differs: WSL's virtual machine has been up since the
+    Linux checks at about 04:45, and both fast runs were before that.

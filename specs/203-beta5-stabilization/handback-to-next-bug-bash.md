@@ -124,6 +124,11 @@ next bug bash.
   (no persistent corruption)"), 3 of 3 green alone (iteration 002 DRIFT-048, WSL). If it is real and not the test, a
   marker written by concurrent writers on Linux can be left corrupt. That is session-state damage a later hook would
   read. Wanted: a run of the race under load on Linux to tell the two apart.
+- **`validator-hardening-iteration2` runs 16 to 25 minutes against a 1,500 s limit.** It took 951 and 976 s in full
+  sweeps, timed out at 1,500 s in the sweep of `8bd3d15ee`, and took 1,491 s alone. Each approval-reuse case takes about
+  315 s and each closed-iteration case about 96 s (iteration 002 DRIFT-048). It sits in the release list only, in no
+  per-push CI step. Wanted: split it by case family, or share the validator fixture runs, so that it sits well inside
+  its limit.
 
 ## Seen on a released install, 0.40.0-beta41
 
