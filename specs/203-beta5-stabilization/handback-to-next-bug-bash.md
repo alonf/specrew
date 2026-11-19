@@ -95,3 +95,12 @@ next bug bash.
   fix `fcafd224f`), guard `co-review-service.Tests.ps1`.
 - **Item 61, campaign findings demoted for a missing "Failure scenario:" clause**: B5F-017, `d3ab3f21c`, guard
   `reviewer-prompt-contract.Tests.ps1` (its context at line 119 renders the campaign prompt).
+- **Main's workshop tests need a findable typed turn before 203 merges.** A workshop receipt is used only when it names
+  a typed turn that can be found, whose text it matches (203 T013, B5F-066). Fixtures that write a receipt with no turn
+  (`Write-SpecrewWorkshopAuthorityReceipt` without `-TurnIdentity`, or a hand-written row) are refused on 203. Two of
+  205's were adapted at 203's second merge of main (iteration 002 DRIFT-046).
+- **A test named only by a parked lane is never run, so a parked lane can hide a red.** On main,
+  `tests/unit/closeout-records-on-approval.tests.ps1` is red (it lifts a validator rule by text, and 206's
+  `Add-ValidatorStopMessage` is missing from the lift), and only the parked lane `f202-i003-suites` names it. No CI
+  job, active lane or release list runs it. 203 fixed it on its branch (DRIFT-046); main keeps the red until 203 merges.
+  Candidate: a guard that every parked lane's suites also run somewhere, or a CI step that runs the parked lanes.

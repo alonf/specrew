@@ -1266,3 +1266,41 @@ The following resolution strategies remain available if drift is detected later 
   Alone on the part-one tree, `validator-hardening-iteration2` took 835 to 889 s. Its time under the sweep's load is
   reported, and above 1,200 s it goes to the reviewer session before the push.
 - **Class closure**: NONE — a merge record; the full sweep, the push and CI follow and are recorded when they conclude.
+
+### DRIFT-046 — The sweep of `876874a72` was red on three suites from two cross-feature causes; both fixed test-only
+
+- **The sweep** (01:09 to 02:37 local on 2026-11-19, Throttle 3, 1,500 s per suite; git sampled every 2 minutes, 44
+  samples, all ok): 338 suites, 3 failed, 0 known red. Nine lanes exit 0; `f203-i001-carried` exit 1, on one of the
+  three suites. Home hook files: 0 changed before or during, 0 written to the redirected home, and the crew's 12-file
+  hash identical. Nothing was pushed.
+- **B5F-036, off the known-red list**: `project-path-resolution-regression` green in 134 s, and
+  `validator-hardening-iteration2` green in 951 s under load, under the reviewer session's 1,200 s mark. The empty
+  known-red list held.
+- **Cause 1, 205's workshop fixtures under 203's cited-turn rule** (203 T013, B5F-066):
+  - `workshop-agenda-grouping` (205 T031) wrote its product-domain receipt with no typed turn, so the three
+    real-catalog renders were refused at `confirm-workshop-agenda.ps1:145` ("Product-domain has no typed human reply
+    receipt").
+  - `workshop-agenda-confirmation`'s FR-013 case (205) appended hand-written lens receipts with no turn and a
+    placeholder `response_hash`, so the lens writer refused them.
+  - The receipt rule itself is from beta3 and on both sides. What refused is 203's sender check: a receipt is used only
+    when its typed turn is found, and its text says what the turn said.
+  - Fixed in `6e462b6ec`: the fixtures write a typed turn with 203's helper (`tests/support/cited-typed-turn.ps1`), and
+    the FR-013 receipts carry the reply's own hash.
+  - **The product check** (the reviewer session's condition): 205's product changes are the grouped agenda's
+    presentation, `index.yml` as the one lens order, and read-only stack freshness lines. None writes a workshop
+    answer, a skipped reason or an agenda decision. The writers 205's paths use require typed receipts:
+    `confirm-workshop-agenda.ps1:143-147` (product-domain) and `:253-267` (the agenda's receipt, bound to its digest),
+    and `confirm-workshop-lens.ps1:208-224`, which 205 did not change. So it is a fixture, not a product disagreement.
+- **Cause 2, a 203 test broken by 206's validator change**:
+  - `closeout-records-on-approval` lifted `Test-SessionStateBoundaryCanonical` by text. 206 made that rule call its
+    new `Add-ValidatorStopMessage`, which reads `$script:ValidatorStopMessages`, so case 7 failed ("The term
+    'Add-ValidatorStopMessage' is not recognized").
+  - Fixed in `9a6e7f092`: the suite lifts by dependency (the rule, every validator function it calls, through the
+    AST, and the top-level assignments of the script variables they use), so the next helper is lifted the same way.
+  - **On main** (`a78ac54cf`, a temp worktree, the home redirected), the unmodified suite is red the same way. There
+    it is named only by the parked lane `f202-i003-suites`: no active lane, no CI step and no release list runs it, so
+    the parked lane hid the red. It goes to the hand-back note and is not fixed on main.
+- **Reruns on `9a6e7f092`** (a temp worktree, the home redirected): `f203-i001-carried` exit 0 (208 s), and the three
+  suites green alone. No test file was added, so the inventory guards are not owed.
+- **Class closure**: cause 1 and cause 2 by their own suites, now green; the parked-lane blind spot is a hand-back
+  candidate.
