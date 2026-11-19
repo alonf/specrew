@@ -101,6 +101,21 @@ next bug bash.
   for the script suites (F-206 T015), so a slow runner can fail a push on the margin. It is already 206's bug-list item
   11 ("sits on its 1.5 s budget"). Wanted: a relative budget, a retry with the median, or its own non-blocking job
   (iteration 002 DRIFT-047).
+- **The cap's refusal names the wrong requirement for a packet block.** When a boundary packet is refused three times
+  in a row, the fourth Stop is released with "verdict marker still absent or wrong", whatever the packet's actual
+  problem: the cap's subject falls through to that label (`specrew-conformance-provider.ps1:1972`). In 203's Linux red
+  the problem was a review link, and the message pointed at the marker. Wanted: the cap names the requirement that
+  blocked (iteration 002 DRIFT-048).
+- **The engine writes four-slash file URLs on Linux and macOS.** Six sites build `'file:///' +` an absolute path
+  (`refocus.ps1:141` and `:240`, `design-analysis-gate.ps1:1373`, `lens-applicability.ps1:490` and `:505`,
+  `validate-governance.ps1:5220`), which on a POSIX path gives `file:////tmp/...`. 203's review-link reader now reads
+  that form (DRIFT-048); other readers, a host's link handling and a human's click may not. Wanted: one URL writer that
+  gives `file:///tmp/...` on POSIX and `file:///C:/...` on Windows.
+- **A Windows sweep cannot see a Linux-only red, and a suite can reach a feature's Linux CI for the first time only
+  through a merge.** `agent-led-workshop-replay` entered Specrew CI's per-push gate with 205's named steps; 203's own
+  pushes never ran it on Linux, and the merge of main ran it against 203's engine there first, red (DRIFT-048). Wanted:
+  a Linux run of the gate's suites before a feature's merge push, or a way to run them locally (203 used a WSL copy of
+  the tree).
 
 ## Seen on a released install, 0.40.0-beta41
 
@@ -154,6 +169,24 @@ fixed in 203.
     `--resume-feature` given, option B drops the resume, and only `--recover` keeps the named feature, which then gives
     K1's mixed state. **Still in the merged tree: yes, by reading** (`Resolve-SpecrewRecoverySelection`); the no-console
     loop of the sighting is 206's fix, merged into 203.
+- **L. The boundary gate's working-tree refusal** ("Desktop L: pass it", typed in the reviewer session at 04:33 local on
+  2026-11-19, relayed).
+  - **L1.** The refusal gives a count and no paths: "The boundary tree has 8 uncommitted product/methodology path(s);
+    commit or dispose them before rendering a packet". The check classifies every path but prints none, and saves no
+    per-path report. Wanted: the paths in the message, each with its class. **Still in the merged tree: yes**
+    (`gate-preflight.ps1:208`; the check's evidence holds the classified records, the message does not print them).
+  - **L2.** `specrew start` writes the selected host's agent files (for codex, five `.codex/agents/*.toml`, "Crew
+    runtime synced") into the project, untracked and unignored, and the gate counts each as a product path, so a start
+    run alone makes the next boundary sync refuse. Wanted: the start's runtime files are ignored by the project or
+    classed as runtime by the gate; the Claude and Copilot hosts checked for the same. Proposal 166's ground.
+    **Still in the merged tree: yes, by reading** (`specrew-start.ps1` runs `Invoke-CrewBootstrap` for the selected host
+    on every launch; no ignore rule; the gate does not class host agent folders as runtime). It does not show in this
+    repository only because its `.codex/agents`, `.claude/agents` and `.github/agents` are tracked.
+  - **L3.** The rule that phase work is committed before a boundary sync is one line each in the coordinator
+    governance text and the implementer charter, and nowhere near the sync command; the opposite rule (the engine's
+    bookkeeping stays uncommitted until the verdict) is easier to remember and gets over-applied. Wanted: the sync's
+    refusal says which paths are the agent's to commit and which are the engine's to leave. **Still in the merged tree:
+    not checked.**
 
 ## Fixed in 203, for Completeness
 

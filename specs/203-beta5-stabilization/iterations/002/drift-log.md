@@ -1340,3 +1340,48 @@ The following resolution strategies remain available if drift is detected later 
   hand-back note's new section "Seen on a released install, 0.40.0-beta41", each with whether the merged tree still has
   it. None is fixed in 203.
 - **Class closure**: NONE — a sweep record, two maintainer decisions and hand-back candidates; the push and CI follow.
+
+### DRIFT-048 — CI after the merge push: a Linux-only red in 203's own review-link reader (FR-046 rework), found by a suite that reached 203's CI through main
+
+- **The push** `9cd5a134e..16756e2fd` (04:18:57 local on 2026-11-19): Cross-Platform and Test green on every job.
+  Specrew CI's Deterministic gate (ubuntu, job 135292628066) failed `agent-led-workshop-replay.tests.ps1` (one failure,
+  `:223`), and the Contract lane was skipped after it. The render-budget ruling (DRIFT-047) did not apply.
+- **A diagnostic rerun** of the gate (job 135299486082, the reviewer session's ruling; not a use of the standing rerun
+  exception): red on the same case, so the failure is deterministic on Linux. No further rerun.
+- **Facts:**
+  - The suite was not in Specrew CI on 203 before. 205's `8d8700984` (named CI steps) added it on main, and it reached
+    203 with the merge. Main's run on `a78ac54cf` passed it.
+  - In WSL (pwsh 7.4.6 already installed; nothing installed; each tree copied into WSL's own `/tmp` by `git archive`,
+    HOME in a WSL temp folder, nothing under the Windows profile read or written, the copies removed by exact path),
+    the suite fails the same way on `16756e2fd` and on `9cd5a134e`, 203 before the merges. It passes on Windows (both
+    full sweeps).
+- **Cause:** the fixture's review link is `'file:///'` plus the spec's path with forward slashes. On Linux the path
+  starts with `/`, so the URL has four slashes. 203's T011 reader (`Get-SpecrewReviewTargetLinks`, FR-046) resolved
+  it with `[System.Uri]::new($url).LocalPath`, which on Linux .NET is a UNC host `tmp` (`\tmp\x\spec.md`). So a
+  spec that exists was "review link to a missing file", and the complete packet was blocked.
+  - It was the fourth consecutive block; the cap (3) released it with the generic subject "verdict marker"
+    (`specrew-conformance-provider.ps1:1972`), which named the wrong requirement.
+  - Main passes because main has no "every review link resolves" check: it is 203's.
+  - It is a product defect, not a fixture: the engine itself writes that form on Linux and macOS at six sites.
+- **Ruling** (the reviewer session's, routine): go, a failing test first and then the fix, in the one reader. Recorded
+  as rework on 203's own requirement, found by CI before the review: about 0.5 SP, so the iteration's overrun over the
+  spent buffer is about 0.7 (plan.md's Rework row).
+  - `7823c0cfd`: the failing test, `review-link-file-url-local-path.tests.ps1`, with 22 red on Windows. It tests
+    `ConvertTo-SpecrewFileUrlLocalPath` with `-Platform`, so every case runs on every OS: three, four and five
+    slashes, `%20`, a literal `%`, `%25`, localhost (supported, RFC 8089), another host and an empty path (no local
+    path), and the Windows forms equal to System.Uri's. It also covers the packet reader on a real temp file through
+    the engine's own URL form, and the missing-file refusal unchanged. Named in lane `f203-i001-suites`.
+  - `6fd9b6518`: the fix, with 25 green. Windows is unchanged; elsewhere a file URL is `/` plus its path with the
+    leading slashes collapsed, then percent-decoded. The `.specify` mirror and its hash record are in the same commit.
+    The inventory guards, the mirror record, crossing-presentation and PSScriptAnalyzer are clean.
+- **Hand-back** (not fixed here): the cap's generic subject for a packet block; the six engine sites that build
+  `'file:///'` plus a POSIX path; and the class itself, that a Windows sweep cannot see a Linux-only red and a suite can
+  reach a feature's Linux CI first through a merge. Also added to the hand-back note: desktop candidate L ("Desktop L:
+  pass it", 04:33 local, relayed).
+- **Before the push** (the reviewer session's order, fail fast):
+  1. In WSL: the new suite, `agent-led-workshop-replay`, the turn-end and packet suites, and whatever of the gate's
+     remaining steps and the Contract lane runs there without network, secrets or a real home.
+  2. On Windows: the reader's, turn-end, packet and conformance suites, then the full sweep of the pushed revision.
+  3. The push, with CI on every job; the Deterministic gate and the Contract lane must both run green.
+- **Class closure**: the review-link reader's local-path reading is pinned on every OS by
+  `review-link-file-url-local-path`; the class of a Linux-only red that a Windows sweep cannot see is handed back.
