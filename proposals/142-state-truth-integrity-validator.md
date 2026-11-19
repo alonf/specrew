@@ -93,6 +93,18 @@ A validator rule that runs at boundary-recording time (and at each `validate-gov
 - **FR-009 (added 2026-06-17)**: The resume / SessionStart / scaffold write-path MUST NOT overwrite or re-scaffold the state artifacts of a CLOSED iteration (one whose committed `state.md` is `complete` and/or which is listed in `.specrew/closed-iterations.yml`). If the resume cursor resolves to a closed iteration, the machinery MUST refuse the write, reconcile the cursor to the actual active position, and emit a named integrity event — it MUST NEVER silently revert committed truth. This is the write-path guard; detection alone (FR-001…FR-008) does not prevent the corruption.
 - **FR-010 (added 2026-06-17)**: On resume, the machinery MUST cross-check `.specrew/start-context.json` `session_state` (iteration_number / boundary_type) against committed lifecycle reality — `.specrew/closed-iterations.yml` plus the latest iteration's committed `state.md` — and FAIL (not WARN) if the cursor points at a closed or superseded iteration, so a lagged cursor cannot drive a resume. This escalates the FR-004 `session_state` drift check from WARN to FAIL for the closed/superseded-iteration case.
 - **FR-011 (added 2026-06-30)**: The COMPLEMENT of FR-009/FR-010 (stale cursor) — the EMPTY/MISSING cursor case. On resume, if `.specrew/start-context.json` is empty/absent (a fresh clone or machine switch — it and `.specrew/runtime/` are gitignored per-machine and do NOT travel) but the latest committed `state.md` indicates an active in-flight iteration, the machinery MUST RECONSTRUCT the cursor (`last_authorized_boundary` + `verdict_history` with commit refs) from committed reality — the `state.md` "Current Phase" + the `boundary(<stage>): ...` commit trail + downstream phase commits — rather than leaving it blank. A blank cursor silently breaks downstream consumers: in the F-197 desktop→laptop dogfood (2026-06-29/30) the co-review navigator stage gate no-op'd dark every Stop, and a `sync-boundary-state` repair attempt drove a spurious `intake -> specify` verdict demand. The reconstruction logic is owned by Proposal 193 (its deterministic primitive's reconstruct-on-bootstrap mode); 142's contribution is the DETECTION — FAIL or trigger-reconstruct when an empty cursor coexists with a committed in-flight iteration, never a silent no-op.
+- **FR-012 (A1, 2026-11-19)**: Specrew MUST provide a state doctor command that reads the lifecycle state records
+  (those listed in Why, plus the closed-iterations index and the boundary-sync ledger) and lists each inconsistency
+  with its class and the records that disagree. For each, it names the governed repair.
+- **FR-013 (A1)**: The doctor MUST apply a repair only on the human's explicit yes, and only where the repair is
+  derivable: a derived or runtime record rebuilt from its source of truth. It MUST NOT write or infer an approval, edit
+  a sealed record, change a verdict, or choose between two human decisions.
+- **FR-014 (A1)**: For an inconsistency it cannot repair, the doctor MUST say so and name the governed action that can.
+- **FR-015 (A1)**: Every gate refusal MUST name the governed action that gets past it, or state that none exists. A
+  refusal that gives only a code, or a count without the items, is a defect. Proposal 213's walk harness SHOULD assert
+  this on its walked paths (no dead ends).
+- **FR-016 (A1)**: The doctor and Proposal 166 MUST be sequenced together. 166 removes classes of inconsistency by
+  keeping state per feature and deriving instead of mirroring; the doctor handles what remains.
 
 ### Validator rule shape
 
@@ -127,6 +139,88 @@ Add a new rule to `validate-governance.ps1` (and `shared-governance.ps1` for cro
 | Documentation | `docs/methodology/lifecycle-discipline.md` add State-Truth Integrity section | 0.5 SP |
 
 **Total estimate**: 3-5 SP for a single iteration.
+
+## Amendment A1 (2026-11-19): Detect and Repair — a State Doctor, and Refusals That Name Their Repair
+
+### What exists today
+
+**Diagnosis:**
+
+- `specrew status` and `specrew where`: position and dashboard;
+- the readiness verdict;
+- `validate-governance`;
+- `specrew hooks doctor`: the host hook wiring.
+
+**Repair,** each narrow:
+
+- `specrew start --recover`: the launch record;
+- `specrew reseal`: a sealed iteration;
+- the workshop repair: an unfinished workshop only.
+
+Nothing reads the whole state, names every inconsistency, and brings the project to a consistent state.
+
+### Evidence, 2026-11-17 to 2026-11-19
+
+The cases below come from a released install (0.40.0-beta41) and from this repository's merges. In each, a gate refused
+correctly and the agent stopped correctly, but the refusal named no governed way forward, so a person had to read engine
+source.
+
+- **The state records this proposal lists disagreed after a branch switch and after `--resume-feature`.** A launch
+  record named feature A with feature B's path. A saved start prompt was reported "present but stale or unparseable".
+- **The recovery prompt's options A and B both discarded the feature the operator named.** They also looped without a
+  console; the loop is fixed on main.
+- **The boundary gate's working-tree refusal gave a count and no paths.**
+- **Bare refusal codes with no next step:**
+  - `review-campaign-active-iteration-unresolved`: caused by PowerShell binding the bare argument `003` as the number
+    3;
+  - `allowance-exhausted`: with no mention that `--approve-round` spends the captured approval;
+  - `workshop-repair-only-pending-state-supported`;
+  - `verification-command-failed`: with sealed diagnostics and no derived diagnosis shown.
+- **On this repository:**
+  - the "latest boundary sync" reader returned another feature's entry after a merge (feature 203's T031);
+  - the lane guard was pinned to one feature's lanes (pull request #3916).
+
+These are recorded in feature 203's hand-back note (`specs/203-beta5-stabilization/handback-to-next-bug-bash.md`,
+candidates H to L, on 203's branch until it merges) and in Proposal 166's Amendment A1. Their text is not repeated here.
+
+### The repair half
+
+FR-012 to FR-016 below add a doctor command and a refusal rule.
+
+- **The doctor command** reads the state records and lists each inconsistency with its class and the records that
+  disagree. For each, it proposes the governed repair.
+- **It repairs only what is derivable,** and only on the human's explicit yes. A derivable repair is a derived or
+  runtime record rebuilt from its source of truth. The doctor never:
+  - writes or infers an approval;
+  - edits a sealed record;
+  - changes a verdict;
+  - picks between two human decisions.
+- **What it cannot repair, it says so,** and names the governed action that can.
+- **Every refusal names its repair.** Each gate refusal names the governed action that gets past it, or says that none
+  exists. A refusal with a bare code is a defect. Proposal 213's walk harness can assert this mechanically: no dead
+  ends on the walked paths.
+
+**Relation to Proposal 166.** 166 removes classes of inconsistency, by keeping state per feature and by deriving
+records instead of mirroring them. The doctor handles what remains. The two are sequenced together.
+
+### Priority
+
+The maintainer agreed on 2026-11-19, in reply to the proposal to put 142 at the front, extended from detect to detect
+and repair: "OK, agree, add it". Their question that led to it: "I though that we have some tools (scripts) that can
+analyze the project state and fix it to a stable state". The consequence is that 142 is sequenced with 166 at the front
+of the next streams.
+
+### What A1 changes in the text above
+
+A1 does not rewrite the design above. Where it narrows an earlier line, it says so here:
+
+- The Out of scope bullet "Auto-repair of *existing* drift" no longer holds for derivable records. Those are repaired
+  on the human's yes (FR-013). It still holds for everything else.
+- The bullet "Cross-feature state-truth checks" is out of step with the evidence: a launch record naming one feature
+  with another's path, and a reader returning another feature's entry. The doctor reads the project's state as a
+  whole. The detection rules may stay per iteration.
+- The estimate (3-7 SP in the front matter, 3-5 SP in How) covers detection only. The repair half is not estimated
+  here.
 
 ## Composition
 
@@ -165,3 +259,7 @@ Two empirical instances of the same failure mode in the same feature = strong ev
 - **2026-06-01** — Partially promoted ahead of remaining F-051 iterations after Iteration 2a required three review-remediation rounds for state-truth, scaffold-residue, and review-report coherence gaps. Scope expanded with FR-007 and FR-008.
 - **2026-06-17** — F-184 iteration 002 surfaced a third, more severe instance: the resume/SessionStart write-path re-scaffolded a CLOSED iteration (iter-001 `complete`→`not-started` + a spurious `tasks-progress.yml`) from a stale `.specrew/start-context.json` cursor on a codex→Claude session switch. Reverted from committed truth; recorded in `specs/184-full-antigravity-refocus/iterations/002/drift-log.md`. Scope extended with FR-009 (resume write-path guard: never silently revert a closed iteration) and FR-010 (resume-time cursor-vs-committed-truth validation), elevating 142 from detect-only to a write-path guard. Surfaced via the F-184 iter-002 plan-boundary review; the file-don't-blind-fix discipline kept the fix out of that boundary and here in the proposal instead.
 - **2026-06-30** — F-197's desktop→laptop dogfood surfaced the EMPTY-cursor complement to FR-009/FR-010: a gitignored `start-context.json` does not travel across machines, so a fresh `specrew start` minted a blank cursor while the committed `state.md` said `implement`. The F-197 co-review auto-fire no-op'd dark every Stop (`not-implement-stage`), and a `sync-boundary-state` repair drove a spurious `intake -> specify` verdict demand. Added FR-011 (empty/missing-cursor detection → reconstruct-or-FAIL, never silent no-op) composing with Proposal 193's reconstruct-on-bootstrap. Recorded in `specs/197-continuous-co-review/iterations/009/drift-log.md` D-197-I009-008. Surfaced during a live dogfood; the file-don't-blind-fix discipline kept the fix in the proposal/backlog rather than hand-patched into the running session.
+- **2026-11-19** — Amendment A1: from detect to detect and repair. It adds a state doctor that proposes the governed
+  repair and applies only derivable ones on the human's yes (FR-012 to FR-014), and the rule that every refusal names
+  its repair (FR-015), with the 2026-11-17 to 2026-11-19 evidence. The maintainer's priority places 142 with 166 at
+  the front of the next streams (FR-016).
