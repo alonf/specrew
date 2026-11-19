@@ -116,6 +116,14 @@ next bug bash.
   pushes never ran it on Linux, and the merge of main ran it against 203's engine there first, red (DRIFT-048). Wanted:
   a Linux run of the gate's suites before a feature's merge push, or a way to run them locally (203 used a WSL copy of
   the tree).
+- **`specrew init` checks dependencies before it checks for a non-empty workspace** (`specrew-init.ps1:338`, then
+  `:430`). So a machine without uv or Node never hears the more useful message, that the target folder is not empty;
+  `brownfield-conflict-handling` fails that way on such a machine (iteration 002 DRIFT-048). Wanted: the workspace
+  check first, or both reported together.
+- **`MarkerAtomicWrite.Tests.ps1` red once on Linux under load** ("after the race the marker is a single VALID object
+  (no persistent corruption)"), 3 of 3 green alone (iteration 002 DRIFT-048, WSL). If it is real and not the test, a
+  marker written by concurrent writers on Linux can be left corrupt. That is session-state damage a later hook would
+  read. Wanted: a run of the race under load on Linux to tell the two apart.
 
 ## Seen on a released install, 0.40.0-beta41
 

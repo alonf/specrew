@@ -1385,3 +1385,24 @@ The following resolution strategies remain available if drift is detected later 
   3. The push, with CI on every job; the Deterministic gate and the Contract lane must both run green.
 - **Class closure**: the review-link reader's local-path reading is pinned on every OS by
   `review-link-file-url-local-path`; the class of a Linux-only red that a Windows sweep cannot see is handed back.
+- **The Linux checks in WSL** on `491d0f4c9` (the reviewer session's ruling to go on, routine):
+  - The method: the tree went in by `git archive` through stdin, PATH held Linux paths only, HOME was a WSL temp
+    folder, nothing was installed and nothing under the Windows profile was touched.
+  - Phase A, 9 of 9 green: the new suite (24 passed, 1 skipped, the Windows-host case), `agent-led-workshop-replay`
+    (32 PASS) and the turn-end and packet suites.
+  - Phase B, 103 of 108 green: every gate step after the replay in workflow order, the bootstrap loop, the F-206
+    census step, the Pester step and the Contract lane's two suites.
+  - Four suites did not run on Linux locally, and CI is their evidence: `task-progress-tracking`, `version-checks`,
+    `project-path-resolution-regression` and `brownfield-conflict-handling`. Each stops at the bootstrap's dependency
+    check ("uv not installed", "Node.js not installed"), because WSL has neither and nothing was installed. The
+    Contract lane's start suite skipped its main cases for want of `specify` and `squad`; its no-hang case passed.
+  - One sighting: `tests/bootstrap/MarkerAtomicWrite.Tests.ps1`, "after the race the marker is a single VALID object
+    (no persistent corruption)". It was red once, under the load of phase B's run: one suite at a time, after about
+    100 suites, with Windows otherwise idle (0 to 12% CPU before the run). Alone it was 3 of 3 green (about 1,500 reader
+    samples each, 0 exceptions). 203 has touched neither the suite nor its writer. It is not on the standing exception:
+    if it goes red in CI, the push stops and is reported, with no rerun. Hand-back candidate.
+  - Two limits of the check: WSL clears `/tmp` when the distro idles, so the first run's logs were lost and the checks
+    keep their logs under `/var/tmp`; and WSL has Pester 6.0.0 where CI likely has 5.x, a known unknown of this check.
+- **Standing practice from now** (the reviewer session's ruling): when a change touches path, URL, process-launch or
+  line-ending handling, or after a merge of main that brings new per-push CI suites, the Linux subset runs in WSL
+  before the push, by this method.
