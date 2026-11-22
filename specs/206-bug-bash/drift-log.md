@@ -224,3 +224,39 @@
     `44407730351`.
 - **206 branch**: `d372578b` (DRIFT-206-012) was green on all three workflows on its first attempt.
 - **Class closure**: NONE — a sighting of bug list item 3.
+
+## DRIFT-206-014 — the CI squad pin: a pull request off main; the home npm cache changed during the sandbox proof, not by this crew
+
+- **Recorded**: 2026-11-22, on the 206 branch only.
+- **The decision**: the maintainer, 2026-11-22 01:50 local, relayed by the reviewer session: "CI squad pin: 206 crew,
+  small PR off main". The reviewer session's name changed after a reboot, and the maintainer confirmed it in this
+  session before the work began: "The reviewer session is now named specrewreviewer-4a. My delegations to
+  specrewreviewer-98 apply to it unchanged, and no longer apply to specrewreviewer-98".
+- **The work**: pull request #4097, branch `ci/squad-sdk-pin` off main `a78ac54c`. Not merged.
+  - `d28fa4fa` pins `squad-sdk` 1.1.0 beside `squad-cli` 0.11.0 in the four workflow installs, adds a health check
+    after each, and records option C in the follow-up seed as a release blocker for the next beta.
+  - `4c092579`, on the reviewer session's routine ruling: Cross-Platform Validation's Ubuntu job was red on the pull
+    request event (run 44978335973). It had no install step of its own: `specrew init` installed the CLI alone
+    through the product's path and refused it as unhealthy. This crew's first inventory searched only for install
+    lines and missed it. That job now pre-installs the pinned pair and runs the same health check before init, and
+    prints a `::warning` that it no longer proves the product's own Squad install. The seed gained that as a fourth
+    line, and its wording now says the released install path itself fails, not only the advice.
+  - No product code changed.
+- **CI on `4c092579`**: every check on the pull request green, 22 of 22.
+  - Specrew CI `44980226970` (push) and `44980231405` (pull request), 6 of 6 each. The task-progress-tracking step
+    passed and the Contract lane ran.
+  - Cross-Platform Validation `44980231353`, 8 of 8. Ubuntu Validation's init installed only Spec Kit and completed.
+  - Test `44980226905` and `44980231417`.
+- **The home npm cache**: during the sandbox proof, new debug logs appeared in the real home npm cache at 04:07:49,
+  04:10:53 and 04:16:00 local, and more from the same suite while the pull request's checks ran. Each records `npm view @bradygaster/squad-cli version`, run from a
+  `project-path-resolution-regression` test fixture with the real user `.npmrc`. That is the suite's "specrew update
+  --info" case. The reviewer session confirmed that the 203 crew ran that suite with its go, and that 203's own home
+  hash was unchanged. This crew's sandbox ran only `npm install` and `npm root -g`, with cache, userconfig,
+  globalconfig, prefix and home inside it. The home hook-file hash was unchanged before and after every run. The
+  work paused on the first change and resumed on the reviewer's ruling.
+- **Two logs rotated out**: npm keeps the last ten logs and deleted the oldest as the new ones arrived. One of them was
+  the 897-byte `2026-11-19T19_57_53_765Z` log that this crew wrote and self-reported, from an `npm config get` run
+  outside a sandbox. The other was `2026-11-20T01_11_19_871Z`. Both went through npm's rotation, not through any
+  cleanup by a crew. Nothing was restored.
+- **Class closure**: NONE. The suite's real-home `npm view` call is the 203 crew's hand-back line, per the reviewer
+  session.
