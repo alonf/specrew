@@ -280,3 +280,23 @@
 - **Said in advance**: the push that carries this entry will be red the same way, on the same two steps, for the
   same cause. It is not a new failure.
 - **Class closure**: NONE. A known upstream break; see the follow-up seed's release-blocker section.
+
+## DRIFT-206-016 — the CI squad pin merged to main past the required review, by the maintainer's word; main green
+
+- **Recorded**: 2026-11-22, on the 206 branch only. Pushed together with DRIFT-206-015.
+- **The decision**: the maintainer, 2026-11-22 23:18 local, relayed by the reviewer session: "CI pin merge: go, use
+  --admin for PR 4097". The administrator bypass was named for this one pull request, not as a standing permission.
+- **Before the merge**: pull request #4097 was open at head `4c092579`, mergeable, with 22 of 22 checks green. Its
+  merge state was blocked only on the required review, which the bypass passes.
+- **The merge**: `gh pr merge 4097 --merge --admin`, a merge commit, as for #3722, #3916, #3917 and #3918. Merge
+  commit `551bf5cd` on main, 23:19 local. The `ci/squad-sdk-pin` branch and its worktree are kept; their removal is
+  the maintainer's word.
+- **Main's push CI on `551bf5cd`**: every job green.
+  - Specrew CI `45071463729`, 6 of 6. The Deterministic gate and the Contract lane each passed their "Check squad CLI
+    health" step.
+  - Cross-Platform Validation `45071463773`, 8 of 8. Ubuntu Validation pre-installed the pinned pair, printed the
+    bypass warning, passed the health step, and passed `specrew init`.
+  - Test `45071463797`.
+- **This push**: it carries this entry and DRIFT-206-015. The 206 branch does not take main in, so it stays red on the
+  same two steps that DRIFT-206-015 names, for the same cause.
+- **Class closure**: NONE. Option C stays a release blocker for the next beta, in the follow-up seed.
