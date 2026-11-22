@@ -11,17 +11,20 @@ a new bug bash for the remaining known bugs. This file is that bug bash's starti
 Feature 206 ended with 50 open items, counted by part (item 6 has two parts). The other 40 parts: 26 fixed, 13 handed
 to feature 203, and 1 closed without a fix (81).
 
-## Release Blocker for the Next Beta: the Squad Install Specrew Advises
+## Release Blocker for the Next Beta: the Squad Install Specrew Runs and Advises
 
 The maintainer, 2026-11-22 01:50 local, relayed by the reviewer session: "CI squad pin: 206 crew, small PR off main".
 CI pins the SDK; this part, option C, is recorded here as a release blocker for the next beta and is not built yet.
-The reviewer session is asking the maintainer whether its three parts become bug-list items.
+The reviewer session is asking the maintainer whether its first three parts become bug-list items.
 
 The cause: `@bradygaster/squad-cli` 0.11.0 declares `"@bradygaster/squad-sdk": "*"`. `squad-sdk` 2.0.0, published
 2026-11-19, dropped `ensurePersonalSquadDir` and `resolvePersonalSquadDir`, which the CLI's `dist/cli/core/init.js`
 imports, so every `squad` command fails at start with "does not provide an export named 'ensurePersonalSquadDir'". CI
-now installs `squad-sdk@1.1.0` in the same `npm install -g` as the CLI (`SQUAD_SDK_VERSION` in the workflows). A
-user who follows Specrew's own advice still gets the broken pair.
+now installs `squad-sdk@1.1.0` in the same `npm install -g` as the CLI (`SQUAD_SDK_VERSION` in the workflows). This
+is more than advice: on a clean machine today, the released install path itself fails. Cross-Platform Validation's
+Ubuntu job measured it on pull request #4097 (run 44978335973). `specrew init` found Squad missing, installed the CLI
+alone ("added 220 packages"), then refused with "Squad is installed but the 'squad' command is not healthy" and
+advised the same CLI-only reinstall.
 
 1. **The repair advice reinstalls the broken pair.** Every install Specrew runs or prints names the CLI alone:
    `validate-versions.ps1` lines 349 and 403, `scripts/init/dependency-install.ps1:44` and
@@ -34,6 +37,11 @@ user who follows Specrew's own advice still gets the broken pair.
 3. **Two suites turn their assertions into skips when the toolchain is broken.** `bootstrap-to-iteration.ps1`
    (lines 82 and 138) and `brownfield-conflict-handling.ps1` (lines 179 and 362) print SKIP and pass when the
    bootstrap exits non-zero, so a broken CLI reads as green in both.
+4. **Cross-Platform Validation's Ubuntu job no longer proves the product path.** That job now pre-installs the pinned
+   pair before `specrew init`, so init finds a healthy Squad and does not install its own. Until the install fix
+   lands, the job does not prove that a clean machine's `specrew init` can install Squad by itself, and it prints a
+   `::warning` saying so. The day the product fix lands, this pre-install is removed and the job proves the product
+   path again.
 
 The CI pin is removed when Specrew moves to a squad release whose CLI and SDK agree; this part is fixed before then.
 
