@@ -1477,3 +1477,52 @@ The following resolution strategies remain available if drift is detected later 
   campaign waits for that, T023 (ii)'s push and the reviewer session's word.
 - **Class closure**: NONE — a rule disagreement with the maintainer and a candidate finding. The suite that catches it
   (`project-path-resolution-regression` on a foreign identity) is in per-push CI.
+
+### DRIFT-050 — The claim ruling: SC-001's fixture without its own claim, and a pinning case for the claim decline (test-only, 206's suite); a declined start writes before it declines (B5F-096)
+
+- **The maintainer's decision** (01:50 local on 2026-11-22, relayed by the reviewer session, now named
+  specrewreviewer-4a; the maintainer confirmed, typed, that the delegation covers the new name): "203 start test:
+  fixture without its own claim, plus a case for the claim decline". It answers DRIFT-049's stop.
+- **The change is test-only** (`ea84109bf`), **to 206's suite** `tests/integration/project-path-resolution-regression.ps1`,
+  with the two guards that read its source:
+  - The copy steps are one function, `New-Sc001Fixture`. It copies the files git does not ignore, writes the identity
+    path relative, removes the claim on the fixture's own feature with `Remove-FeatureClaim` (`feature-claims.ps1`, the
+    YAML never edited by hand), and gives the fixture its own git repository with the top-level check.
+  - The decline case runs on a second fixture built by the same function, where `Add-FeatureClaim` records a claim by
+    the constant `sc001-collaborator@sc001-fixture-machine`. The answer 'n' goes in on stdin, and the child's
+    `SPECREW_USER_HOME_OVERRIDE` and profile path point at a temp folder the suite made. The case asserts exit 1 (start
+    exits 2, which arrives as 1 through `pwsh -Command`), the WARN line naming the claimant and branch, "Start declined;
+    no active session lock was recorded.", no `.specrew/active-sessions.yml`, and the claims file byte for byte as
+    `Add-FeatureClaim` left it.
+  - The guards, on the reviewer session's ruling (a) with its conditions: `sc001-fixture-identity.tests.ps1` reads the
+    identity call before the commit line in the function's body; `every-suite-is-named-by-a-lane.tests.ps1` reads git
+    init, the top-level check and its refusal (`exit 1`) in the body, and outside it no git init and no entry-point
+    folder that is not a `New-Sc001Fixture` root or init's empty folder.
+- **The ruled "nothing was written" assertion was red, and is not in the suite.** The first two runs asserted it and
+  failed: a declined start runs first-time setup (the profile, into the redirected home) and the skill catalog repair
+  before the claim check (`scripts/specrew-start.ps1`: setup at line 3068, the repair at 3212, the check at 3401).
+  The crew stopped; the reviewer session ruled (a): the case asserts what the decline owns, the product order is the
+  maintainer's (the reviewer recommends proposal 166's work, not 203), and the measured list is B5F-096.
+- **Pinning test, shown able to fail:** green on its first run with the ruled shape (105 s, all 7 checks). With the
+  `Add-FeatureClaim` line left out the case went red on four counts (exit 0, both lines missing, a session lock
+  written; 105 s), and the file was restored to its exact hash.
+- **The batch** (machine read by the reviewer session at 04:0x local: CPU about 29 percent, 31 GB free) was
+  all green, each lane by its own command line from the plan files:
+  - `f199-class-guards-a` 196 s of 270 and `f199-class-guards-b` 136 s of 270;
+  - `f206-unit-suites` 911 s of 1,200 (it names `sc001-fixture-identity`) and `f206-changed-integration` 338 s of 420
+    (it names this suite);
+  - the inventory guards: `every-suite-is-named-by-a-lane` (built: `fixtureRoot`, `declineFixtureRoot`; run in those
+    two and `initFixtureRoot`), `test-home-isolation` 5 of 5, `host-coupling-firewall`, and PSScriptAnalyzer with no
+    errors on the three changed files;
+  - `sc001-fixture-identity` 5 of 5, and T023 (ii)'s `record-phase-line-sync-and-check` 8 of 8.
+
+  The CI step that names the suite (Specrew CI's integration list) is CI's evidence; its other suites are unchanged.
+  A first try of the batch stopped on a wrong path in the crew's own runner before it printed; it was rerun whole.
+  The real home hook set was hashed around every run and did not change; no fixture folder was left in %TEMP%.
+- **Seen by the 206 crew's home watch:** each run of the suite writes an npm debug log into the real
+  `%LOCALAPPDATA%\npm-cache\_logs`, from the update --info case (`npm view @bradygaster/squad-cli version` with the real
+  `.npmrc`). No change to that case here (the reviewer session's ruling); a hand-back line.
+- **Linux:** WSL cannot run this suite (uv and Node are missing there); CI is its Linux evidence.
+- **The push is held** until the squad-sdk 1.1.0 pin is on main (the reviewer session's word).
+- **Class closure**: the claim red is closed test-only by the maintainer's decision; the start case now means the same
+  on every identity. B5F-096 stays open with the maintainer.

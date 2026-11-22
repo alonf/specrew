@@ -137,6 +137,27 @@ next bug bash.
   claims on purpose, 205 left its claim committed and unreleased, 206 never committed one, and main's file holds 11
   never-released claims of merged features. Wanted: the maintainer's rule on whether claims belong in the tree, and on
   whether a collaborator may start or take over a claimed feature; proposal 166's ground.
+  The maintainer's decision (2026-11-22): 203's change is test-only. The suite's fixture drops its own claim, and a
+  decline case pins the decline (iteration 002 DRIFT-050); the rule questions stay open.
+- **A `specrew start` declined on someone else's claim writes before it declines** (B5F-096, iteration 002
+  DRIFT-050). First-time setup and the skill catalog repair run before the claim check, so the decline leaves the
+  checkout dirty and the profile written. The failing test for the fix, to add to `project-path-resolution-regression`'s
+  decline case: snapshot every file under the claimed fixture (its `.git` folder excepted, ignored files included) and
+  under the redirected home, by path and SHA-256, before the start; after the decline, assert that no path was added,
+  removed or changed in either. Today it is red on 179 fixture files and the profile; on a full checkout, not measured,
+  the profile, `.specrew/runtime`, the version-check cache and 12 tracked files in `.squad` and `.github` would
+  plausibly remain. The message "Start declined; no active session lock was recorded." is true and reads as "nothing
+  happened": proposal 166 (a declined start on someone else's claim leaves the checkout dirty) and proposal 142's
+  amendment (a refusal says what state it left).
+- **`project-path-resolution-regression`'s update --info case writes to the real npm cache on every run**
+  (iteration 002 DRIFT-050). It runs `specrew-update.ps1 -InfoMode` with the real home, which runs
+  `npm view @bradygaster/squad-cli version` with the real `.npmrc` and leaves a debug log in
+  `%LOCALAPPDATA%\npm-cache\_logs`. npm's rotation then drops the oldest log. The decline case in the same suite
+  redirects the home. `test-home-isolation.Tests.ps1` cannot see it: it looks for hook-writing entry points without
+  `SPECREW_USER_HOME_OVERRIDE`, and never for npm, `.npmrc` or `LOCALAPPDATA`. It also passes this file twice, on its
+  `not-a-writer` line and, since this change, on the decline case's own `SPECREW_USER_HOME_OVERRIDE`, which covers
+  that one case and not the file. Wanted: the case's npm calls given a private cache and user config, and a guard that
+  sees npm calls.
 
 ## Seen on a released install, 0.40.0-beta41
 

@@ -342,6 +342,11 @@ streams, before more crews run side by side.
    feature branches?
 6. What is the hard-error threshold: same central hub file, same source file, release-only file, or
    only same source file plus same function/section?
+7. When `specrew start` declines because another developer claims the feature, should the claim check run before
+   first-time setup and the skill catalog repair, so a declined start leaves the checkout and the home as they were?
+   Today it runs after both: a declined start writes the profile and repairs the project (B5F-096, feature 203
+   iteration 002 DRIFT-050). Its message, "Start declined; no active session lock was recorded.", is true and reads
+   as "nothing happened"; proposal 142's amendment asks that a refusal say what state it left.
 
 ## Risks
 
@@ -376,3 +381,6 @@ streams, before more crews run side by side.
   conflicting files, 203: 8, all records or configuration except one manual test script), six surfaces Pillar 1 did
   not name, the positional "latest entry" reader class (FR-008a), the no-feature-pins rule (FR-010), and the
   maintainer's priority.
+- 2026-11-22: Open question 7 added from feature 203 (B5F-096): a start declined on another developer's claim has
+  already written the profile and repaired the project. The maintainer's ruling that day kept 203's change test-only
+  (the regression suite's fixture drops its own claim, and a decline case pins the decline).
