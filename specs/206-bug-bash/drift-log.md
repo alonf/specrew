@@ -260,3 +260,23 @@
   cleanup by a crew. Nothing was restored.
 - **Class closure**: NONE. The suite's real-home `npm view` call is the 203 crew's hand-back line, per the reviewer
   session.
+
+## DRIFT-206-015 — the 206 branch's records push `c1caf58e` is red from the squad break, left red on the reviewer's ruling
+
+- **Recorded**: 2026-11-22, on the 206 branch only. Committed locally; pushed only with the next records commit that
+  has its own reason.
+- **The runs**:
+  - Specrew CI `44982794986`: the Deterministic gate failed at "Integration - task progress tracking", and the Contract
+    lane was skipped behind it.
+  - Cross-Platform Validation `44982794973`: Ubuntu Validation failed at "Test specrew init".
+  - Test `44982794974`: green. Every other job: green.
+- **The cause**: the squad break, not the diff, which was one Markdown file. The 206 branch's workflows let
+  `specrew init` install `squad-cli` 0.11.0 alone, which pulls `squad-sdk` 2.0.0. Both steps stop on "Squad is installed
+  but the 'squad' command is not healthy (…/init.js:13)". The previous head, `ee525f16` (2026-11-18), was green on all
+  three workflows.
+- **The ruling**: the reviewer session (routine): left red. No rerun, since no exception covers it and it would fail
+  the same way. No merge of main into this closed feature's branch. No push for this alone. The fix is pull request
+  #4097 on main, which turns both failing steps green.
+- **Said in advance**: the push that carries this entry will be red the same way, on the same two steps, for the
+  same cause. It is not a new failure.
+- **Class closure**: NONE. A known upstream break; see the follow-up seed's release-blocker section.
