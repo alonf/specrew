@@ -738,9 +738,22 @@ Assert-True (($sc001Text -match "(?s)scripts\\specrew-start\.ps1'\s*\r?\n\s*Argu
 # inside it resolved to this worktree, recovery A re-anchored to this repository's own feature, and `specrew start`
 # rewrote its real state.md. The fixture is built under the temp folder, given its own `git init`, and the script
 # refuses to run if the fixture's git top level is not the fixture (reviewer ruling 2026-11-12, maintainer's option 1).
+# Feature 203, iteration 002 (the maintainer's ruling at 01:50 local on 2026-11-22, relayed): the fixture is built by
+# one function, New-Sc001Fixture, for the start case and for the claim-decline case, a second `specrew start` in a
+# fixture. The reviewer session's ruling (a), condition 2: the git steps are read in that function's body, and outside
+# it no fixture is built by hand. Every folder an entry point runs in is a New-Sc001Fixture root, or init's empty
+# folder, which init's dry run is given as a project not yet initialized and which holds no git repository.
+$sc001Body = [regex]::Match($sc001Text, '(?s)function New-Sc001Fixture \{.*?\n\}\n').Value
+$sc001Outside = if ($sc001Body) { $sc001Text.Replace($sc001Body, '') } else { $sc001Text }
+$sc001Refuses = $sc001Body -match '(?m)^\s*if \(-not \[string\]::Equals\(\$topLevelFull, \[IO\.Path\]::GetFullPath\(\$Root\)[^\n]*\{\s*\n(?:[^\n]*\n){0,3}?\s*(exit 1|throw\b)'
 $sc001Isolated = ($sc001Text -match '\$scratchRoot\s*=\s*Join-Path\s*\(\[IO\.Path\]::GetTempPath\(\)\)') -and
-    ($sc001Text -match 'git\s+-C\s+\$fixtureRoot\s+init') -and ($sc001Text -match 'git\s+-C\s+\$fixtureRoot\s+rev-parse\s+--show-toplevel')
-Assert-True $sc001Isolated "SC-001's fixture is built outside this repository, has its own git repository, and the script checks that the fixture's git top level is not this repository"
+    ($sc001Body -match 'git\s+-C\s+\$Root\s+init') -and ($sc001Body -match '\$topLevel\s*=\s*\[string\]\(& git\s+-C\s+\$Root\s+rev-parse\s+--show-toplevel') -and $sc001Refuses
+Assert-True $sc001Isolated "SC-001's fixture is built outside this repository by New-Sc001Fixture, which gives it its own git repository and refuses to go on when the fixture's git top level is not the fixture"
+$sc001Built = @([regex]::Matches($sc001Outside, 'New-Sc001Fixture\s+-Root\s+\$(?<root>\w+)') | ForEach-Object { $_.Groups['root'].Value })
+# Invoke-EntryPoint passes its own -WorkingDirectory parameter on; that is not a folder, so it is left out.
+$sc001RunIn = @([regex]::Matches($sc001Outside, '(?m)(^\s*WorkingDirectory\s*=|-WorkingDirectory)\s+\$(?<root>\w+)') | ForEach-Object { $_.Groups['root'].Value } | Where-Object { $_ -cne 'WorkingDirectory' })
+$sc001ByHand = @($sc001RunIn | Where-Object { $_ -cnotin $sc001Built -and $_ -cne 'initFixtureRoot' })
+Assert-True (($sc001Outside -notmatch '(?m)^[^\n]*\bgit\b[^\n]*\sinit\b') -and $sc001Built.Count -ge 2 -and $sc001RunIn.Count -ge 6 -and $sc001ByHand.Count -eq 0) ("outside New-Sc001Fixture no SC-001 fixture is built by hand: no git init, and every folder an entry point runs in is a New-Sc001Fixture root or init's empty folder (built: {0}; run in: {1}; other: {2})" -f ($sc001Built -join ', '), (@($sc001RunIn | Sort-Object -Unique) -join ', '), ($sc001ByHand -join ', '))
 
 # Iteration 001 made the script refuse to run (DRIFT-206-I001-019) until bug list items 23, 24 and 25 were fixed; T023,
 # T024 and T025 fixed them in iteration 002, so the refusal is gone. The script stays out of the automated lists until

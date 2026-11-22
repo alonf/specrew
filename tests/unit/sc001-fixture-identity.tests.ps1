@@ -58,9 +58,14 @@ Describe 'SC-001''s fixture carries the identity path relative (round 1, F2)' {
     }
 
     It 'the script applies it to the fixture''s copied identity file before the fixture is committed' {
+        # Feature 203, iteration 002 (the maintainer's ruling at 01:50 local on 2026-11-22, relayed): every fixture is
+        # built by New-Sc001Fixture, so the order is read in that function's body, not anywhere in the file (the
+        # reviewer session's ruling (a), condition 3).
         $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'tests\integration\project-path-resolution-regression.ps1') -Raw
-        $call = [regex]::Match($source, '(?m)^\s*Set-Sc001FixtureIdentityRelative\s+-IdentityPath\s+\$fixtureIdentityPath\s+-SourceRoot\s+\$repoRoot\s*$')
-        $commit = [regex]::Match($source, '(?m)^\$null = & git -C \$fixtureRoot -c user\.name=')
+        $body = [regex]::Match($source, '(?s)function New-Sc001Fixture \{.*?\r?\n\}\r?\n').Value
+        $body | Should -Not -BeNullOrEmpty
+        $call = [regex]::Match($body, '(?m)^\s*Set-Sc001FixtureIdentityRelative\s+-IdentityPath\s+\$identityPath\s+-SourceRoot\s+\$repoRoot\s*$')
+        $commit = [regex]::Match($body, '(?m)^\s*\$null = & git -C \$Root -c user\.name=')
         $call.Success | Should -BeTrue
         $commit.Success | Should -BeTrue
         $call.Index | Should -BeLessThan $commit.Index
