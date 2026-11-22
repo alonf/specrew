@@ -1544,3 +1544,35 @@ The following resolution strategies remain available if drift is detected later 
   the real npm cache, and can pick up a version nobody chose (it wanted 0.24.2 on 2026-11-22 and refused).
 - **Class closure**: the claim red is closed test-only by the maintainer's decision; the start case now means the same
   on every identity. B5F-096 stays open with the maintainer.
+
+### DRIFT-051 — CI green on `ba748ece3` after main's 4097; T030, T023 and T031 done; T030's "the full sweep runs" closed against the sweep of `8bd3d15ee`
+
+- **CI on `ba748ece3`** (pushed about 00:02 local on 2026-11-23, `a204dd3de..ba748ece3`): Specrew CI 45075380936
+  success, every job, the Deterministic gate and the Contract lane both run and green (DRIFT-049's stop, the committed
+  claim, is fixed on CI's identity); Test 45075380949 success; Cross-Platform Validation 45075380946 success, every job,
+  Ubuntu Validation included. No rerun; item 11's render budget did not come up.
+- **Tasks done through the task writer, once each** (the reviewer session's word): T030 and T023 at 00:36 local, T031
+  at 00:40 local. T030 went from pending to done, so its start and completion times are the same. The writer's output
+  replaced the two timestamp-only re-stamps of `state.md` and `tasks-progress.yml` that had waited since 2026-11-18.
+- **T031 owed nothing more.** Its acceptance is the suite green (`boundary-sync-reader-feature-aware` 12 of 12,
+  `b4450c497`) and `project-path-resolution-regression` green on the merged tree with now.md at 203: green in the
+  claim batch (DRIFT-050) and on CI on `ba748ece3`, where Specrew CI's integration list names it.
+- **T030 against the plan's words "the full sweep runs".** The full sweep T030 names ran on `8bd3d15ee` (DRIFT-048:
+  338 suites, 336 green), after the merge that brought 206's and 205's product code. Changed since that swept revision,
+  14 files:
+  - outside specs, tests, docs and proposals, only the four workflow files (main's 4097: the squad-sdk 1.1.0 pin
+    and the squad CLI health check) and `.specrew/verification-plan.json`. Its one change is in lane
+    `f203-i001-suites`: the command and the label gained `tests/integration/record-phase-line-sync-and-check.tests.ps1`
+    (T023 (ii), `9cfe60605`);
+  - the tests: `project-path-resolution-regression.ps1`, `every-suite-is-named-by-a-lane.tests.ps1`,
+    `sc001-fixture-identity.tests.ps1` (DRIFT-050) and the new `record-phase-line-sync-and-check.tests.ps1`;
+  - the records: `docs/beta5-findings.md`, proposal 166, the hand-back, this drift log and 206's follow-up seed.
+
+  No product code. So the sweep stands for the product code at the tip; the 4097 merge used the targeted batch on the
+  reviewer session's ruling (DRIFT-050), and step 4 of the review sequence sweeps the reviewed tip in full.
+- **Cleanup by exact path:** the T030 part-one bundle in the crew's scratchpad and `/var/tmp/t048` in WSL (149 MB) are
+  removed; both confirmed gone. The real home hook set is unchanged.
+- **A slip, no consequence:** the crew ran `codex --version` in the project folder to confirm which codex resolves
+  (the native exe, codex-cli 0.171.0). The rule is scratch folders only; the worktree showed only the two writer
+  files and the home hook set was unchanged. The rule stands.
+- **Class closure**: NONE - records of tasks closed and a sweep difference closed, no defect class; the guards are T031's suite and the per-push CI that ran green. The iteration's open rows are T027 and T028, the review campaign's.
