@@ -1,5 +1,13 @@
 name: Cross-Platform Validation
 
+env:
+  SQUAD_VERSION: '0.11.0'
+  # squad-cli 0.11.0 declares "@bradygaster/squad-sdk": "*", so a plain install takes the newest SDK. squad-sdk 2.0.0
+  # (published 2026-11-19) dropped exports the 0.11.0 CLI imports, and the CLI then fails at start. Named in the same
+  # `npm install -g` as the CLI, this is the SDK the CLI resolves. Remove this pin when Specrew moves to a squad
+  # release whose CLI and SDK agree.
+  SQUAD_SDK_VERSION: '1.1.0'
+
 on:
   push:
     branches:
@@ -68,6 +76,32 @@ jobs:
           Write-Host "✅ Module imported; $($commands.Count) commands exported:" -ForegroundColor Green
           $commands | ForEach-Object { Write-Host "  - $($_.Name)" }
       
+      - name: Install squad CLI
+        # The SDK is named in the same command as the CLI: only then does npm resolve the CLI's "*" to it. A later
+        # install of the CLI alone nests the newest SDK again (see SQUAD_SDK_VERSION above). With a healthy Squad on
+        # PATH, specrew init below finds it and does not install its own. That bypass is the cost: until Specrew's own
+        # Squad install is fixed (the 206 follow-up seed's release blocker), this job does not prove that a clean
+        # machine's init can install Squad by itself. The day that fix lands, remove this step and the next one.
+        shell: bash
+        run: |
+          echo "::warning title=specrew init's own Squad install is bypassed::This job no longer proves that a clean machine's specrew init can install Squad by itself: Squad is pre-installed as a pinned pair, so the product's own Squad install is bypassed until the install fix lands."
+          npm install -g "@bradygaster/squad-cli@${SQUAD_VERSION}" "@bradygaster/squad-sdk@${SQUAD_SDK_VERSION}"
+      - name: Check squad CLI health
+        # One clear red at install time when an upstream release breaks the installed CLI, not failures in suites
+        # further down. Checks the CLI starts, reports SQUAD_VERSION, and resolves SQUAD_SDK_VERSION.
+        shell: bash
+        run: |
+          root="$(npm root -g)"
+          pkg="$root/@bradygaster/squad-cli/node_modules/@bradygaster/squad-sdk/package.json"
+          [ -f "$pkg" ] || pkg="$root/@bradygaster/squad-sdk/package.json"
+          sdk="$(node -p 'require(process.argv[1]).version' "$pkg" 2>&1)" || sdk="unreadable: $sdk"
+          if ! out="$(squad --version 2>&1)" || ! grep -Fqx "$SQUAD_VERSION" <<<"$out" || [ "$sdk" != "$SQUAD_SDK_VERSION" ]; then
+            echo "::error title=squad CLI is not healthy::expected squad-cli $SQUAD_VERSION with squad-sdk $SQUAD_SDK_VERSION; the CLI resolves squad-sdk $sdk; squad --version printed the lines below"
+            printf '%s\n' "$out"
+            exit 1
+          fi
+          echo "squad CLI healthy: squad-cli $SQUAD_VERSION, squad-sdk $sdk"
+
       - name: Test specrew init
         shell: pwsh
         run: |
