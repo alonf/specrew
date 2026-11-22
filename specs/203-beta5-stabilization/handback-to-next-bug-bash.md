@@ -149,6 +149,11 @@ next bug bash.
   plausibly remain. The message "Start declined; no active session lock was recorded." is true and reads as "nothing
   happened": proposal 166 (a declined start on someone else's claim leaves the checkout dirty) and proposal 142's
   amendment (a refusal says what state it left).
+- **`project-path-resolution-regression`'s decline case reads the records, not only the code** (iteration 002
+  DRIFT-050). The case claims the feature the copied `.squad/identity/now.md` names, and goes red with "the copied
+  identity file names no feature, so there is nothing to claim" when it names none. It holds today: the file names
+  203 on 203's branch and 206 on main. If a closeout ever leaves the identity with no feature, this per-push suite
+  turns red on that state of the records, with no code change; that is the cause to look for first.
 - **`project-path-resolution-regression`'s update --info case writes to the real npm cache on every run**
   (iteration 002 DRIFT-050). It runs `specrew-update.ps1 -InfoMode` with the real home, which runs
   `npm view @bradygaster/squad-cli version` with the real `.npmrc` and leaves a debug log in

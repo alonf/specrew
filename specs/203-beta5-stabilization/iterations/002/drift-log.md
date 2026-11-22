@@ -1523,6 +1523,24 @@ The following resolution strategies remain available if drift is detected later 
   `%LOCALAPPDATA%\npm-cache\_logs`, from the update --info case (`npm view @bradygaster/squad-cli version` with the real
   `.npmrc`). No change to that case here (the reviewer session's ruling); a hand-back line.
 - **Linux:** WSL cannot run this suite (uv and Node are missing there); CI is its Linux evidence.
-- **The push is held** until the squad-sdk 1.1.0 pin is on main (the reviewer session's word).
+- **The push was held** until the squad-sdk 1.1.0 pin was on main (the reviewer session's word). Main took it in
+  pull request 4097 (551bf5cde, 23:19 local on 2026-11-22: squad-sdk 1.1.0 installed beside squad-cli 0.11.0 in the
+  four workflows, a squad CLI health check after each install, the 206 follow-up seed's release-blocker section; no
+  product code). The reviewer session gave the word at 23:53 local, with main's CI green on 551bf5cde (Specrew CI
+  45071463729, Cross-Platform Validation 45071463773, Test 45071463797). 203 took it in by a merge of main, nothing
+  else bundled (4a6a56073, 23:54 local): no conflict. The one file both sides had changed,
+  `cross-platform-validation.yml`, was changed in different places (203's T015 step around line 304, 4097's env block
+  and install steps before "Test specrew init"), and the tree matched the trial merge run beforehand (816ed9400).
+  markdownlint and the governance check were green. The targeted batch, the suites that read the four workflow files,
+  was all green (machine read by the reviewer session at 23:53: CPU about 1 percent, 23.6 GB free):
+  `every-suite-is-named-by-a-lane` (the lane guard, over the test census) 15 s, `github-actions-node-runtime-pins`,
+  `consumer-workflow-allowlist`, `bounded-suite-runner` 9 of 9, `ci-registry-lane-tooling` 4 of 4,
+  `tier2-dry-run-ci`, `release-script-refuses-unasked-publish` 12 of 12, `filelist-completeness`,
+  `publish-module-harness`, and `typed-authority-capture` 88 of 88. `review-cross-platform-fault-matrix` stays with
+  CI. The real home hook set was hashed around the batch and did not change. No full sweep and no WSL run: this push
+  carries test-only, records and CI-workflow changes and no product code (the reviewer session's ruling).
+- **Markdownlint in this session** (the reviewer session's standing practice, 2026-11-22): the cached
+  markdownlint-cli2 0.24.1 is run with node directly. `npx` is not used: it resolves against the registry, writes to
+  the real npm cache, and can pick up a version nobody chose (it wanted 0.24.2 on 2026-11-22 and refused).
 - **Class closure**: the claim red is closed test-only by the maintainer's decision; the start case now means the same
   on every identity. B5F-096 stays open with the maintainer.
