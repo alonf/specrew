@@ -3,6 +3,11 @@ name: Specrew CI
 env:
   SPEC_KIT_VERSION: '0.12.9'
   SQUAD_VERSION: '0.11.0'
+  # squad-cli 0.11.0 declares "@bradygaster/squad-sdk": "*", so a plain install takes the newest SDK. squad-sdk 2.0.0
+  # (published 2026-11-19) dropped exports the 0.11.0 CLI imports, and the CLI then fails at start. Named in the same
+  # `npm install -g` as the CLI, this is the SDK the CLI resolves. Remove this pin when Specrew moves to a squad
+  # release whose CLI and SDK agree.
+  SQUAD_SDK_VERSION: '1.1.0'
 
 on:
   push:
@@ -230,7 +235,25 @@ jobs:
         run: uv tool install --force specify-cli --from "git+https://github.com/github/spec-kit.git@v${SPEC_KIT_VERSION}"
 
       - name: Install squad CLI
-        run: npm install -g "@bradygaster/squad-cli@${SQUAD_VERSION}"
+        # The SDK is named in the same command as the CLI: only then does npm resolve the CLI's "*" to it. A later
+        # install of the CLI alone nests the newest SDK again (see SQUAD_SDK_VERSION above).
+        run: npm install -g "@bradygaster/squad-cli@${SQUAD_VERSION}" "@bradygaster/squad-sdk@${SQUAD_SDK_VERSION}"
+
+      - name: Check squad CLI health
+        # One clear red at install time when an upstream release breaks the installed CLI, not failures in suites
+        # further down. Checks the CLI starts, reports SQUAD_VERSION, and resolves SQUAD_SDK_VERSION.
+        shell: bash
+        run: |
+          root="$(npm root -g)"
+          pkg="$root/@bradygaster/squad-cli/node_modules/@bradygaster/squad-sdk/package.json"
+          [ -f "$pkg" ] || pkg="$root/@bradygaster/squad-sdk/package.json"
+          sdk="$(node -p 'require(process.argv[1]).version' "$pkg" 2>&1)" || sdk="unreadable: $sdk"
+          if ! out="$(squad --version 2>&1)" || ! grep -Fqx "$SQUAD_VERSION" <<<"$out" || [ "$sdk" != "$SQUAD_SDK_VERSION" ]; then
+            echo "::error title=squad CLI is not healthy::expected squad-cli $SQUAD_VERSION with squad-sdk $SQUAD_SDK_VERSION; the CLI resolves squad-sdk $sdk; squad --version printed the lines below"
+            printf '%s\n' "$out"
+            exit 1
+          fi
+          echo "squad CLI healthy: squad-cli $SQUAD_VERSION, squad-sdk $sdk"
 
       - name: F-198 honesty regression suite (NFR-007)
         # The 0.40.0-beta2 hardening honesty bar - an EXPLICIT, bounded registry (never a glob) of
@@ -537,7 +560,25 @@ jobs:
         run: uv tool install --force specify-cli --from "git+https://github.com/github/spec-kit.git@v${SPEC_KIT_VERSION}"
 
       - name: Install squad CLI
-        run: npm install -g "@bradygaster/squad-cli@${SQUAD_VERSION}"
+        # The SDK is named in the same command as the CLI: only then does npm resolve the CLI's "*" to it. A later
+        # install of the CLI alone nests the newest SDK again (see SQUAD_SDK_VERSION above).
+        run: npm install -g "@bradygaster/squad-cli@${SQUAD_VERSION}" "@bradygaster/squad-sdk@${SQUAD_SDK_VERSION}"
+
+      - name: Check squad CLI health
+        # One clear red at install time when an upstream release breaks the installed CLI, not failures in suites
+        # further down. Checks the CLI starts, reports SQUAD_VERSION, and resolves SQUAD_SDK_VERSION.
+        shell: bash
+        run: |
+          root="$(npm root -g)"
+          pkg="$root/@bradygaster/squad-cli/node_modules/@bradygaster/squad-sdk/package.json"
+          [ -f "$pkg" ] || pkg="$root/@bradygaster/squad-sdk/package.json"
+          sdk="$(node -p 'require(process.argv[1]).version' "$pkg" 2>&1)" || sdk="unreadable: $sdk"
+          if ! out="$(squad --version 2>&1)" || ! grep -Fqx "$SQUAD_VERSION" <<<"$out" || [ "$sdk" != "$SQUAD_SDK_VERSION" ]; then
+            echo "::error title=squad CLI is not healthy::expected squad-cli $SQUAD_VERSION with squad-sdk $SQUAD_SDK_VERSION; the CLI resolves squad-sdk $sdk; squad --version printed the lines below"
+            printf '%s\n' "$out"
+            exit 1
+          fi
+          echo "squad CLI healthy: squad-cli $SQUAD_VERSION, squad-sdk $sdk"
 
       - name: Validation contract lane
         shell: pwsh
