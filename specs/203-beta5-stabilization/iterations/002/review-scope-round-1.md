@@ -55,6 +55,9 @@ committed first:
   `5e2ee6f95` (it also runs the suite on Specrew CI's Linux job); comment `2f1f87309`.
 - `finding-7a5e1b6f01a5008d` (T022): a script under the active iteration's `quality/` (and `checklists/`,
   `dashboards/`, `gates/`) read as records. Red `98aaa8e92`, fix `23056509c`.
+- A gap in that fix, found by the crew's own reading before round 3, not by a reviewer: the review stop answers
+  (`.specrew/review/stop-answer/`, the one review-authority folder that is not gitignored) and the bypass audit were
+  missing from the named records places. Red `ab98fa3ae`, fix `59dc51c2e`.
 
 The two T022 findings were one defect: the records-only decision asked where a path is and not what it is. The fix
 closes the class, not the instance. Every way `Test-ReviewCampaignDeltaIsRecordsOnly` can answer "records" is listed

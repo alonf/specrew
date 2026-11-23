@@ -458,6 +458,14 @@ fixed in 203.
     shows it: round 1's first launch, failed in preflight, left budget_total 4 with its reservation released and no
     spend fact.
 
+- **The review stop answers are the one review-authority folder that is tracked** (203 iteration 002 DRIFT-052).
+  `.specrew/review/stop-answer/` (`HumanAuthorityStore.ps1:2912`) is not in `.gitignore`. Beside it, round-approval/,
+  allowance-reset/, coverage-disposition/, signoff-gate/, pause-decision/, review/authority/ and authority/ are all
+  ignored.
+  - In 203 the records-only gate names it, so an answer committed after a review does not stale it.
+  - Whether it should be ignored like the others is its own question: that changes what a resumed session finds on disk.
+  - The same reading wants a guard: every path a store under `.specrew/review/` writes is gitignored or named.
+
 ## Fixed in 203, for Completeness
 
 - **Item 8 (HO-206-5), suites that rewrite the real home's hook files**: B5F-039, test first (`77bd4a2e2`, `b69cc5caf`),

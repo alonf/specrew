@@ -1644,6 +1644,27 @@ The following resolution strategies remain available if drift is detected later 
     with its hash record), the same in the gate's fallback, and the source repository decided by named place. The
     census of what this repository's records commits write found no committed record that changes its answer.
   - 46 of 46 on Windows and in WSL, and a batch of 21 suites green.
+- **A gap in the round 2 fix, found by the crew's own reading before round 3** (the reviewer session asked whether
+  the new source-repo list could refuse the lifecycle's own writes):
+  - The stop-answer records were missing: `.specrew/review/stop-answer/<run-id>/<answer>-<hash>.json` and
+    `stop-answer/captures.jsonl` (`HumanAuthorityStore.ps1:2912`, since T008 step (iii), `c930e1dbd`). They are written
+    when the human answers a review stop, and it is the one review-authority folder that is not gitignored. So the
+    first stop's answer would have been an unnamed path in source-repo mode, and the review would have read stale.
+  - Same shape, off 203's path: `.specrew/bypass-audit/bypass-log.md` (`work-kind-validator.ps1:200`, written only when
+    a work-kind bypass is used).
+  - Missed because the census read past commits, and no stop answer had been committed yet.
+  - Red `ab98fa3ae` (1 of 47 on Windows and in WSL); fix `59dc51c2e` adds the two prefixes, record kinds only.
+  - This mattered now and not later: T027 lands at this campaign's first stop, and that stop writes exactly these
+    records. The fix is what lets T027's live stop be committed without staling the review.
+  - **The method, to be re-run by whoever next adds a store**, until the guard exists (a follow-up: every path a store
+    under `.specrew/review/` writes is gitignored or named):
+    1. Collect every path literal under `.specrew` or `.squad` that the scripts build. Use a regex over the `.ps1` and
+       `.psm1` files in `scripts/` and `extensions/`, for both forms: a quoted path, and `Join-Path <x> '.specrew' '<rest>'`.
+    2. Check each path one at a time with `git check-ignore -q --no-index`, giving a directory a probe file under it.
+    3. Check the tracked files under `.specrew` and `.squad` (`git ls-files`; 456 on 2026-11-23). Some gitignored
+       paths are tracked anyway, `start-context.json` among them.
+    4. Sort every path into one of five classes: named, under a listed prefix as a record kind, gitignored, a home
+       path, or source on purpose. Anything left over is a gap.
 - **Open design question, put to the maintainer on 2026-11-23, not decided:** downstream, deployed machinery and host
   mirrors are records by design (DRIFT-007's twin). Do they stay records, and if so what keeps an agent from editing
   them unreviewed after a passing review? The reviewer session recommends keeping the design for 203 and taking the
