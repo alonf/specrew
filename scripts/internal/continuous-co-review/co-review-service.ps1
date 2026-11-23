@@ -232,9 +232,11 @@ function Start-ContinuousCoReviewServiceRun {
         $stopped = Wait-ContinuousCoReviewProcessExit -ProcessId $supPid -TimeoutSeconds $script:ContinuousCoReviewSupervisorStopWaitSeconds
         if (-not $stopped) { [Console]::Error.WriteLine("[co-review] WARN SUPERVISOR_STILL_RUNNING pid=$supPid $($script:ContinuousCoReviewSupervisorStopWaitSeconds) s after it was stopped") }
         $null = Complete-ContinuousCoReviewLineageLease -RepoRoot $resolved -LineageId $LineageId -Generation $TreeId -OwnerToken $leaseOwnerToken
-        $stopText = if ($stopped) { 'the spawned reviewer was stopped' } else { "a stop was requested but the spawned reviewer (pid $supPid) was still running $($script:ContinuousCoReviewSupervisorStopWaitSeconds) s later" }
-        & $writeReg $null 'failed' @{ failure_reason = ('lease-owner-handoff-failed: the supervisor could not be stamped as the lease owner; {0} (never an unprotected running reviewer)' -f $stopText) }
-        throw "lease-owner-handoff-failed for run $RunId (lineage '$LineageId', generation '$TreeId'): the lease could not be re-stamped to the supervisor; the spawned reviewer was stopped."
+        # Round 4 of 203 iteration 002's review (minor): the throw and the registry say what the wait found. A reviewer
+        # still running is never reported as stopped, nor as "never an unprotected running reviewer".
+        $stopText = if ($stopped) { 'the spawned reviewer was stopped (never an unprotected running reviewer)' } else { "a stop was requested but the spawned reviewer (pid $supPid) was still running $($script:ContinuousCoReviewSupervisorStopWaitSeconds) s later" }
+        & $writeReg $null 'failed' @{ failure_reason = ('lease-owner-handoff-failed: the supervisor could not be stamped as the lease owner; {0}' -f $stopText) }
+        throw "lease-owner-handoff-failed for run $RunId (lineage '$LineageId', generation '$TreeId'): the lease could not be re-stamped to the supervisor; $stopText."
     }
     & $writeReg $supPid 'running' @{ lineage_id = $LineageId; generation = $TreeId; owner_token = $leaseOwnerToken }
     return [pscustomobject]@{ run_id = $RunId; run_dir = $runDir; status = 'running'; supervisor_pid = $supPid; tree_id = $TreeId; detached = $true; lineage_id = $LineageId; generation = $TreeId }
