@@ -426,6 +426,44 @@ Describe 'a record the host wrote is never the cited human turn (round 3 finding
         [bool]$sender.accepted | Should -BeFalse -Because ('a scheduled approval stays refused (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
     }
 
+    # The reviewer session's follow-up on the refinement: a host record that names its sender (a scheduled prompt with
+    # turnOrigin) is a candidate, so it is refused with its own sentence when it is the one cited - but it must never
+    # displace a record a person could have typed under the same key.
+    It 'a host record with sender fields in the tail does not displace the typed approval beyond 2 MiB' {
+        $root = script:New-Root
+        $t = script:New-RawTranscript -Root $root
+        $text = 'approved for tasks'; $promptId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)
+        $approval = [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $promptId; sessionId = 's'; timestamp = '2026-11-12T19:00:00.000Z'
+            turnOrigin = [string]$script:Typed.turnOrigin; promptSource = [string]$script:Typed.promptSource; origin = [ordered]@{ kind = [string]$script:Typed.origin_kind }
+            message = [ordered]@{ role = 'user'; content = $text } }
+        script:Add-Record -Transcript $t -Record $approval
+        $turnId = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $promptId; text = $text })).Identity
+        script:Register-Cited -Root $root -TurnId $turnId -Transcript $t -MessageId $promptId -Text $text
+        script:Add-LaterConversation -Root $root
+        script:Add-Record -Transcript $t -Record ([ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $promptId; sessionId = 's'; timestamp = '2026-11-14T20:00:00.000Z'
+                turnOrigin = [string]$script:Scheduled.turnOrigin; promptSource = [string]$script:Scheduled.promptSource; isMeta = $true; message = [ordered]@{ role = 'user'; content = $text } })
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $turnId -Purpose 'approval for tasks' -NoRecord
+        [string]$sender.turn.record_uuid | Should -BeExactly $approval.uuid -Because ('the typed approval, not the host record in the tail (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
+        [bool]$sender.accepted | Should -BeTrue
+    }
+
+    It 'in one window, a newer host record with the same key does not displace the typed approval' {
+        $root = script:New-Root
+        $t = script:New-RawTranscript -Root $root
+        $text = 'approved for tasks'; $promptId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)
+        $approval = [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $promptId; sessionId = 's'; timestamp = '2026-11-12T19:00:00.000Z'
+            turnOrigin = [string]$script:Typed.turnOrigin; promptSource = [string]$script:Typed.promptSource; origin = [ordered]@{ kind = [string]$script:Typed.origin_kind }
+            message = [ordered]@{ role = 'user'; content = $text } }
+        script:Add-Record -Transcript $t -Record $approval
+        script:Add-Record -Transcript $t -Record ([ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $promptId; sessionId = 's'; timestamp = '2026-11-12T19:01:00.000Z'
+                turnOrigin = [string]$script:Scheduled.turnOrigin; promptSource = [string]$script:Scheduled.promptSource; isMeta = $true; message = [ordered]@{ role = 'user'; content = $text } })
+        $turnId = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $promptId; text = $text })).Identity
+        script:Register-Cited -Root $root -TurnId $turnId -Transcript $t -MessageId $promptId -Text $text
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $turnId -Purpose 'approval for tasks' -NoRecord
+        [string]$sender.turn.record_uuid | Should -BeExactly $approval.uuid -Because ('the real one wins (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
+        [bool]$sender.accepted | Should -BeTrue
+    }
+
     It 'the exact branch: a citation naming a summary by its record is not found, so it is refused' {
         # Intended: the host's own records are no citation candidate, so 'entry:<uuid>' of a summary comes back not found.
         $root = script:New-Root
