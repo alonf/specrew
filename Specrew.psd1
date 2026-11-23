@@ -369,6 +369,7 @@
         'scripts/internal/specrew-hook-dispatcher.ps1',
         'scripts/internal/specrew-hook-health.ps1',
         'scripts/internal/specrew-time.ps1',
+        'scripts/internal/squad-install.ps1',
         'scripts/internal/supported-versions.yml',
         'scripts/internal/sync-boundary-state.ps1',
         'scripts/internal/task-progress.ps1',

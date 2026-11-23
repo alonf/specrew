@@ -428,6 +428,10 @@ jobs:
         shell: pwsh
         run: ./tests/integration/github-actions-node-runtime-pins.tests.ps1
 
+      - name: Unit - Squad install names the paired SDK (init, update, printed repair)
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/unit/squad-install-pair.tests.ps1
+
       - name: Integration - script suites no lane ran before the test census (F-206 T015)
         shell: pwsh
         timeout-minutes: 20

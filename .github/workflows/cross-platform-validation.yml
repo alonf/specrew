@@ -1,11 +1,13 @@
 name: Cross-Platform Validation
 
 env:
-  SQUAD_VERSION: '0.11.0'
-  # squad-cli 0.11.0 declares "@bradygaster/squad-sdk": "*", so a plain install takes the newest SDK. squad-sdk 2.0.0
-  # (published 2026-11-19) dropped exports the 0.11.0 CLI imports, and the CLI then fails at start. Named in the same
-  # `npm install -g` as the CLI, this is the SDK the CLI resolves. Remove this pin when Specrew moves to a squad
+  # The pair Ubuntu Validation expects `specrew init` to install by itself. Here these are checked, not installed: init
+  # installs Squad through the product's own path, which names the SDK from scripts/internal/supported-versions.yml
+  # (squad.max_tested and squad.sdk). squad-cli 0.11.0 declares "@bradygaster/squad-sdk": "*", and squad-sdk 2.0.0
+  # (published 2026-11-19) dropped exports the 0.11.0 CLI imports. Both values must equal supported-versions.yml
+  # (tests/unit/squad-install-pair.tests.ps1). Remove SQUAD_SDK_VERSION with squad.sdk, when Specrew moves to a squad
   # release whose CLI and SDK agree.
+  SQUAD_VERSION: '0.11.0'
   SQUAD_SDK_VERSION: '1.1.0'
 
 on:
@@ -76,31 +78,16 @@ jobs:
           Write-Host "✅ Module imported; $($commands.Count) commands exported:" -ForegroundColor Green
           $commands | ForEach-Object { Write-Host "  - $($_.Name)" }
       
-      - name: Install squad CLI
-        # The SDK is named in the same command as the CLI: only then does npm resolve the CLI's "*" to it. A later
-        # install of the CLI alone nests the newest SDK again (see SQUAD_SDK_VERSION above). With a healthy Squad on
-        # PATH, specrew init below finds it and does not install its own. That bypass is the cost: until Specrew's own
-        # Squad install is fixed (the 206 follow-up seed's release blocker), this job does not prove that a clean
-        # machine's init can install Squad by itself. The day that fix lands, remove this step and the next one.
+      - name: Confirm Squad is not installed before init
+        # This job proves a clean machine's `specrew init` installs a healthy Squad by itself. A Squad already on PATH
+        # would let init skip its own install, and the job would prove nothing about it.
         shell: bash
         run: |
-          echo "::warning title=specrew init's own Squad install is bypassed::This job no longer proves that a clean machine's specrew init can install Squad by itself: Squad is pre-installed as a pinned pair, so the product's own Squad install is bypassed until the install fix lands."
-          npm install -g "@bradygaster/squad-cli@${SQUAD_VERSION}" "@bradygaster/squad-sdk@${SQUAD_SDK_VERSION}"
-      - name: Check squad CLI health
-        # One clear red at install time when an upstream release breaks the installed CLI, not failures in suites
-        # further down. Checks the CLI starts, reports SQUAD_VERSION, and resolves SQUAD_SDK_VERSION.
-        shell: bash
-        run: |
-          root="$(npm root -g)"
-          pkg="$root/@bradygaster/squad-cli/node_modules/@bradygaster/squad-sdk/package.json"
-          [ -f "$pkg" ] || pkg="$root/@bradygaster/squad-sdk/package.json"
-          sdk="$(node -p 'require(process.argv[1]).version' "$pkg" 2>&1)" || sdk="unreadable: $sdk"
-          if ! out="$(squad --version 2>&1)" || ! grep -Fqx "$SQUAD_VERSION" <<<"$out" || [ "$sdk" != "$SQUAD_SDK_VERSION" ]; then
-            echo "::error title=squad CLI is not healthy::expected squad-cli $SQUAD_VERSION with squad-sdk $SQUAD_SDK_VERSION; the CLI resolves squad-sdk $sdk; squad --version printed the lines below"
-            printf '%s\n' "$out"
+          if command -v squad >/dev/null 2>&1; then
+            echo "::error title=Squad is already installed::squad is on PATH before specrew init ($(command -v squad)), so this job cannot prove init's own Squad install"
             exit 1
           fi
-          echo "squad CLI healthy: squad-cli $SQUAD_VERSION, squad-sdk $sdk"
+          echo "no squad on PATH: specrew init must install it"
 
       - name: Test specrew init
         shell: pwsh
@@ -133,7 +120,23 @@ jobs:
 
           Remove-Item -Recurse -Force $testDirPath
           Write-Host "✅ specrew init completed successfully" -ForegroundColor Green
-      
+
+      - name: Check squad CLI health
+        # The Squad init installed: it starts, reports SQUAD_VERSION, and resolves SQUAD_SDK_VERSION. One clear red here
+        # when the product's install produces a broken pair, not failures further down.
+        shell: bash
+        run: |
+          root="$(npm root -g)"
+          pkg="$root/@bradygaster/squad-cli/node_modules/@bradygaster/squad-sdk/package.json"
+          [ -f "$pkg" ] || pkg="$root/@bradygaster/squad-sdk/package.json"
+          sdk="$(node -p 'require(process.argv[1]).version' "$pkg" 2>&1)" || sdk="unreadable: $sdk"
+          if ! out="$(squad --version 2>&1)" || ! grep -Fqx "$SQUAD_VERSION" <<<"$out" || [ "$sdk" != "$SQUAD_SDK_VERSION" ]; then
+            echo "::error title=squad CLI is not healthy::expected squad-cli $SQUAD_VERSION with squad-sdk $SQUAD_SDK_VERSION; the CLI resolves squad-sdk $sdk; squad --version printed the lines below"
+            printf '%s\n' "$out"
+            exit 1
+          fi
+          echo "squad CLI healthy: squad-cli $SQUAD_VERSION, squad-sdk $sdk"
+
       - name: Test specrew where
         shell: pwsh
         run: |
