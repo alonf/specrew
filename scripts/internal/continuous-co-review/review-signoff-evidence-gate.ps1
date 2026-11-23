@@ -458,8 +458,8 @@ function Test-ReviewCampaignSourceRepoTextPathIsRecord {
     # the feature claims, the closed-iterations list, the validator summary, the start context, the version-check cache,
     # the refocus channel record, and the sign-off gate, test evidence and pause decision records. Added before round 3,
     # from the crew's reading of the writers (the census read past commits, and no stop answer had been committed yet):
-    # the review stop answers (.specrew/review/stop-answer/, written at a review stop, the one review-authority folder that
-    # is not gitignored) and the work-kind bypass audit (.specrew/bypass-audit/). Left out on purpose,
+    # the review stop answers (.specrew/review/stop-answer/, written at a review stop; gitignored since 2026-11-24, and kept
+    # here for a project whose ignore file predates that) and the work-kind bypass audit (.specrew/bypass-audit/). Left out on purpose,
     # so they stay source: the verification plans, config.yml, iteration-config.yml, reviewer-hosts.json, work-kind.yml,
     # roadmap.yml, repository-governance.yml, .squad/config.json, .squad/casting/**, the host mirrors and their
     # .specrew-managed markers, .claude/settings.local.json and .github/workflows/**.
