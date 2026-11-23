@@ -1084,7 +1084,8 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
             if ($recordsOnlyAuthorizes -and [string](Get-ReviewAuthorityProperty -Object $latest -Name 'verdict') -ceq 'findings') {
                 # A findings verdict that lists none is an inconsistent review (maintainer, 2026-11-09), never one that authorizes.
                 $listed = @(@(Get-ReviewAuthorityProperty -Object $latest -Name 'findings') | ForEach-Object { $_ } | Where-Object { $null -ne $_ })
-                $gatingOpen = ($listed.Count -eq 0) -or (@($listed | Where-Object { [string]$_.resolution -ceq 'open' -and [string]$_.severity -in @('blocking', 'major') }).Count -gt 0)
+                $emptyList = ($listed.Count -eq 0)
+                $gatingOpen = @($listed | Where-Object { [string]$_.resolution -ceq 'open' -and [string]$_.severity -in @('blocking', 'major') }).Count -gt 0
                 $correctionRequired = @($HumanDispositions | Where-Object {
                         (Test-ReviewAuthorityContractObject -ContractName HumanDispositionFact -InputObject $_ -ExpectedCampaignId $CampaignId -ExpectedRunId $latestRunId -ExpectedTargetDigest ([string]$latest.target_digest)).valid -and
                         [string]$_.decision -ceq 'require-correction'
@@ -1096,7 +1097,12 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
                 # difference (this branch); a code change after the stop still stales, and require-correction still wins.
                 $humanAccepted = Test-ReviewCampaignDispositionAcceptsResult -HumanDispositions $HumanDispositions -CampaignId $CampaignId `
                     -RunId $latestRunId -CurrentDigest ([string]$latest.target_digest)
-                $recordsOnlyAuthorizes = ((-not $gatingOpen -and -not $correctionRequired) -or $humanAccepted)
+                # Round 4 of 203 iteration 002's review (finding-4fa0bbeaf9c0ec00): the empty list stays a refusal outside the
+                # human-acceptance alternative, as it is at the exact digest; a human acceptance answers listed findings, and
+                # an inconsistent review has none to answer. The partial-coverage override and its carried form
+                # (Get-SpecrewCarriedSignoffOverrideAuthorization; the explicit override below) are the documented human
+                # escape hatch, not bypasses of this rule.
+                $recordsOnlyAuthorizes = ((-not $emptyList) -and ((-not $gatingOpen -and -not $correctionRequired) -or $humanAccepted))
             }
             if (-not $recordsOnlyAuthorizes) {
                 return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'records-only-delta-over-non-authorizing-result' -Message 'Only governance and records files changed since your last review, but that review did not finish with a result that can sign anything off. Run a fresh review of your files as they are now: specrew review --live' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'request-current-digest-review'
