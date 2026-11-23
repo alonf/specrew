@@ -1701,8 +1701,13 @@ function Resolve-SpecrewTranscriptEntryActIdentity {
         $turn = $entry.Turn
         $uuid = [string]$turn.record_uuid
         $resolved = ''
+        # How the identity was found (bound, pending, history or missed, as numbered above). Round 1 of 203 iteration
+        # 002's review (finding-80a86c770ffb9e76): 'pending' is an inference from the ledger, and a partial window can make
+        # an old reservation look pending because its hook output lies outside the window, so a caller reading a partial
+        # window must not take a pending identity as an exact match.
+        $source = ''
         if (-not [string]::IsNullOrWhiteSpace($uuid) -and $boundTo.ContainsKey($uuid)) {
-            foreach ($promptEvent in $boundTo[$uuid]) { if ($byEvent.ContainsKey($promptEvent)) { $resolved = [string]$byEvent[$promptEvent].TurnId; break } }
+            foreach ($promptEvent in $boundTo[$uuid]) { if ($byEvent.ContainsKey($promptEvent)) { $resolved = [string]$byEvent[$promptEvent].TurnId; $source = 'bound'; break } }
         }
         elseif ($pending.Count -gt 0) {
             $text = ([string]$turn.text).Trim()
@@ -1717,12 +1722,14 @@ function Resolve-SpecrewTranscriptEntryActIdentity {
                 if ($hashes -cnotcontains $row.ContentHash) { continue }
                 if (-not [string]::IsNullOrWhiteSpace($row.Session) -and -not [string]::IsNullOrWhiteSpace([string]$entry.Session) -and $row.Session -cne [string]$entry.Session) { continue }
                 $resolved = $row.TurnId
+                $source = 'pending'
                 $pending.RemoveAt($p)
                 break
             }
         }
-        if ([string]::IsNullOrWhiteSpace($resolved) -and $history.Contains([string]$entry.Base)) { $resolved = [string]$entry.Base }
+        if ([string]::IsNullOrWhiteSpace($resolved) -and $history.Contains([string]$entry.Base)) { $resolved = [string]$entry.Base; $source = 'history' }
         if ([string]::IsNullOrWhiteSpace($resolved)) {
+            $source = 'missed'
             $resolved = if ([string]::IsNullOrWhiteSpace($uuid)) { [string]$entry.Base }
             else {
                 $own = [pscustomobject]@{ host = $turn.host; message_id = $turn.message_id; text = $turn.text; occurrence = ('record:' + $uuid) }
@@ -1730,6 +1737,7 @@ function Resolve-SpecrewTranscriptEntryActIdentity {
             }
         }
         $turn | Add-Member -NotePropertyName act_identity -NotePropertyValue $resolved -Force
+        $turn | Add-Member -NotePropertyName act_identity_source -NotePropertyValue $source -Force
     }
 }
 
@@ -2538,6 +2546,12 @@ function Resolve-SpecrewAuthorizationSender {
                 foreach ($citation in $citations) {
                     foreach ($window in $windows) {
                         $read = Read-SpecrewCitedTypedTurn -ProjectRoot $root -HostKind $HostKind -TurnIdentity $citation -TranscriptPath ([string]$row.transcript_path) -MaxLines 100000000 -MaxBytes $window
+                        # Round 1 of 203 iteration 002's review (finding-80a86c770ffb9e76): in a window that does not hold the
+                        # whole transcript, a turn matched only through a pending reservation is not proven to be the cited
+                        # message (the cited message's hook output may lie outside the window), so the whole transcript is read.
+                        $partialWindow = ([long]$window -lt $transcriptLength)
+                        if ($partialWindow -and $null -ne $read -and $null -ne $read.Turn -and $read.Turn.PSObject.Properties['act_identity_source'] -and
+                            [string]$read.Turn.act_identity_source -ceq 'pending') { continue }
                         if ($null -ne $read -and $null -ne $read.Turn) { $turn = $read.Turn; break }
                     }
                     if ($null -ne $turn) { break }
