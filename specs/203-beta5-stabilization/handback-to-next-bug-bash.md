@@ -166,6 +166,11 @@ next bug bash.
 
 ## Seen on a released install, 0.40.0-beta41
 
+**The maintainer's direction on the next beta**, typed in the reviewer session at about 01:28 local on 2026-11-24 and
+relayed: "OK, but the next beta must address the anoying bugs we have found". Nothing in 203's scope changes: 203 merges
+as planned and takes no more fixes for these. The 206 crew is triaging the recorded candidates read-only (this section,
+T, U and the entries parked with round 4), and the maintainer chooses the must-fix set from that.
+
 Defects the maintainer met on a downstream project running the released 0.40.0-beta41, passed to the next bug bash
 ("Desktop H, I and J: pass them" and "Desktop K: pass it", typed in the reviewer session at 02:48 and 03:10 local on
 2026-11-19, relayed). Each line says whether 203's merged tree (`f30f5ea3d`) still has it, from a short read; none is
@@ -486,7 +491,8 @@ fixed in 203.
   allowance-reset/, coverage-disposition/, signoff-gate/, pause-decision/, review/authority/ and authority/ are all
   ignored.
   - In 203 the records-only gate names it, so an answer committed after a review does not stale it.
-  - Whether it should be ignored like the others is its own question: that changes what a resumed session finds on disk.
+  - Whether it should be ignored like the others was its own question; it is ignored since `650740a04` (2026-11-24, the
+    reviewer session's ruling: captures are per-machine; see the last entries of this section).
   - The same reading wants a guard: every path a store under `.specrew/review/` writes is gitignored or named.
 
 - **A unit suite leaves a folder in `%TEMP%` for every case** (203 iteration 002 DRIFT-053; passed under the
@@ -525,6 +531,138 @@ fixed in 203.
     new configuration file of this class, needs a new entry.
   - A guard could derive them from each host manifest's settings files and MCP configuration, so that a host added
     without an entry fails a test.
+
+- **At a budget stop, a typed defer is lost if the allowance reset is remediated before the next `--live` launch**
+  (203 iteration 002, round 4's stop; passed under the maintainer's 03:39 decision of 2026-11-23).
+  - A `defer finding <id> to <destination>` line is captured bound to the open stop and applied only by the next
+    `--live` launch (`specrew-review.ps1:1378-1391`, `Invoke-ReviewCampaignStopAnswerLanding`), and only while that stop is
+    open (`Get-ReviewCampaignOpenStop`).
+  - An a-budget-spent stop closes as soon as a budget reset is recorded after it (`review-campaign-orchestrator.ps1:1674`),
+    and `specrew review --remediate allowance-reset` records one. Run before any `--live` launch, it closes the stop, the
+    landing finds none, and the defer stays unspent for good: retyping binds it to the same closed stop.
+  - The stop's text offers both lines side by side and does not say the order matters. In 203 the two were typed apart,
+    with one `--live` launch between them to land the defer.
+
+- **A message carrying a typed authority line and a stop-answer line records the first and drops the second, with no
+  word to the human** (203 iteration 002, round 4's stop, 19:37 local; passed under the maintainer's 03:39 decision of
+  2026-11-23).
+  - The maintainer sent `defer finding finding-9cc1155f2c83f5f7 to bug bash 2` and `approved for allowance reset` in one
+    message. The reset was captured (UserPromptSubmit) and the turn marked used. No defer was stored, and nothing said so.
+  - The cause: `Resolve-SpecrewApprovalForm` (`HumanAuthorityStore.ps1:400-452`) counts authority lines with
+    `Get-SpecrewTypedAuthorityShape` only (:424). A stop-answer line (defer, drop) is not one, so it counts as other typed
+    text. On Claude, which marks pastes, the message reduces to the one authority line (:446). A probe on the pin:
+    the defer line's shape is null; Claude reduces the two-line message to `approved for allowance reset`; Codex
+    leaves it whole, so the one-line rule decides there.
+  - The stop's text lists the reset line and the defer line side by side, which invites one message with both.
+  - Candidates: record each line in its own slot, or refuse the message by name and ask for one line per message. In
+    either case the stop's text says one line per message and that a defer has to land before a reset (the entry above).
+
+- **A typed stop line other than the reset and `stop the review here` never lands through a plain `--live` launch**
+  (203 iteration 002, round 4's stop, 20:05 local; passed under the maintainer's 03:39 decision of 2026-11-23).
+  - The maintainer's `defer finding finding-9cc1155f2c83f5f7 to bug bash 2` was captured alone (20:04:56) and bound to
+    the open stop. The next `--live` launch from the pin refused on the spent budget, with nothing spent, and did not
+    apply it. Nothing said so: no recorded line, no `STOP_ANSWER_NOT_LANDED`, no `STOP_ANSWER_LANDING_FAILED`. The stop
+    text still listed the finding as open.
+  - The cause: `Invoke-ReviewCampaignStopAnswerLanding` returns an empty result, with no word, when
+    `Get-SpecrewStopAnswerAuthorizations` is not loaded (`review-campaign-orchestrator.ps1:1783-1784`).
+    `specrew-review.ps1` loads `HumanAuthorityStore.ps1` only for `--remediate allowance-reset` (:979-982) and
+    `--pause-choice stop-here` (:1281-1284). The engine's own load on the live path (`Test-ReviewCampaignVerdictSender`)
+    runs after the landing.
+  - A read-only probe confirmed it: after the launcher's own loads, the reader is absent; once the store is loaded, it
+    returns the one stored defer for the open stop.
+  - So `defer`, `drop`, `fix finding`, `allow reviewer <host>` and the judgment answer are dead on the real path. The
+    cases that pass call the landing in a process that already loaded the store. This is DRIFT-055's lesson: a path is
+    proven through the real entry point, not by calling the function.
+  - Why it matters: a recorded limit no round will resolve can close only on a landed defer or drop, so without one a
+    campaign cannot end clean.
+  - Candidates: one loader that the landing and the sender check share; a missing reader is a named warning; the stop
+    text names a stored line that waits or was not applied. A red case runs the real launcher in a child process against
+    a fixture with a stored answer and no preloading.
+  - **Fixed in 203**, by the maintainer's decision, typed in the implementer session at 22:52 local on 2026-11-23: "land it
+    with a preloaded launch, fix the loader in 203". The stored defer itself was landed at 22:53 by a one-off wrapper (not
+    in the repository) that loaded the pin's own accessor and store before running the same `--live` launch. The fix is
+    `33a90a5c8` (red `ff7defea3`): the landing loads its own store through one shared loader, a store that cannot be
+    loaded is a named failure said to the human too, and the stop text names a typed line that waits or was not applied.
+    `tests/unit/review-stop-answers-launcher.Tests.ps1` runs the real launcher in a child process with nothing preloaded.
+    The **pin at da78b600 does not have it**, so a stop in the verification round that needs a defer or a drop still
+    cannot land one through a plain launch. The halt landing (a typed `stop the review here` with no stop open) became
+    reachable on the same path, and is tested there.
+
+- **T. The boundary sync dies when the lint launcher cannot start** (release 0.40.0-beta41, Codex
+  host, Windows, about 21:40 local on 2026-11-23; passed under the maintainer's 03:39 decision of 2026-11-23).
+  - What ran: `sync-boundary-state.ps1 -BoundaryType before-implement` in a governed project, from the agent's shell.
+  - What happened: exit 1, with a raw PowerShell error from the lint step and no recovery command: "Program 'node.exe'
+    failed to run: StandardOutputEncoding is only supported when standard output is redirected". It was raised inside
+    npm's `npx.ps1` shim, at its `& "node$exe" ...` line.
+  - The cause, as read on the release and on 203's head (b797c6ab9, which still has it):
+    - `Invoke-PreBoundaryMarkdownLintGate` promises that an unavailable markdownlint is a warning and the sync
+      proceeds. On the head: `scripts/internal/sync-boundary-state.ps1:1497-1530`, called at :1895 with no catch, under
+      `$ErrorActionPreference = 'Stop'` (:2).
+    - `Invoke-MarkdownLintAutoFix` (`extensions/specrew-speckit/scripts/shared-governance.ps1:5257` on, the same lines
+      in the `.specify` copy) checks only that `npx` resolves (:5287). It then runs `& npx @fixArgs 2>&1` (:5303) and
+      decides "unavailable" only by matching the output text (:5307: ENOENT, command not found, is not recognized,
+      cannot find). The second pass (:5325) has the same shape.
+    - A launch failure is a terminating error, not output text, so the match never runs and the error ends the sync.
+      In PowerShell, `npx` resolves to the `.ps1` shim, and that shim is what fails to start node in a shell with no
+      console.
+  - Why it matters: every boundary sync with changed Markdown files stops in that shell, with nothing that tells the
+    human or the agent what to do.
+  - Candidates: catch a launch failure and treat it as unavailable, with a named warning; call node with the lint
+    tool's entry script, or `npx.cmd`, instead of the `.ps1` shim; give the refusal a recovery line.
+  - Open: why earlier syncs in the same project passed. A downstream session is reproducing it read-only.
+
+- **U. A failed preflight names nothing and shows no diagnosis on the live path** (release
+  0.40.0-beta41, Codex host, about 00:35 local on 2026-11-24; passed under the maintainer's 03:39 decision of
+  2026-11-23). The same class as candidate S2: a token where a sentence is owed.
+  - What ran: `specrew review --live` on a checkpoint. The round was approved and the preflight failed after 316 s.
+  - What the human saw: "Failure: verification-command-failed:specrew-governance:diagnostics-require-command-scoped-disclosure",
+    then "Fix what this message names and run the review again". The message names nothing, and no command leads to the
+    diagnosis. The agent stopped and asked the human for permission to read the run's saved records.
+  - The cause, as read on the release and on 203's head (aa8818659, which still has it):
+    - The verification step builds a plain diagnosis from facts the engine owns (command id, exit code, duration, timed
+      out or not, classification, the allowed environment names): `Get-ContinuousCoReviewVerificationFailureDiagnosis`
+      (`verification-plan-runner.ps1:243`), attached at `review-campaign-orchestrator.ps1:501`.
+    - Only the stop-here landing reads and prints it (`review-campaign-orchestrator.ps1:2367`, :2539 and :2579-2582,
+      "What the check reported:"). No other code under `scripts/` or `extensions/` reads the field.
+    - On the live path, `specrew-review.ps1` prints `failure_reason` only (:1430) and reads no `diagnosis`. The note that
+      says "Fix what this message names" is added whenever a slot came back, with no condition on something being named
+      (`review-campaign-orchestrator.ps1:683`).
+  - Candidates: print the diagnosis section on the live path wherever a failed run carries one; make "fix what this
+    message names" conditional on something being named.
+
+- **The review stop answers folder is ignored in git since 2026-11-24** (`650740a04`, the reviewer session's ruling; the entry
+  above that asked is answered). Captures are per-machine and stay out of git, as `7ebd9dbab` decided for the sibling
+  folders. It had been left out because nothing had been captured there before 2026-11-23. The records-only gate keeps
+  its `.specrew/review/stop-answer/` prefix for a project whose ignore file predates this. The guard wanted there, that
+  every path a store under `.specrew/review/` writes is gitignored or named, is still wanted.
+
+- **A governed project's managed ignore list names only some of the typed-authority capture folders** (found while checking
+  the stop-answer line; passed under the maintainer's 03:39 decision of 2026-11-23).
+  - `specrew init` writes a per-session section into the project's `.gitignore` (`Update-GitignoreForSession`, called from
+    `specrew-init.ps1:885`; the list is `$script:SpecrewPerSessionPatterns`, `scripts/internal/file-classification.ps1:23-49`).
+    It names `.specrew/review/authority/` and `signoff-gate/`, with the run and evidence folders.
+  - It does not name `.specrew/authority/`, `.specrew/review/round-approval/`, `allowance-reset/`, `coverage-disposition/`,
+    `pause-decision/` or `stop-answer/`. This repository's own `.gitignore` names all of them. So a plain `git add -A` in a
+    governed project commits those captures. No other code was seen that adds lines to a project's `.gitignore`.
+  - The question for the next bug bash: should the list gain these folders, or are the captures meant to be committed
+    downstream? A change here also needs a decision for projects whose `.gitignore` already has the section.
+
+- **The ReviewResult contract accepts `verdict: findings` with an empty findings list at ingest** (203 iteration 002,
+  round 4's finding 1; passed under the maintainer's 03:39 decision of 2026-11-23). The gate refuses it at the exact
+  digest (`findings-verdict-without-findings`) and, since `e0fbdfb26`, after a records-only change. Nothing refuses it
+  where it enters: `Publish-ReviewRunResultFact` stores it.
+
+- **The sender lookup takes about 30 s on a 128 MB transcript when the turn is outside the 2 MiB tail** (203 iteration 002,
+  DRIFT-056; passed under the maintainer's 03:39 decision of 2026-11-23). `Resolve-SpecrewAuthorizationSender` then reads
+  the whole transcript. Measured on the maintainer's 20:04 defer turn, on the pin and on the head alike (32.9, 33.1 and
+  29.7 s; 33.0, 33.4 and 18.4 s), so round 4's change did not slow it. Every consumer of an older typed line pays it.
+
+- **The navigator suite fails 19 cases under Pester 6, because `Assert-MockCalled` is gone there** (found 2026-11-24 in
+  WSL, where Pester 6.0.0 is installed beside 5.8.0 and loads first; the same 19 on `b797c6ab9` and on the head; passed
+  under the maintainer's 03:39 decision of 2026-11-23). Under Pester 5.8.0 in WSL the suite is 41 of 41 on both commits.
+  CI's Cross-Platform lane pins Pester 5.7.1. Specrew CI's Deterministic gate runs the suite through the F-198 regression
+  suite, and prints Pester 5.9.0 in two of its other steps; that step does not print its version. Three other suites call `Assert-MockCalled` (`review-campaign-verification`,
+  `review-public-campaign-command`, `review-target-port`).
 
 ## Fixed in 203, for Completeness
 

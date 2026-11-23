@@ -15,7 +15,7 @@ it comes first in the review frame. It adds to the spec and plan and does not re
     re-review them as new.
     That is about where to spend effort, not about silence: a defect you can prove in them is still reportable.
 - **Reviewed head:** the commit that carries this version of the file, or later records. Rounds 1 and 2 reviewed
-  `103c4247a` and `2f1f87309`, round 3 `23a32b6dc`; the fixes of their findings, below, are code.
+  `103c4247a` and `2f1f87309`, round 3 `23a32b6dc`, round 4 `b797c6ab9`; the fixes of their findings, below, are code.
 - **The iteration's contract:** `specs/203-beta5-stabilization/spec.md` and
   `specs/203-beta5-stabilization/iterations/002/plan.md`. `.specify/**` is excluded from the frozen tree; its copies of
   the extension scripts are mirrors checked by their hash record. Review the sources under `extensions/`.
@@ -41,6 +41,7 @@ it comes first in the review frame. It adds to the spec and plan and does not re
 | T031 | The boundary sync reader answers for the session's own feature (B5F-093): `Get-LatestSpecrewBoundarySyncState -FeatureRef`, and its four callers pass their feature | `scripts/internal/sync-boundary-state.ps1`, `session-recovery.ps1`, `coordinator-resume.ps1`, `scripts/specrew-review.ps1`, `tests/unit/boundary-sync-reader-feature-aware.tests.ps1` |
 | DRIFT-048 | A review link's four-slash file URL reads as its local path on Linux and macOS, not as a UNC host (FR-046 rework) | `extensions/specrew-speckit/scripts/turn-end-store.ps1` (`6fd9b6518`), `tests/unit/review-link-file-url-local-path.tests.ps1` (`7823c0cfd`) |
 | DRIFT-050 | SC-001's fixture without its own feature claim, and a case pinning the claim decline (test-only) | `tests/integration/project-path-resolution-regression.ps1`, `tests/unit/sc001-fixture-identity.tests.ps1`, `tests/unit/every-suite-is-named-by-a-lane.tests.ps1` |
+| Round 4's fixes | Who could have typed a transcript record is answered in one place, and every caller takes it; the empty findings list stays a refusal outside the human-acceptance alternative; the lease-handoff failure says what the stop wait found; typed stop lines land through the real launcher, and the stop text names a waiting or unapplied line | `scripts/internal/bootstrap/HumanAuthorityStore.ps1` (`1b3a43cbb`), `scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1` (`e0fbdfb26`), `co-review-service.ps1` (`0c101a987`), `review-campaign-orchestrator.ps1`, `worktree-navigator.ps1`, `scripts/specrew-review.ps1` (`33a90a5c8`); `tests/unit/authorization-consumers.Tests.ps1`, `transcript-turn-author.Tests.ps1`, `review-end-one-approval.Tests.ps1`, `review-stop-answers-launcher.Tests.ps1`, `typed-act-classifier.Tests.ps1`, `tests/continuous-co-review/unit/co-review-service.Tests.ps1` |
 | Other | A source checkout's build id is eight characters (`5cec4bf60`); three test fixes for timing and the sealed iteration (`eee6946a6`, `a0c2e6046`, `2d6590f61`) | `scripts/internal/version-check.ps1`; `tests/continuous-co-review/unit/review-posix-runtime.Tests.ps1`, `tests/integration/self-repo-review-integrity.tests.ps1`, `tools/maintenance/sweep/sweep-driver.tests.ps1` |
 
 ## Found in Earlier Rounds
@@ -74,6 +75,25 @@ Round 3 (`23a32b6dc`, Codex) found two more and named the open question:
   below and open, by their decision, for the host tool folders. Red `8e4ea1522`, fix `13bd983b8`, then the digest-level
   test `967c8a148` and the removal of the unreachable part `4f9b95e60` (DRIFT-054, DRIFT-055).
 
+Round 4 (`b797c6ab9`, Codex) found two majors and a minor, each fixed with its failing test committed first, and
+repeated the open question above:
+
+- `finding-4fa0bbeaf9c0ec00` (T022): a findings verdict that lists none was authorized after a records commit once a human
+  acceptance existed; at its exact digest it was refused before any disposition was read. Red `0bcc68032`, fix `e0fbdfb26`.
+- `finding-d4b2f612fa8ffcf1` (T020): a record whose own sender fields refuse it (an sdk program's, a task notification's,
+  command output) took the real message's pending reservation, or won the pick under its key, so the approval was
+  refused. The class is closed by one function, `Get-SpecrewTranscriptTurnAuthor`, that every place deciding person or host
+  asks, and a guard that fails any code reading the record's sender fields or host flags itself. The table of the ten
+  places is in DRIFT-056. Red `c6a19331e`, fix `1b3a43cbb`.
+- `co-review-service.ps1:237` (minor): the failed lease handoff said the reviewer was stopped when the wait had found it
+  still running. Red `3c894833d`, fix `0c101a987`.
+- `finding-9cc1155f2c83f5f7` is **deferred** to bug bash 2 by the maintainer's typed line, `defer finding
+  finding-9cc1155f2c83f5f7 to bug bash 2` (2026-11-23 20:04 local; recorded at 22:53). Its known-limitation list below
+  stands.
+- Found landing that defer: a typed stop line other than the reset and `stop the review here` never landed through a
+  plain launch (the maintainer's "land it with a preloaded launch, fix the loader in 203", 22:52 local). Red
+  `ff7defea3`, fix `33a90a5c8`; the pin does not have it.
+
 The two T022 findings were one defect: the records-only decision asked where a path is and not what it is. The fix
 closes the class, not the instance. Every way `Test-ReviewCampaignDeltaIsRecordsOnly` can answer "records" is listed
 in the inventory in `23056509c`'s commit message and in the iteration's drift log (DRIFT-052), row by row, with what now
@@ -100,14 +120,19 @@ something that runs can still read as records.
    never saw; a finding marked resolved by a run that did not review its fix.
 2. **The wrong typed turn read as the human's** (T020, T021). In `HumanAuthorityStore.ps1`: a cited turn matched by
    message ID when its exact identity exists in another window; a compaction summary, an assistant record or a pasted
-   block taken as the typed turn; a stop answer dropped on the recovery path without a report.
+   block taken as the typed turn; a stop answer dropped on the recovery path without a report. Round 4's fix moved the
+   person-or-host decision into `Get-SpecrewTranscriptTurnAuthor`: attack a record shape it answers wrongly, and a caller
+   that keeps its own rule beside it.
 3. **A hook acting on a stale or shared snapshot** (T025). The one git snapshot and one transcript tail per hook run:
    a provider that needs state written after the snapshot was taken; a failure in the snapshot that a provider treats
    as "nothing changed"; the deployer writing a command line the hosts cannot run.
-4. **The feature-aware reader answering for the wrong feature** (T031). A feature reference given as a path or a leaf
+4. **A typed stop line lost, applied twice, or applied to the wrong stop** (round 4's fix 4). In
+   `Resolve-ReviewCampaignStopAnswerPlan`, the landing and the stop text: a line the plan lands that the text calls
+   waiting, or the reverse; a line typed for another stop; a store that cannot be loaded and stays silent.
+5. **The feature-aware reader answering for the wrong feature** (T031). A feature reference given as a path or a leaf
    that matches another feature; a caller that can tell its feature but still reads by position; a session whose own
    records disagree and are not reported.
-5. **A child's output or a hung suite lost** (T017, T015). The bounded wait after exit: output that arrives after the
+6. **A child's output or a hung suite lost** (T017, T015). The bounded wait after exit: output that arrives after the
    bound, an unfinished read not reported, a process tree that survives the stop, a suite reported green after its
    time limit.
 
@@ -133,7 +158,8 @@ deferred work and the known items named here: a new failure you find in the code
   - `.agents` and `.antigravitycli`;
   - any folder a `.specrew-managed` marker names, a marker added in the same change included;
   - the tool folders `.specify`, `.specrew` and `.squad`.
-  `finding-9cc1155f2c83f5f7` is open for this list. The follow-up is a proposal candidate in the hand-back.
+  `finding-9cc1155f2c83f5f7` is deferred for this list, to bug bash 2, by the maintainer's typed line (2026-11-23 20:04
+  local). The follow-up is a proposal candidate in the hand-back.
 - The hook and MCP server configuration names are a list of names. A new host or a new configuration file needs a new
   entry; a guard that derives them from the host manifests is a hand-back line.
 

@@ -1869,3 +1869,91 @@ The following resolution strategies remain available if drift is detected later 
   limit case). The host tool folders are open by the maintainer's decision, with the follow-up.
 - **Rework:** finding 2 took about 3.0 SP in all (the build about 2.5, the probes and the narrowing about 0.5), so the
   overrun is about 7.0, not DRIFT-054's 6.5.
+
+### DRIFT-056 — Review round 4: two majors and a minor fixed test first, one finding deferred by the maintainer, and the landing of typed stop lines found dead on the real path
+
+- **Round 4** (`run-20261123-134408010-091a7db2`, Codex, on `b797c6ab9`; it ended at the stop written at 16:23 local): verdict
+  findings, 4 of 4 rounds used, nothing further in the budget. Three new findings, all read as real: `finding-4fa0bbeaf9c0ec00`
+  (major), `finding-d4b2f612fa8ffcf1` (major) and a minor in `co-review-service.ps1:237`. `finding-9cc1155f2c83f5f7` stayed
+  open, as the recorded host-folder limit.
+- **The stop, and what it taught.** The maintainer's answers took several messages:
+  - At 19:37 local they sent the defer and `approved for allowance reset` in one message. Only the reset was captured: on
+    Claude, `Resolve-SpecrewApprovalForm` reduces a message to its one authority line, and a defer is not an authority line.
+    Nothing said the other line was dropped. Found, reported, and recorded for the bug bash.
+  - The order mattered: the reset, remediated first, would have closed the stop and lost the defer for good (also recorded).
+    The defer was retyped alone at 20:04:56 local and captured.
+  - The launch meant to land it, at 20:05 local, refused on the spent budget and spent nothing, but **landed nothing and
+    said nothing**: the landing returned an empty result because the store's reader was not loaded, and the plain
+    `--live` path never loaded it. So `defer`, `drop`, `fix`, `allow reviewer` and the judgment answer had never worked
+    through a real launch. Every passing case called the landing in a process that had already loaded the store.
+  - The reviewer session put two options to the maintainer. Their words, typed in the implementer session at 22:52 local
+    on 2026-11-23: "land it with a preloaded launch, fix the loader in 203". A one-off wrapper that loaded the pin's own
+    unmodified accessor and store, then ran the same launch, landed it at 22:53: the disposition
+    `disp-2f210242f95f9f689245` (defer, "bug bash 2", the 20:04:56 turn), the capture spent, two findings open, the stop still
+    open, nothing spent, the home hook set unchanged.
+  - The reset was remediated at 22:56 (`reset-3663e60fa92660ea4db6`): the stop closed, two findings open, budget 0 of 2.
+- **The readings and the ruled shapes** (the reviewer session's, accepted):
+  1. `finding-d4b2f612fa8ffcf1`: one function, `Get-SpecrewTranscriptTurnAuthor`, answers who could have typed a transcript
+     record; the pending-claim order, the pick, the partial window, the candidate filter and the sender check take their
+     answer from it and read no host flag or sender field themselves; the typed-act classifier takes its person-or-host answer
+     and keeps its own order and peer-wrapper rule. An AST guard fails anything else that reads the six fields.
+  2. `finding-4fa0bbeaf9c0ec00`: the empty findings list stays a refusal outside the human-acceptance alternative. The
+     partial-coverage override and its carried form are the documented human escape hatch, not bypasses.
+  3. The minor: the throw and the registry say what the stop wait found.
+  4. The landing loader (from this stop): one shared loader, a named failure, the stop text naming a waiting or unapplied
+     line, and the real launcher as the red case's entry point.
+- **The ten places that decided person or host, and where each is decided now** (the inventory that showed they disagreed
+  before: three read only the two host flags, the others different subsets, so they disagreed):
+
+  | # | Where | Before | Now |
+  | --- | --- | --- | --- |
+  | 1 | `Get-SpecrewTranscriptRecordSender` | the sender's own fields | unchanged; the field rule inside the author function |
+  | 2 | the typed-act classifier | the summary flag and #1, not sidechain | host text and the field answer from the author function; its own order and text rules kept |
+  | 3 | the reader that sets the turn's fields | sets fields, origin and host flags | unchanged (the writer the guard allows) |
+  | 4 | the reader, queued attachments | #1 with the queued rule | unchanged |
+  | 5 | the pending-claim order | the two host flags only | `could_be_typed` |
+  | 6 | the candidate filter | summary flag with no named sender | `unnamed_host_text` (the same set) |
+  | 7 | the pick | the two host flags only | `could_be_typed`; the message-ID fallback keeps its exclusion of meta-flagged and sidechain records (`host_record`) |
+  | 8 | the partial-window rule | the two host flags only | not `could_be_typed` |
+  | 9 | the sender check | #1, the host flags and the reader's origin | the author function's answer, in the same effect |
+  | 10 | the ledger reservation's origin | the hook's `turn_origin` | unchanged; not a transcript record |
+
+  One change of answer no pinned case covered: a sidechain record whose fields say human is now `not-human` in the
+  classifier, as the sender check already refused it. It has its own case.
+- **The fixes, red first each:** 3 (`3c894833d`, `0c101a987`), 2 (`0bcc68032`, `e0fbdfb26`), 4 (`ff7defea3`, `33a90a5c8`), 1
+  (`c6a19331e`, `1b3a43cbb`). Then, tests only and said as such: the sidechain pin (`842349b61`), the launcher cases' stub
+  reviewer and the halt landing through the launcher (`293bd3115`), and the navigator's stop block (`1da57c89a`). Chores: the
+  two new suites named in their lanes, no limit changed (`aa8818659`), and the stop-answer capture folder ignored in git
+  (`650740a04`, the reviewer session's ruling).
+- **What the crew got wrong here, and how it was found:**
+  - The commit message of `1b3a43cbb` and the message to the reviewer session said the classifier and sender suites were
+    compared case by case, "119 of 119". They were not: `mint-path-fixtures`, `not-recorded-report`,
+    `typed-act-classifier`, `typed-act-writer` and `verdict-pairing` are script-style, so Pester counted none of their
+    cases, and the 119 were four other suites. The batch showed it (rows with exit 0 and no pass count). The suites were
+    then run for real on an extracted `c6a19331e` and on the head and compared line by line: 48 and 48 classifier cases and
+    21 and 21 of not-recorded-report identical, and in the others only PASS lines with generated ids and paths differ. No
+    pinned case changed its answer; the first evidence did not show that. The commit was not amended.
+  - The launcher cases first relied on the real Codex on this machine. Without it, the launch refuses with
+    `requested-host-not-available` before it reaches the stop, so they would have failed on CI. A stub comes first on the
+    child's PATH, and a launch that runs it fails the case.
+  - The "waiting line" case called the stop-text functions directly and never went through the navigator, which is what the
+    hook shows. Found while checking a claim about the navigator suite; the case was added (`1da57c89a`).
+  - The rework figure the crew first gave (about 7.5) left out round 4's own 1.1; it is about 8.7.
+- **Verification:**
+  - 117 suites on `1b3a43cbb` (the authority, gate and engine-loader suites): 116 green, the red one a lane-naming guard,
+    fixed in `aa8818659`; the home hook set unchanged; no PSScriptAnalyzer errors.
+  - The ten lanes in the review layout on `650740a04`: all exit 0 (28, 565, 252, 235, 46, 521, 151, 226, 114 and 79 s against
+    their limits of 180, 1,500, 900, 900, 600, 1,500, 1,200, 360, 270 and 270); home unchanged. They run again on the head
+    that is launched from.
+  - CI on `650740a04`, all three workflows success, the Deterministic gate and the Contract lane run.
+  - WSL: the suites the fixes touch green. The navigator suite's 19 Pester 6 failures are the same on `b797c6ab9`; under
+    Pester 5.8.0 it is 41 of 41 on both.
+  - The sender lookup for the 20:04 defer turn on a 127.7 MB transcript: about 33 s on the pin and on the head.
+- **Class closure**: who could have typed a transcript record has one answer and a guard
+  (`tests/unit/transcript-turn-author.Tests.ps1`, with one case per record kind in `authorization-consumers.Tests.ps1`).
+  The records-only gate's empty-list rule is pinned through the digest in `review-end-one-approval.Tests.ps1`. The
+  typed-stop-line path is proven through the real launcher in `review-stop-answers-launcher.Tests.ps1`, not by calling
+  the landing in a process that has loaded its store. The order trap, the two-line drop and the released-install
+  candidates T and U are recorded in the hand-back.
+- **Rework:** about 1.7 SP (about 1.1 for the three findings, about 0.5 for the loader, about 0.1 for the follow-ups and
+  the lane naming), so the overrun is about 8.7, not DRIFT-055's 7.0.
