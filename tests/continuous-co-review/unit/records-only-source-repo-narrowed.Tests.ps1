@@ -396,9 +396,14 @@ Describe 'T022 records rule: the acceptance carry reads the delta without rename
 #     quality/, checklists/, dashboards/ and gates/ are records only when they are a record KIND.
 #   A, C2, C3, C5 in the source repository: outside specs/, a path is records only in a named records place, whatever its
 #     extension (a .yml can be an agent definition, a .json the hook settings).
-#   C1 downstream: a non-record kind under docs/ is source.
-#   A, C2, C3 downstream (deployed machinery and host mirrors): unchanged, an open design question put to the maintainer on
-#     2026-11-23; pinned here so a change to them is deliberate.
+#   C1 downstream: a non-record kind under docs/ is source. Since round 3's finding 2 this is the general downstream rule
+#     (the shared classifier's directory exemption counts record kinds only), not a docs/ rule of its own.
+#   A, C2, C3 downstream (deployed machinery and host mirrors): decided by the maintainer on 2026-11-23 at about 13:14 local
+#     ("203 deployed files: fix it in 203", round 3's finding-9cc1155f2c83f5f7). A file that can run is records only where
+#     the machinery list names its place, by name or by a .specrew-managed marker; record kinds and Specrew's generated
+#     agent files stay records, and the project's own hook and MCP server configuration is source by name. Its cases are
+#     in records-only-covers-what-deployment-writes.Tests.ps1; the ones pinned here are deployment writes that keep
+#     their answer.
 Describe 'records by kind and by named place (round 2 finding, finding-7a5e1b6f01a5008d)' {
     It 'B3: a script under quality/, checklists/, dashboards/ or gates/ of the active feature is source' {
         foreach ($path in @(
@@ -478,7 +483,7 @@ Describe 'records by kind and by named place (round 2 finding, finding-7a5e1b6f0
         Test-RecordsOnly -Paths @('specs/001-fixture/iterations/001/quality/mechanical-findings.json') -Root $root | Should -BeTrue
     }
 
-    It 'A, C2, C3 downstream stay as they are: deployed machinery and host mirrors are records by design (open design question, 2026-11-23; pinned)' {
+    It 'A, C2, C3 downstream: deployed machinery and host mirrors of a record kind stay records (decided 2026-11-23, round 3 finding 2; pinned)' {
         $root = New-DownstreamFixture -Name 'round2-design-row'
         foreach ($path in @('.specify/extensions/specrew-speckit/scripts/tool.ps1', '.claude/skills/specrew-help/SKILL.md', '.github/agents/squad.agent.md')) {
             Test-RecordsOnly -Paths @($path) -Root $root | Should -BeTrue -Because "$path is a deployment write downstream (DRIFT-007's twin)"
