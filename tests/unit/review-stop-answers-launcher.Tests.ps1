@@ -45,7 +45,7 @@ Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $Root -Response $Text -HostKind
 
     # A project on its feature branch in the implement window, with a budget grant, two open findings and an open stop (a)
     # the engine wrote. -WithStopD adds a later stop (d) naming copilot, so stop (a) is still open once (d) is answered.
-    function script:New-LauncherProject([string]$Name, [switch]$WithStopD) {
+    function script:New-LauncherProject([string]$Name, [switch]$WithStopD, [switch]$NoStop) {
         $root = Join-Path $TestDrive $Name
         New-Item -ItemType Directory -Path (Join-Path $root '.specrew'), (Join-Path $root 'specs/001-fixture/iterations/001'), (Join-Path $root 'src') -Force | Out-Null
         [IO.File]::WriteAllText((Join-Path $root 'specs/001-fixture/spec.md'), '# Fixture design context', $script:Utf8)
@@ -76,7 +76,7 @@ Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $Root -Response $Text -HostKind
         $decision = Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 2 -BudgetTotal 2
         $stopA = New-ReviewCampaignPendingPauseFact -CampaignId $script:CampaignId -RunId 'run-launcher-stop-a' -TargetDigest ('a' * 40) -Decision $decision `
             -ObservedAt ([DateTimeOffset]::UtcNow.AddSeconds(-10).ToString('o')) -StopKind 'a-budget-spent' -StopReason 'budget-spent'
-        $null = Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact $stopA
+        if (-not $NoStop) { $null = Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact $stopA }
         if ($WithStopD) {
             $stopD = New-ReviewCampaignPendingPauseFact -CampaignId $script:CampaignId -RunId 'run-launcher-stop-d' -TargetDigest ('a' * 40) -Decision $decision `
                 -ObservedAt ([DateTimeOffset]::UtcNow.AddSeconds(-5).ToString('o')) -StopKind 'd-host-outside-order' -StopReason 'host-order-exhausted' -NextHost 'copilot'
@@ -101,15 +101,27 @@ Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $Root -Response $Text -HostKind
 
     # The real review command, `--live --host codex`, in its own process with stdin closed, no session signals and a home
     # folder of its own. Nothing is loaded into it beforehand. -EngineRoot runs a copied engine instead of this checkout's.
+    # A stub codex comes first on its PATH, so the host check passes on a machine with no codex (CI) and no real reviewer can
+    # start; a launch that runs it fails the case.
     function script:Invoke-LauncherCli([pscustomobject]$Project, [string]$EngineRoot = $script:RepoRoot) {
         $saved = @{}
-        $names = @($script:SessionSignals) + @('HOME', 'USERPROFILE')
+        $names = @($script:SessionSignals) + @('HOME', 'USERPROFILE', 'PATH')
         foreach ($name in $names) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
         foreach ($name in $script:SessionSignals) { [Environment]::SetEnvironmentVariable($name, $null) }
         $fixtureHome = Join-Path $TestDrive ('home-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
         New-Item -ItemType Directory -Path $fixtureHome -Force | Out-Null
         [Environment]::SetEnvironmentVariable('HOME', $fixtureHome)
         [Environment]::SetEnvironmentVariable('USERPROFILE', $fixtureHome)
+        $stubDir = Join-Path $fixtureHome 'stub-bin'
+        New-Item -ItemType Directory -Path $stubDir -Force | Out-Null
+        $marker = Join-Path $fixtureHome 'reviewer-started.txt'
+        if ($IsWindows) { [IO.File]::WriteAllLines((Join-Path $stubDir 'codex.cmd'), [string[]]@(('@echo started>> "{0}"' -f $marker), '@exit /b 3'), $script:Utf8) }
+        else {
+            $stub = Join-Path $stubDir 'codex'
+            [IO.File]::WriteAllText($stub, (@('#!/bin/sh', ("echo started >> '{0}'" -f $marker), 'exit 3', '') -join "`n"), $script:Utf8)
+            $null = & chmod +x $stub
+        }
+        [Environment]::SetEnvironmentVariable('PATH', ($stubDir + [IO.Path]::PathSeparator + $saved['PATH']))
         try {
             $out = Join-Path $TestDrive ('cli-' + [guid]::NewGuid().ToString('N'))
             [IO.File]::WriteAllText("$out.in", '')
@@ -117,6 +129,7 @@ Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $Root -Response $Text -HostKind
             $process = Start-Process -FilePath 'pwsh' -ArgumentList $argumentList -RedirectStandardInput "$out.in" -RedirectStandardOutput "$out.out" -RedirectStandardError "$out.err" -NoNewWindow -PassThru -Wait
             $stdout = [string](Get-Content -LiteralPath "$out.out" -Raw -ErrorAction SilentlyContinue)
             $stderr = [string](Get-Content -LiteralPath "$out.err" -Raw -ErrorAction SilentlyContinue)
+            if (Test-Path -LiteralPath $marker) { throw 'the launch started a reviewer' }
             $flat = { param([string]$t) ((($t -replace "`e\[[0-9;]*m", '') -replace '\s*\|\s+', ' ') -replace '\s+', ' ') }
             return [pscustomobject]@{ ExitCode = $process.ExitCode; Out = (& $flat $stdout); Err = (& $flat $stderr); Text = (& $flat ($stdout + ' ' + $stderr)) }
         }
@@ -195,5 +208,22 @@ Describe 'R3: the stop text names a typed line that waits, or was recorded but n
         $run = script:Invoke-LauncherCli -Project $project
         $run.Out | Should -Match ([regex]::Escape('Your line "drop finding finding-00000000000000ff" was recorded but is not applied: the finding it names is not open.'))
         $run.Text | Should -Match 'review-stop-open:a-budget-spent'
+    }
+}
+
+Describe 'R4: a typed `stop the review here` with no stop open halts the review through the real launcher (maintainer ruling 2026-11-09)' {
+    It 'is recorded and spent, and the launch is refused naming what remains uncovered; no reviewer starts' {
+        # The in-process twin is in review-stop-here.Tests.ps1. Since the landing loads its own store (203 iteration 002,
+        # fix 4) a plain launch reaches the halt landing, which before was dead on the real path: the same loader gap.
+        $project = script:New-LauncherProject -Name 'r4-halt' -NoStop
+        script:Invoke-LauncherTyped -Project $project -Text 'stop the review here'
+        $captured = Join-Path $project.root '.specrew/review/pause-decision/stop-here.json'
+        Test-Path -LiteralPath $captured | Should -BeTrue -Because 'the hook captured the typed line with no stop open'
+        [string](Get-Content -LiteralPath $captured -Raw | ConvertFrom-Json).run_id | Should -BeNullOrEmpty -Because 'it is bound to no run'
+        $run = script:Invoke-LauncherCli -Project $project
+        [string](Get-Content -LiteralPath $captured -Raw | ConvertFrom-Json).spent_at | Should -Not -BeNullOrEmpty -Because 'the halt landing spends the capture'
+        $run.Text | Should -Match 'review-stopped-here'
+        $run.Text | Should -Match ([regex]::Escape($script:FindingA))
+        (Get-ReviewCampaignLoopState -StoreRoot $project.store -CampaignId $script:CampaignId).stopped_here | Should -BeTrue
     }
 }
