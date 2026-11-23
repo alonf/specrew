@@ -1850,6 +1850,9 @@ function Read-SpecrewCitedTypedTurn {
             $observedAt = if ($entryTime -is [datetime]) { $entryTime.ToUniversalTime().ToString('o') } elseif ($null -ne $entryTime) { [string]$entryTime } else { '' }
             $turn = [pscustomobject]@{ host = $entryHost; message_id = $messageId; message_identity = $identityKind; origin = $origin; text = [string]$formatted.text; record_uuid = $uuid; observed_at = $observedAt }
             if (Test-SpecrewConversationMetaFlag -Object $o) { $turn | Add-Member -NotePropertyName is_compact_summary -NotePropertyValue $true }
+            # Round 3 of 203 iteration 002's review (finding-be18f96e95952c83): the sender check reads this; a sub-agent's
+            # record is never the human's.
+            if ($side -eq $true -or [string]$side -match '(?i)^\s*true\s*$') { $turn | Add-Member -NotePropertyName record_is_sidechain -NotePropertyValue $true }
             # Feature 203 T013 (maintainer ruling 2026-11-12): the record's own word on who wrote it, for the classifier's
             # positive rule (turnOrigin human with promptSource typed or queued). Absent on older hosts.
             # Every field Get-SpecrewTranscriptRecordSender reads, each where the record has it (an older host has some or none).
@@ -1868,18 +1871,45 @@ function Read-SpecrewCitedTypedTurn {
             $asCited = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = $hostKey; message_id = $messageId; text = [string]$formatted.text })).Identity
             $entries.Add([pscustomobject]@{ Turn = $turn; Base = [string](Get-SpecrewTypedActIdentity -Turn $turn).Identity; AsCited = $asCited; Session = [string](& $prop $o 'sessionId') }) | Out-Null
         }
-        Resolve-SpecrewTranscriptEntryActIdentity -ProjectRoot $ProjectRoot -Entries $entries -ParentOf $parentOf -Records $records -HookEvents $hookEvents
+        # Round 3 of 203 iteration 002's review (finding-be18f96e95952c83; the reviewer session's ruling, closing the class
+        # T020 began for round E's finding-cf1fe81e0398f883): THE HOST'S OWN RECORDS ARE NO CITATION CANDIDATE. A compaction
+        # summary (or a Stop-feedback record, the other host record Claude files under a running prompt ID) is the host's
+        # text, never the message a citation names. They are left out once, here, before identities are resolved (so a
+        # summary cannot take the reservation of the message it repeats) and before any branch reads the set, so every
+        # branch - exact, by key, by message ID, and any added later - reads the same candidates. Intended: a citation that
+        # names a summary directly ('entry:<uuid>') comes back not found and is refused.
+        # The host's own text is a record the meta flag marks (a summary, Stop feedback) that names no sender in any field;
+        # a record that names its sender (a scheduled prompt's turnOrigin) stays a candidate, so the sender check refuses it
+        # with its own sentence.
+        $candidates = [System.Collections.Generic.List[object]]::new()
+        foreach ($candidate in $entries) {
+            $ct = $candidate.Turn
+            $hostText = $ct.PSObject.Properties['is_compact_summary'] -and
+                [string]::IsNullOrWhiteSpace([string]$ct.record_turn_origin) -and [string]::IsNullOrWhiteSpace([string]$ct.record_prompt_source) -and
+                [string]::IsNullOrWhiteSpace([string]$ct.record_origin_kind)
+            if (-not $hostText) { $candidates.Add($candidate) | Out-Null }
+        }
+        Resolve-SpecrewTranscriptEntryActIdentity -ProjectRoot $ProjectRoot -Entries $candidates -ParentOf $parentOf -Records $records -HookEvents $hookEvents
         # The citation names an entry by the act identity it resolved to, or by its record ('entry:<uuid>'). A message id,
         # or the id-and-text key from before the record resolved it, still names the newest entry it fits; a message id
         # fitting entries with different texts is ambiguous.
-        $exact = @($entries | Where-Object { [string]$_.Turn.act_identity -ceq $cited -or ('entry:' + [string]$_.Turn.record_uuid) -ceq $cited })
-        if ($exact.Count -ge 1) { return [pscustomobject]@{ Turn = $exact[$exact.Count - 1].Turn; Reason = '' } }
-        $byKey = @($entries | Where-Object { [string]$_.Base -ceq $cited -or [string]$_.AsCited -ceq $cited })
-        if ($byKey.Count -ge 1) { return [pscustomobject]@{ Turn = $byKey[$byKey.Count - 1].Turn; Reason = '' } }
-        # Feature 203 T020 (round E finding-cf1fe81e0398f883; the reviewer session's ruling, DRIFT-083): a compaction
-        # summary (or a Stop-feedback record, the other host record Claude files under a running prompt ID) is the host's
-        # text, never the message a citation names, so the message-ID fallback never returns one in its place.
-        $byId = @($entries | Where-Object { [string]$_.Turn.message_id -ceq $cited -and -not $_.Turn.PSObject.Properties['is_compact_summary'] })
+        # A host record that names its sender (a scheduled prompt, Stop feedback with fields) stays a candidate, so it is
+        # refused with its own sentence when it is the one cited, but it never displaces a record a person could have
+        # typed: in every branch the newest such record wins, and a host record is returned only when nothing else matches.
+        $isHostRecord = { param($e) [bool]($e.Turn.PSObject.Properties['is_compact_summary'] -or $e.Turn.PSObject.Properties['record_is_sidechain']) }
+        $pickNewest = {
+            param([object[]]$Matched)
+            $person = @($Matched | Where-Object { -not (& $isHostRecord $_) })
+            if ($person.Count -ge 1) { return $person[$person.Count - 1] }
+            if (@($Matched).Count -ge 1) { return @($Matched)[@($Matched).Count - 1] }
+            return $null
+        }
+        $exactHit = & $pickNewest @($candidates | Where-Object { [string]$_.Turn.act_identity -ceq $cited -or ('entry:' + [string]$_.Turn.record_uuid) -ceq $cited })
+        if ($null -ne $exactHit) { return [pscustomobject]@{ Turn = $exactHit.Turn; Reason = '' } }
+        $keyHit = & $pickNewest @($candidates | Where-Object { [string]$_.Base -ceq $cited -or [string]$_.AsCited -ceq $cited })
+        if ($null -ne $keyHit) { return [pscustomobject]@{ Turn = $keyHit.Turn; Reason = '' } }
+        # The message-ID fallback keeps T020's exclusion whole: no meta-flagged or sidechain record, with fields or without.
+        $byId = @($candidates | Where-Object { [string]$_.Turn.message_id -ceq $cited -and -not (& $isHostRecord $_) })
         $distinct = @($byId | ForEach-Object { $_.Base } | Sort-Object -Unique)  # specrew-dedup-not-a-path: act identities are lowercase SHA-256 hex
         if ($distinct.Count -gt 1) { return [pscustomobject]@{ Turn = $null; Reason = 'ambiguous-citation' } }
         if ($byId.Count -ge 1) { return [pscustomobject]@{ Turn = $byId[$byId.Count - 1].Turn; Reason = '' } }
@@ -2552,6 +2582,10 @@ function Resolve-SpecrewAuthorizationSender {
                         $partialWindow = ([long]$window -lt $transcriptLength)
                         if ($partialWindow -and $null -ne $read -and $null -ne $read.Turn -and $read.Turn.PSObject.Properties['act_identity_source'] -and
                             [string]$read.Turn.act_identity_source -ceq 'pending') { continue }
+                        # Round 3 (finding-be18f96e95952c83): nor is a host record (meta-flagged or sidechain), which the lookup
+                        # returns only when nothing a person could have typed matched in this window.
+                        if ($partialWindow -and $null -ne $read -and $null -ne $read.Turn -and
+                            ($read.Turn.PSObject.Properties['is_compact_summary'] -or $read.Turn.PSObject.Properties['record_is_sidechain'])) { continue }
                         if ($null -ne $read -and $null -ne $read.Turn) { $turn = $read.Turn; break }
                     }
                     if ($null -ne $turn) { break }
@@ -2577,6 +2611,17 @@ function Resolve-SpecrewAuthorizationSender {
         $s = Get-SpecrewTranscriptRecordSender -TurnOrigin ([string](& $prop 'record_turn_origin')) -PromptSource ([string](& $prop 'record_prompt_source')) `
             -IsMeta (& $prop 'record_is_meta') -OriginKind ([string](& $prop 'record_origin_kind')) -PeerName ([string](& $prop 'record_peer_name')) -PeerAddress ([string](& $prop 'record_peer_address')) `
             -RecordKind ([string](& $prop 'record_kind')) -HumanTurn (& $prop 'record_human_turn') -CommandMode ([string](& $prop 'record_command_mode'))
+        # Round 3 of 203 iteration 002's review (finding-be18f96e95952c83; the reviewer session's ruling): the text rules
+        # behind 'fields-absent-text-rules' ran on the prompt's text at capture, not on the record this lookup landed on, so
+        # a record's missing sender fields are not evidence that a human typed it. A compaction summary or a sub-agent's
+        # (sidechain) record is never accepted; a record with no sender fields is accepted only when the reader's own origin
+        # for it is typed-user; a record whose fields say who sent it stays decided by its fields.
+        $hostRecord = ($turn.PSObject.Properties['is_compact_summary'] -and (& $prop 'is_compact_summary') -eq $true) -or
+            ($turn.PSObject.Properties['record_is_sidechain'] -and (& $prop 'record_is_sidechain') -eq $true)
+        # A record its own fields already refuse keeps the sender they name (a scheduled prompt is refused as one).
+        if (($hostRecord -and [bool]$s.accepted) -or (-not [bool]$s.fields_present -and [string](& $prop 'origin') -cne 'typed-user')) {
+            $s = [pscustomobject][ordered]@{ sender = 'other'; accepted = $false; fields_present = [bool]$s.fields_present; peer_name = ''; peer_address = '' }
+        }
         $result.accepted = [bool]$s.accepted; $result.sender = [string]$s.sender; $result.peer_name = [string]$s.peer_name; $result.peer_address = [string]$s.peer_address
         $result.record_uuid = [string](& $prop 'record_uuid')
         $result.reason = if ($s.accepted) { $(if ($s.fields_present) { 'typed-by-human' } else { 'fields-absent-text-rules' }) } else { 'not-typed-by-human' }
