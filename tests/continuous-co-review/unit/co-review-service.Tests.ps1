@@ -171,4 +171,69 @@ Describe 'Continuous co-review service lease-gated spawn (T019 step 6 piece 2b)'
             if (-not $script:LateFixtureProcess.HasExited) { try { $script:LateFixtureProcess.Kill() } catch { $null = $_ } }
         }
     }
+
+    It 'a stop that has not taken effect is never reported as done: the throw and the registry say the reviewer was still running (203 iteration 002, round 4)' {
+        # Round 4 of 203 iteration 002's review (minor): the throw said "the spawned reviewer was stopped" whatever the wait
+        # found, and the registry added "(never an unprotected running reviewer)" to a reviewer it had just found running.
+        $repo = Join-Path $TestDrive 'lease-handoff-still-running'
+        New-Item -ItemType Directory -Path $repo -Force | Out-Null
+        $pwshPath = (Get-Process -Id $PID).Path
+        $sleeper = [System.Diagnostics.ProcessStartInfo]::new($pwshPath)
+        $sleeper.UseShellExecute = $false
+        foreach ($a in @('-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 120')) { [void]$sleeper.ArgumentList.Add($a) }
+        $script:StillRunningFixtureProcess = [System.Diagnostics.Process]::Start($sleeper)
+        if ($IsWindows) {
+            Mock -CommandName Invoke-CimMethod -MockWith { [pscustomobject]@{ ReturnValue = 0; ProcessId = $script:StillRunningFixtureProcess.Id } }
+        }
+        else {
+            Mock -CommandName Start-Process -MockWith { $script:StillRunningFixtureProcess }
+        }
+        Mock -CommandName Update-ContinuousCoReviewLineageLeaseOwnerProcess -MockWith { $false }
+        # The stop is requested and does not take effect within the wait.
+        Mock -CommandName Stop-Process -MockWith { }
+        Mock -CommandName Wait-ContinuousCoReviewProcessExit -MockWith { $false }
+        try {
+            $thrown = $null
+            try { Start-ContinuousCoReviewServiceRun -RepoRoot $repo -RunId 'handoff-still-running' -TreeId '4444444444444444444444444444444444444444' -LineageId 'L-handoff-still-running' -Detached }
+            catch { $thrown = $_.Exception.Message }
+            $thrown | Should -Match 'lease-owner-handoff-failed'
+            $thrown | Should -Not -Match 'the spawned reviewer was stopped' -Because 'the wait found the reviewer still running'
+            $thrown | Should -Match 'still running'
+            $reg = Get-Content -LiteralPath (Join-Path $repo '.specrew/review/pending/handoff-still-running.json') -Raw | ConvertFrom-Json
+            [string]$reg.status | Should -Be 'failed'
+            [string]$reg.failure_reason | Should -Match 'still running'
+            [string]$reg.failure_reason | Should -Not -Match 'never an unprotected running reviewer' -Because 'that claim is false for a reviewer found running'
+        }
+        finally {
+            if (-not $script:StillRunningFixtureProcess.HasExited) { try { $script:StillRunningFixtureProcess.Kill() } catch { $null = $_ } }
+        }
+    }
+
+    It 'a stop that took effect keeps both sentences: the throw says the reviewer was stopped, the registry says never an unprotected running reviewer' {
+        $repo = Join-Path $TestDrive 'lease-handoff-stopped-text'
+        New-Item -ItemType Directory -Path $repo -Force | Out-Null
+        $pwshPath = (Get-Process -Id $PID).Path
+        $sleeper = [System.Diagnostics.ProcessStartInfo]::new($pwshPath)
+        $sleeper.UseShellExecute = $false
+        foreach ($a in @('-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 120')) { [void]$sleeper.ArgumentList.Add($a) }
+        $script:StoppedTextFixtureProcess = [System.Diagnostics.Process]::Start($sleeper)
+        if ($IsWindows) {
+            Mock -CommandName Invoke-CimMethod -MockWith { [pscustomobject]@{ ReturnValue = 0; ProcessId = $script:StoppedTextFixtureProcess.Id } }
+        }
+        else {
+            Mock -CommandName Start-Process -MockWith { $script:StoppedTextFixtureProcess }
+        }
+        Mock -CommandName Update-ContinuousCoReviewLineageLeaseOwnerProcess -MockWith { $false }
+        try {
+            $thrown = $null
+            try { Start-ContinuousCoReviewServiceRun -RepoRoot $repo -RunId 'handoff-stopped-text' -TreeId '5555555555555555555555555555555555555555' -LineageId 'L-handoff-stopped-text' -Detached }
+            catch { $thrown = $_.Exception.Message }
+            $thrown | Should -Match 'the spawned reviewer was stopped'
+            $reg = Get-Content -LiteralPath (Join-Path $repo '.specrew/review/pending/handoff-stopped-text.json') -Raw | ConvertFrom-Json
+            [string]$reg.failure_reason | Should -Match 'the spawned reviewer was stopped \(never an unprotected running reviewer\)'
+        }
+        finally {
+            if (-not $script:StoppedTextFixtureProcess.HasExited) { try { $script:StoppedTextFixtureProcess.Kill() } catch { $null = $_ } }
+        }
+    }
 }
