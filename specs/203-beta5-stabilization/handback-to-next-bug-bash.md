@@ -466,6 +466,15 @@ fixed in 203.
   - Whether it should be ignored like the others is its own question: that changes what a resumed session finds on disk.
   - The same reading wants a guard: every path a store under `.specrew/review/` writes is gitignored or named.
 
+- **A unit suite leaves a folder in `%TEMP%` for every case** (203 iteration 002 DRIFT-053; passed under the
+  maintainer's standing word, 03:39 local on 2026-11-23).
+  - `tests/unit/approval-form.tests.ps1:28` creates `f202-form-<guid>` for each case and never removes it. 396 were
+    left in the five hours before 07:20 local on 2026-11-23, by the lanes and the review preflights that run it.
+  - `%TEMP%` held 40,926 entries that morning, about twice the count of a few days before. Round 3's preflight took 48
+    percent longer than rounds 1 and 2 with the processor mostly idle. The link is not shown, but it is the one machine
+    condition that keeps growing.
+  - **Still present on main.**
+
 ## Fixed in 203, for Completeness
 
 - **Item 8 (HO-206-5), suites that rewrite the real home's hook files**: B5F-039, test first (`77bd4a2e2`, `b69cc5caf`),

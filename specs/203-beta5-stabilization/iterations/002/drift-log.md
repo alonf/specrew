@@ -1682,3 +1682,85 @@ The following resolution strategies remain available if drift is detected later 
   records-only-source-repo-narrowed.Tests.ps1, which runs on Specrew CI's Linux job: the case per inventory row, the
   case that holds the gate's case-only list equal to the shared classifier, and the case that holds the gate's
   fallback body equal to the shared function. The downstream design row stays open with the maintainer.
+
+### DRIFT-053 — Round 3: three findings, two fixed test first and one put to the maintainer; the cited-turn lookup's class closed by signal
+
+- **Round 3:** run `run-20261123-043119068-76e7d09f` on `23a32b6dc`, launched at 06:31 local with `--host codex`, 3,163.3 s
+  in all (preflight 2,768.3 s, Codex about 390 s). Findings: 2 major and 1 minor. 3 of 4 rounds spent (the spend fact
+  `res-c4cbf26179ee3242b64a`). The real home hook set was unchanged.
+- **The preflight took 48 percent longer than in rounds 1 and 2.** The watcher's lane seconds, about ±30 s (round 3, then
+  round 2, then the standalone layout run at 05:47 to 06:15):
+
+  | Lane | Round 3 | Round 2 | Standalone | Limit |
+  | --- | --- | --- | --- | --- |
+  | f203-i001-suites | 767 | 420 | 465 | 900 |
+  | f203-i001-verdict-review | 350 | 183 | 196 | 900 |
+  | f203-i001-budget | 267 | 152 | 173 | 900 |
+  | f203-i001-authority-sender | 34 | 18 | 29 | 600 |
+  | f203-i001-t008-suites | 394 | 338 | 362 | 1,500 |
+  | f203-i001-validator-scope | 133 | 89 | 123 | 1,200 |
+  | f203-i001-carried | 206 | 160 | 175 | 360 |
+  | f199-class-guards-a | 80 | 88 | 91 | 270 |
+  | f199-class-guards-b | 61 | 55 | 65 | 270 |
+
+  - Every heavy lane grew, not one. CPU averaged 10 percent in the samples (peak 93), with 21 GB free.
+  - `%TEMP%` held 40,926 entries (40,554 at 02:49).
+  - `tests/unit/approval-form.tests.ps1:28` creates an `f202-form-<guid>` folder per case in `%TEMP%` and never removes
+    it: 396 in the five hours before 07:20. It is a hand-back line.
+  - The lane limit is the maintainer's (the reviewer session asked them).
+  - The `copilot.exe` the watcher saw at 07:14 was `copilot --version`, the agent-detection probe
+    (`scripts/init/agent-detection.ps1:180`), run by `crew-charter-ownership.tests.ps1` in a temp project; not the
+    reviewer.
+- **Finding 1, `finding-be18f96e95952c83` (major, T020's lookup).** A compaction summary could be the cited turn through
+  the exact-identity or text-key branch, and the sender check accepted it as unverified because it has no sender fields.
+  It is the third finding in this lookup (round E's F1, round 1's finding 1, this), so the reviewer session ruled to close
+  the class.
+  - **Pre-check, before code:** every user-role record in the fixtures, 9 in 166 files, under the new rule. Only two
+    change answer: the compaction summary, and a Codex Stop-hook continuation prompt (`<hook_prompt ...>`, in
+    `verdict-capture-fabrication`). Neither is a real typed message. A Codex typed approval (a `response_item` with no
+    sender fields) stays accepted.
+  - Red `9c7a3cc9c` (4 of 37), then `f55873841` (2 of 39). The second came from the reviewer session's follow-up: a host
+    record that names its sender (a scheduled prompt with `turnOrigin`) must never displace a record a person could have
+    typed under the same key, in the tail or in one window. The first draft of the fix had let it, and had narrowed
+    T020's message-ID exclusion.
+  - Fix `1de5a0165`, 39 of 39 on Windows and in WSL, and a batch of 14 authority suites green.
+  - **The signals, before and after:**
+
+    | Signal the reader computes | Sender check before | After |
+    | --- | --- | --- |
+    | `isMeta` | refused through the fields | unchanged |
+    | `isCompactSummary` (the meta flag) | not read | never accepted; with no sender field, not a candidate at all |
+    | `isSidechain` | not read | never accepted |
+    | `origin.kind` | read | unchanged |
+    | `turnOrigin`, `promptSource` | read | unchanged |
+    | the text rule (`verdict_evidence`, the reader's origin) | not read | a record with no sender fields needs origin typed-user |
+    | the queued-attachment fields | read | unchanged |
+    | which branch matched | any branch, newest wins | a record a person could have typed wins in every branch; host records only when nothing else matches |
+    | the window | a pending hit in the tail went on to the whole transcript | so does a host-record hit |
+
+- **Finding 2, `finding-9cc1155f2c83f5f7` (major): the open design row.** Downstream host directories carry an approval
+  across executable changes, for example a project's own `.github/skills/release/scripts/publish.ps1`. No fix in 203; the
+  disposition is the maintainer's, and the reviewer session put it to them with the crew's read-only sizing:
+  - The only runnable file Specrew deploys outside a named machinery place is `.claude/specrew-hook-launch.ps1`.
+  - The recommended shape is about 2 SP and about 10 tests:
+    - the classifier's directory exemption counts record kinds only, downstream;
+    - the launcher becomes a downstream-only machinery entry. It is tracked in this repository and in 203's reviewed
+      digest (203 T002, `48fc192ab`), so it is not added to the shared list, which would strip it from review here;
+    - the project's own hook configuration (`.claude/settings.json`, `.cursor/hooks.json`, `.copilot/hooks/*.json`) is
+      source by name.
+  - No existing pinned case changes its answer. The red cases are drafted outside the repository.
+- **Finding 3, `finding-266f3aac0b802944` (minor, DRIFT-048's POSIX file URL reader).** A fragment was read as path
+  text.
+  - Pinned first on Windows: `System.Uri.LocalPath` cuts both the fragment and the query, and percent-decodes after the
+    cut (`%23` and `%3F` stay literal).
+  - Red `1c4a1f0d8`: 6 of 33 on Windows, 7 of 33 in WSL (the packet reader's case runs only on POSIX).
+  - Fix `feaaeacff`: cut at the first raw `?` or `#`, with the mirror and its hash record. Green: 33 of 33 on Windows,
+    32 of 32 in WSL (one case runs only on Windows). The packet, turn-end, crossing and hook-capture suites are green
+    in WSL.
+- **Round 4 is the last round of the grant.** If it returns findings, the campaign stops and the maintainer decides. It
+  waits for the maintainer's answer on finding 2, which may change the head or the scope file, and for their answer on
+  the lane limit.
+- **Class closure**: the cited-turn lookup is held by signal (the table above), guarded by
+  `authorization-consumers.Tests.ps1`'s round 3 cases (each branch, each window, the sidechain and envelope records,
+  and the live typed and Codex typed approvals pinned). The POSIX file URL reader matches `System.Uri.LocalPath`,
+  guarded by `review-link-file-url-local-path.tests.ps1`. The downstream design row stays open with the maintainer.

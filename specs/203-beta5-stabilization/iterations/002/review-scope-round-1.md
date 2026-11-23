@@ -15,7 +15,7 @@ it comes first in the review frame. It adds to the spec and plan and does not re
     re-review them as new.
     That is about where to spend effort, not about silence: a defect you can prove in them is still reportable.
 - **Reviewed head:** the commit that carries this version of the file, or later records. Rounds 1 and 2 reviewed
-  `103c4247a` and `2f1f87309`; the fixes of their findings, below, are code.
+  `103c4247a` and `2f1f87309`, round 3 `23a32b6dc`; the fixes of their findings, below, are code.
 - **The iteration's contract:** `specs/203-beta5-stabilization/spec.md` and
   `specs/203-beta5-stabilization/iterations/002/plan.md`. `.specify/**` is excluded from the frozen tree; its copies of
   the extension scripts are mirrors checked by their hash record. Review the sources under `extensions/`.
@@ -58,6 +58,17 @@ committed first:
 - A gap in that fix, found by the crew's own reading before round 3, not by a reviewer: the review stop answers
   (`.specrew/review/stop-answer/`, the one review-authority folder that is not gitignored) and the bypass audit were
   missing from the named records places. Red `ab98fa3ae`, fix `59dc51c2e`.
+
+Round 3 (`23a32b6dc`, Codex) found two more and named the open question:
+
+- `finding-be18f96e95952c83` (T020): a compaction summary could be the cited turn through the exact or text-key branch.
+  The third finding in this lookup, so the class is closed by signal: the host's own records are no candidate, a
+  record a person could have typed wins in every branch, a host-record hit in a partial window goes on to the whole
+  transcript, and the sender check never accepts a summary or a sidechain record, and accepts a record with no sender
+  fields only when the reader's origin is typed-user. The table is in DRIFT-053. Red `9c7a3cc9c` and `f55873841`, fix
+  `1de5a0165`.
+- `finding-266f3aac0b802944`: a POSIX file URL's fragment was read as path text. Red `1c4a1f0d8`, fix `feaaeacff`.
+- `finding-9cc1155f2c83f5f7`: the downstream design row below. Not fixed; the maintainer decides.
 
 The two T022 findings were one defect: the records-only decision asked where a path is and not what it is. The fix
 closes the class, not the instance. Every way `Test-ReviewCampaignDeltaIsRecordsOnly` can answer "records" is listed
