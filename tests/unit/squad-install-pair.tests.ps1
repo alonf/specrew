@@ -168,6 +168,67 @@ try {
     $initAt = $ubuntu.IndexOf('name: Test specrew init')
     $healthAt = $ubuntu.IndexOf('name: Check squad CLI health')
     Assert-True ($initAt -ge 0 -and $healthAt -gt $initAt) 'its squad health check runs after "Test specrew init"'
+
+    # Update repair (the maintainer, 2026-11-23 02:32: "squad install fix: include the update repair"). Measured in a
+    # sandbox before the fix: a broken 0.11.0 pair probes as installed, not operational, with version 24.15.0 (the
+    # Node line of the crash output), so update read "ahead-of-supported" and ran nothing. With the project's recorded
+    # squad_version as the fallback it reads "current" and runs nothing either.
+    Write-Host '  --- case 11: update decides to repair a Squad that is installed but not working, and only that ---'
+    $broken = [pscustomobject]@{ Platform = 'Squad'; IsInstalled = $true; IsOperational = $false; Version = '24.15.0'; ProbeError = 'file:///x/squad-cli/dist/cli/core/init.js:13' }
+    $healthy = [pscustomobject]@{ Platform = 'Squad'; IsInstalled = $true; IsOperational = $true; Version = $maxTested; ProbeError = $null }
+    $absent = [pscustomobject]@{ Platform = 'Squad'; IsInstalled = $false; IsOperational = $false; Version = $null; ProbeError = $null }
+    $brokenKit = [pscustomobject]@{ Platform = 'Spec Kit'; IsInstalled = $true; IsOperational = $false; Version = $null; ProbeError = 'boom' }
+    $repairLifted = @(Import-ScriptFunction -Path $updatePath -Name @('Test-SquadNeedsRepair'))
+    Assert-True ($repairLifted.Count -eq 1) 'Test-SquadNeedsRepair is in specrew-update.ps1'
+    if ($repairLifted.Count -eq 1) {
+        Assert-True (Test-SquadNeedsRepair -Platform 'Squad' -Validation $broken) 'installed and not operational: repair'
+        Assert-True (-not (Test-SquadNeedsRepair -Platform 'Squad' -Validation $healthy)) 'healthy: no repair'
+        Assert-True (-not (Test-SquadNeedsRepair -Platform 'Squad' -Validation $absent)) 'not installed: no repair (the install path stays as it is)'
+        Assert-True (-not (Test-SquadNeedsRepair -Platform 'Spec Kit' -Validation $brokenKit)) 'Spec Kit: never'
+        Assert-True (-not (Test-SquadNeedsRepair -Platform 'Squad' -Validation $null)) 'no validation result: no repair'
+    }
+
+    Write-Host '  --- case 12: update''s install loop, lifted and run with a recording install ---'
+    $tokens = $null; $errors = $null
+    $updateAst = [System.Management.Automation.Language.Parser]::ParseFile($updatePath, [ref]$tokens, [ref]$errors)
+    $loop = @($updateAst.EndBlock.Statements | Where-Object { $_ -is [System.Management.Automation.Language.ForEachStatementAst] -and $_.Condition.Extent.Text -match "'Spec Kit', 'Squad'" -and $_.Body.Extent.Text -match 'Install-PlatformVersion' })
+    Assert-True ($loop.Count -eq 1) 'the platform install loop is found'
+    $global:SquadPairInstalls = [System.Collections.Generic.List[string]]::new()
+    function global:Install-PlatformVersion { param([string]$Platform, [string]$Version) $global:SquadPairInstalls.Add(('{0} {1}' -f $Platform, $Version)) }
+    $runLoop = {
+        param([string]$Scope, [object]$Validation, [string]$Status)
+        $global:SquadPairInstalls.Clear()
+        $scopes = @($Scope)
+        $latestByPlatform = @{ 'Spec Kit' = [pscustomobject]@{ Known = $false; Version = $null }; 'Squad' = [pscustomobject]@{ Known = $true; Version = $maxTested } }
+        $specKitMaxTested = '0.12.9'; $squadMaxTested = $maxTested
+        $specKitStatus = $Status; $squadStatus = $Status
+        $UpstreamLatest = $false
+        $validationByPlatform = @{ $Validation.Platform = $Validation }
+        $summary = [System.Collections.ArrayList]::new()
+        $installFailureMessage = $null
+        $hostLines = @(. ([scriptblock]::Create($loop[0].Extent.Text)) 6>&1 | ForEach-Object { [string]$_ })
+        [pscustomobject]@{ Installs = @($global:SquadPairInstalls); Summary = @($summary); Host = ($hostLines -join ' ') }
+    }
+    if ($loop.Count -eq 1) {
+        $pairText = 'npm install -g "@bradygaster/squad-cli@{0}" "@bradygaster/squad-sdk@{1}"' -f $maxTested, $sdk
+        foreach ($status in @('ahead-of-supported', 'current')) {
+            $r = & $runLoop -Scope 'Squad' -Validation $broken -Status $status
+            $row = @($r.Summary | Where-Object Platform -eq 'Squad')
+            Assert-True ($r.Installs.Count -eq 1 -and $r.Installs[0] -eq ('Squad {0}' -f $maxTested)) ('broken Squad reading "{0}": reinstalled once at {1} (installs: {2})' -f $status, $maxTested, ($r.Installs -join '; '))
+            Assert-True ($row.Count -eq 1 -and $row[0].Action -eq 'repaired' -and $row[0].Detail -match 'not working' -and $row[0].Detail.Contains($pairText)) ('the summary says repaired, why, and with what: {0} | {1}' -f $(if ($row.Count) { $row[0].Action }), $(if ($row.Count) { $row[0].Detail }))
+            Assert-True ($r.Host -match "installed but the 'squad' command does not work" -and $r.Host.Contains('init.js:13') -and $r.Host.Contains($pairText)) ('and prints it as it happens: {0}' -f $r.Host)
+            Assert-True (-not $r.Host.Contains('24.15.0') -and -not (@($r.Summary | ForEach-Object { [string]$_.Detail }) -join ' ').Contains('24.15.0')) 'the repaired path never reports the version read from the crash output (24.15.0)'
+        }
+        $r = & $runLoop -Scope 'Squad' -Validation $healthy -Status 'current'
+        Assert-True ($r.Installs.Count -eq 0 -and @($r.Summary)[0].Action -eq 'already-current') 'healthy and current: unchanged (already-current, nothing installed)'
+        $r = & $runLoop -Scope 'Squad' -Validation ([pscustomobject]@{ Platform = 'Squad'; IsInstalled = $true; IsOperational = $true; Version = '0.12.0'; ProbeError = $null }) -Status 'ahead-of-supported'
+        Assert-True ($r.Installs.Count -eq 0 -and @($r.Summary)[0].Action -eq 'ahead-of-supported') 'healthy and ahead: unchanged (ahead-of-supported, nothing installed)'
+        $r = & $runLoop -Scope 'Squad' -Validation $absent -Status 'not-installed'
+        Assert-True ($r.Installs.Count -eq 1 -and @($r.Summary)[0].Action -eq 'upgraded' -and $r.Host -notmatch 'does not work') 'not installed: unchanged (installed, summary "upgraded", no repair message)'
+        $r = & $runLoop -Scope 'Spec Kit' -Validation $brokenKit -Status 'current'
+        Assert-True ($r.Installs.Count -eq 0 -and @($r.Summary)[0].Action -eq 'already-current') 'Spec Kit not operational: unchanged (already-current)'
+    }
+    Remove-Item -Path function:global:Install-PlatformVersion -ErrorAction SilentlyContinue
 }
 finally {
     if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue }
