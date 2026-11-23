@@ -691,6 +691,11 @@ function ConvertTo-SpecrewFileUrlLocalPath {
     $match = [regex]::Match($Url, '^(?i:file)://(?<authority>(?i:localhost)(?=/|$))?(?<path>/.*)?$')
     if (-not $match.Success) { return $null }
     $rest = ([string]$match.Groups['path'].Value).TrimStart('/')
+    # Round 3 of 203 iteration 002's review (finding-266f3aac0b802944): the query and the fragment are not part of the
+    # path. As System.Uri.LocalPath does on Windows, they are cut at the first raw '?' or '#' before percent-decoding, so an
+    # encoded %3F or %23 in a name survives as a literal '?' or '#'.
+    $cut = $rest.IndexOfAny([char[]]@('?', '#'))
+    if ($cut -ge 0) { $rest = $rest.Substring(0, $cut) }
     if ($rest.Length -eq 0) { return $null }
     return ('/' + [System.Uri]::UnescapeDataString($rest))
 }

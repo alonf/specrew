@@ -456,7 +456,7 @@
     },
     {
       "path": "scripts/turn-end-store.ps1",
-      "sha256": "146437db988f41cdceeec52339ff192b87b7bca104ddc9106c8bc7889f87216c"
+      "sha256": "1cf4db711f154b0721e3a1e377a790f1e3d70c368afa24a728c3c3883efb05fa"
     },
     {
       "path": "scripts/validate-governance.ps1",
