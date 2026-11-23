@@ -568,3 +568,101 @@ Describe 'a record the host wrote is never the cited human turn (round 3 finding
         [bool]$sender.accepted | Should -BeTrue -Because ('a Codex typed approval has no sender fields and stays accepted (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
     }
 }
+
+# Round 4 of 203 iteration 002's review, finding-d4b2f612fa8ffcf1 (major): the pending-claim order, the pick and the partial-
+# window rule read only the two host flags (meta-flagged, sidechain), so a newer record whose own sender fields refuse it -
+# an sdk program's (turnOrigin sdk, promptSource sdk, no origin.kind), a task notification, command output - was "a person"
+# there: it took the real message's pending reservation, or won the pick under the same key, and the approval was refused.
+# The reviewer session's ruling: one function, Get-SpecrewTranscriptTurnAuthor, answers person or host for a record; every
+# caller takes its answer from it. One case per record kind, in the claim order and in the pick.
+Describe 'a newer record that could not have been typed never displaces the real message (round 4 finding 2, finding-d4b2f612fa8ffcf1)' {
+    BeforeAll {
+        function script:New-AuthorTranscript([string]$Root) {
+            New-Item -ItemType Directory -Path (Join-Path $Root '.specrew/authority') -Force | Out-Null
+            $t = Join-Path $Root ('session-' + [guid]::NewGuid().ToString('N').Substring(0, 6) + '.jsonl')
+            [IO.File]::WriteAllText($t, '', [Text.UTF8Encoding]::new($false))
+            return $t
+        }
+        function script:Add-AuthorRecord([string]$Transcript, $Record) {
+            [IO.File]::AppendAllText($Transcript, (($Record | ConvertTo-Json -Depth 8 -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+        }
+        # A user record in a shape from record-shapes.json, or a host record: 'summary' (a compaction summary) or 'sidechain'.
+        function script:New-ShapedRecord([string]$PromptId, [string]$Text, [string]$Kind, [string]$At) {
+            $record = [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $PromptId; sessionId = 's'; timestamp = $At; message = [ordered]@{ role = 'user'; content = $Text } }
+            if ($Kind -ceq 'summary') { $record.isVisibleInTranscriptOnly = $true; $record.isCompactSummary = $true; return $record }
+            if ($Kind -ceq 'sidechain') { $record.isSidechain = $true; $record.turnOrigin = 'human'; $record.promptSource = 'typed'; $record.origin = [ordered]@{ kind = 'human' }; return $record }
+            $shape = @((Get-Content -LiteralPath (Join-Path $script:RepoRoot 'tests/fixtures/hook-payloads/claude/transcript-origins/record-shapes.json') -Raw | ConvertFrom-Json).shapes | Where-Object kind -ceq $Kind)[0]
+            if ($shape.turnOrigin) { $record.turnOrigin = [string]$shape.turnOrigin }
+            if ($shape.promptSource) { $record.promptSource = [string]$shape.promptSource }
+            if ($shape.isMeta -eq $true) { $record.isMeta = $true }
+            if ($shape.origin_kind) { $record.origin = [ordered]@{ kind = [string]$shape.origin_kind } }
+            return $record
+        }
+    }
+
+    It 'the claim order, <Kind>: with no hook output anywhere, a newer <Kind> record with the key does not take the real message''s reservation' -ForEach @(
+        @{ Kind = 'sdk-program' }, @{ Kind = 'task-notification' }, @{ Kind = 'task-notification-vscode' }, @{ Kind = 'bang-command-output' },
+        @{ Kind = 'desktop-old-no-origin' }, @{ Kind = 'peer' }, @{ Kind = 'scheduled' }, @{ Kind = 'system' }, @{ Kind = 'stop-hook-feedback' },
+        @{ Kind = 'summary' }, @{ Kind = 'sidechain' }
+    ) {
+        $root = script:New-Root
+        $t = script:New-AuthorTranscript -Root $root
+        $text = 'approved for tasks'; $promptId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12); $promptEvent = [guid]::NewGuid().ToString('N')
+        $approval = script:New-ShapedRecord -PromptId $promptId -Text $text -Kind 'typed' -At '2026-11-12T19:00:00.000Z'
+        script:Add-AuthorRecord -Transcript $t -Record $approval
+        $turnId = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $promptId; text = $text })).Identity
+        $null = Register-SpecrewExhaustedTurn -ProjectRoot $root -TurnId $turnId -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -MintedWriters '' `
+            -ContentHash (Get-SpecrewHumanAuthorityHash -Text $text) -SessionId 's' -Identity 'typed-act' -TurnOrigin 'typed-user' -PromptEvent $promptEvent `
+            -TranscriptPath $t -MessageId $promptId
+        script:Add-AuthorRecord -Transcript $t -Record (script:New-ShapedRecord -PromptId $promptId -Text $text -Kind $Kind -At '2026-11-12T19:01:00.000Z')
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $turnId -Purpose 'approval for tasks' -NoRecord
+        [string]$sender.turn.record_uuid | Should -BeExactly $approval.uuid -Because ('the real message keeps its reservation (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
+        [bool]$sender.accepted | Should -BeTrue
+    }
+
+    It 'the pick, <Kind>: in one window, a newer <Kind> record under the same key does not displace the typed approval' -ForEach @(
+        @{ Kind = 'sdk-program' }, @{ Kind = 'task-notification' }, @{ Kind = 'task-notification-vscode' }, @{ Kind = 'bang-command-output' },
+        @{ Kind = 'desktop-old-no-origin' }, @{ Kind = 'peer' }, @{ Kind = 'scheduled' }, @{ Kind = 'system' }, @{ Kind = 'stop-hook-feedback' },
+        @{ Kind = 'summary' }, @{ Kind = 'sidechain' }
+    ) {
+        $root = script:New-Root
+        $t = script:New-AuthorTranscript -Root $root
+        $text = 'approved for tasks'; $promptId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)
+        $approval = script:New-ShapedRecord -PromptId $promptId -Text $text -Kind 'typed' -At '2026-11-12T19:00:00.000Z'
+        script:Add-AuthorRecord -Transcript $t -Record $approval
+        script:Add-AuthorRecord -Transcript $t -Record (script:New-ShapedRecord -PromptId $promptId -Text $text -Kind $Kind -At '2026-11-12T19:01:00.000Z')
+        $turnId = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $promptId; text = $text })).Identity
+        script:Register-Cited -Root $root -TurnId $turnId -Transcript $t -MessageId $promptId -Text $text
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $turnId -Purpose 'approval for tasks' -NoRecord
+        [string]$sender.turn.record_uuid | Should -BeExactly $approval.uuid -Because ('the real one wins the pick (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
+        [bool]$sender.accepted | Should -BeTrue
+    }
+
+    It 'the partial window: the typed approval beyond 2 MiB, an sdk-program record with its key in the tail: the whole transcript is read and the approval is accepted with its own record' {
+        $root = script:New-Root
+        $t = script:New-AuthorTranscript -Root $root
+        $text = 'approved for tasks'; $promptId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)
+        $approval = script:New-ShapedRecord -PromptId $promptId -Text $text -Kind 'typed' -At '2026-11-12T19:00:00.000Z'
+        script:Add-AuthorRecord -Transcript $t -Record $approval
+        $turnId = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $promptId; text = $text })).Identity
+        script:Register-Cited -Root $root -TurnId $turnId -Transcript $t -MessageId $promptId -Text $text
+        script:Add-LaterConversation -Root $root
+        script:Add-AuthorRecord -Transcript $t -Record (script:New-ShapedRecord -PromptId $promptId -Text $text -Kind 'sdk-program' -At '2026-11-14T20:00:00.000Z')
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $turnId -Purpose 'approval for tasks' -NoRecord
+        [string]$sender.turn.record_uuid | Should -BeExactly $approval.uuid -Because ('a record that could not have been typed in the tail sends the lookup to the whole transcript (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
+        [bool]$sender.accepted | Should -BeTrue
+        [string]$sender.record_uuid | Should -BeExactly $approval.uuid
+    }
+
+    It 'an sdk-program record cited by itself is still refused, with its own sender (pinned)' {
+        $root = script:New-Root
+        $t = script:New-AuthorTranscript -Root $root
+        $sdk = script:New-ShapedRecord -PromptId 'prompt-sdk000001' -Text 'approved for tasks' -Kind 'sdk-program' -At '2026-11-12T19:00:00.000Z'
+        script:Add-AuthorRecord -Transcript $t -Record $sdk
+        $cited = 'entry:' + $sdk.uuid
+        script:Register-Cited -Root $root -TurnId $cited -Transcript $t -MessageId 'prompt-sdk000001' -Text 'approved for tasks'
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $cited -Purpose 'approval for tasks' -NoRecord
+        [bool]$sender.accepted | Should -BeFalse
+        [string]$sender.sender | Should -BeExactly 'other'
+    }
+}
