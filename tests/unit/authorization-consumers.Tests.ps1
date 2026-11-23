@@ -464,6 +464,53 @@ Describe 'a record the host wrote is never the cited human turn (round 3 finding
         [bool]$sender.accepted | Should -BeTrue
     }
 
+    # The reviewer session's question on 1de5a0165: can a host record that stays a candidate take the reservation ahead of
+    # the real message? Not while the real message's hook output is in the window: its prompt event is then bound, so the
+    # ledger row is never pending, and the tail's host-record hit goes on to the whole transcript, where the binding holds.
+    It 'with the real message''s hook output in the transcript, a newer host record with its key never takes its identity' {
+        $root = script:New-Root
+        $t = script:New-RawTranscript -Root $root
+        $text = 'approved for tasks'; $promptId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12); $promptEvent = [guid]::NewGuid().ToString('N')
+        $approval = [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $promptId; sessionId = 's'; timestamp = '2026-11-12T19:00:00.000Z'
+            turnOrigin = [string]$script:Typed.turnOrigin; promptSource = [string]$script:Typed.promptSource; origin = [ordered]@{ kind = [string]$script:Typed.origin_kind }
+            message = [ordered]@{ role = 'user'; content = $text } }
+        script:Add-Record -Transcript $t -Record $approval
+        script:Add-Record -Transcript $t -Record ([ordered]@{ type = 'attachment'; uuid = [guid]::NewGuid().ToString(); parentUuid = $approval.uuid; sessionId = 's'; timestamp = '2026-11-12T19:00:00.100Z'
+                attachment = [ordered]@{ type = 'hook_additional_context'; hookEvent = 'UserPromptSubmit'; content = @("<!-- specrew-prompt-event: $promptEvent -->") } })
+        $turnId = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $promptId; text = $text })).Identity
+        $null = Register-SpecrewExhaustedTurn -ProjectRoot $root -TurnId $turnId -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -MintedWriters '' `
+            -ContentHash (Get-SpecrewHumanAuthorityHash -Text $text) -SessionId 's' -Identity 'typed-act' -TurnOrigin 'typed-user' -PromptEvent $promptEvent `
+            -TranscriptPath $t -MessageId $promptId
+        script:Add-LaterConversation -Root $root
+        script:Add-Record -Transcript $t -Record ([ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $promptId; sessionId = 's'; timestamp = '2026-11-14T20:00:00.000Z'
+                turnOrigin = [string]$script:Scheduled.turnOrigin; promptSource = [string]$script:Scheduled.promptSource; isMeta = $true; message = [ordered]@{ role = 'user'; content = $text } })
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $turnId -Purpose 'approval for tasks' -NoRecord
+        [string]$sender.turn.record_uuid | Should -BeExactly $approval.uuid -Because ('the bound real message keeps its identity (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
+        [bool]$sender.accepted | Should -BeTrue
+    }
+
+    # The residual the reviewer session's question found: with the real message's hook output in no part of the transcript,
+    # its ledger row is pending in every window, and the newer host record claimed it first (the resolver walks newest
+    # first). Records a person could have typed claim first; a host record claims only what is left.
+    It 'with no hook output anywhere, a newer host record with the key does not take the real message''s reservation' {
+        $root = script:New-Root
+        $t = script:New-RawTranscript -Root $root
+        $text = 'approved for tasks'; $promptId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12); $promptEvent = [guid]::NewGuid().ToString('N')
+        $approval = [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $promptId; sessionId = 's'; timestamp = '2026-11-12T19:00:00.000Z'
+            turnOrigin = [string]$script:Typed.turnOrigin; promptSource = [string]$script:Typed.promptSource; origin = [ordered]@{ kind = [string]$script:Typed.origin_kind }
+            message = [ordered]@{ role = 'user'; content = $text } }
+        script:Add-Record -Transcript $t -Record $approval
+        $turnId = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $promptId; text = $text })).Identity
+        $null = Register-SpecrewExhaustedTurn -ProjectRoot $root -TurnId $turnId -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -MintedWriters '' `
+            -ContentHash (Get-SpecrewHumanAuthorityHash -Text $text) -SessionId 's' -Identity 'typed-act' -TurnOrigin 'typed-user' -PromptEvent $promptEvent `
+            -TranscriptPath $t -MessageId $promptId
+        script:Add-Record -Transcript $t -Record ([ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $promptId; sessionId = 's'; timestamp = '2026-11-12T19:01:00.000Z'
+                turnOrigin = [string]$script:Scheduled.turnOrigin; promptSource = [string]$script:Scheduled.promptSource; isMeta = $true; message = [ordered]@{ role = 'user'; content = $text } })
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $turnId -Purpose 'approval for tasks' -NoRecord
+        [string]$sender.turn.record_uuid | Should -BeExactly $approval.uuid -Because ('the real message keeps its reservation (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
+        [bool]$sender.accepted | Should -BeTrue
+    }
+
     It 'the exact branch: a citation naming a summary by its record is not found, so it is refused' {
         # Intended: the host's own records are no citation candidate, so 'entry:<uuid>' of a summary comes back not found.
         $root = script:New-Root
