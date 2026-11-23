@@ -310,12 +310,14 @@ Describe 'T022 records rule: what stays as it is in the source repository (pinne
 }
 
 Describe 'T022 records rule: downstream projects keep today''s answers' {
+    # Round 2 of 203 iteration 002's review changed one downstream answer on purpose (C1 of its inventory): a script under
+    # docs/ is source now (see 'C1 downstream' below), so these pins probe docs/ with a document, which keeps its answer.
     It 'with neither detection file, host directories, .specify, docs scripts and instruction files stay records-only' {
         $root = New-DownstreamFixture -Name 'downstream-plain'
         foreach ($path in @(
                 '.github/agents/squad.agent.md', '.github/prompts/speckit.plan.prompt.md', '.claude/skills/speckit-plan/SKILL.md',
                 '.agents/skills/specrew-review/SKILL.md', '.specify/extensions/specrew-speckit/scripts/x.ps1',
-                '.specify/extensions/specrew-speckit/.specrew-extension-runtime.json', 'docs/examples/check.ps1',
+                '.specify/extensions/specrew-speckit/.specrew-extension-runtime.json', 'docs/examples/guide.md',
                 'docs/methodology/README.md', 'AGENTS.md', 'CLAUDE.md')) {
             Test-RecordsOnly -Paths @($path) -Root $root | Should -BeTrue -Because "$path keeps today's downstream answer"
         }
@@ -324,7 +326,7 @@ Describe 'T022 records rule: downstream projects keep today''s answers' {
     It 'only Specrew.psd1 at the root does not switch the source-repository rule on' {
         $root = New-DownstreamFixture -Name 'downstream-manifest-only' -WithManifest
         Test-ContinuousCoReviewSpecrewSourceRepo -RepoRoot $root | Should -BeFalse
-        foreach ($path in @('.github/agents/squad.agent.md', '.specify/extensions/specrew-speckit/scripts/x.ps1', 'docs/examples/check.ps1')) {
+        foreach ($path in @('.github/agents/squad.agent.md', '.specify/extensions/specrew-speckit/scripts/x.ps1', 'docs/examples/guide.md')) {
             Test-RecordsOnly -Paths @($path) -Root $root | Should -BeTrue -Because "one stray Specrew.psd1 must not change $path"
         }
     }
@@ -332,7 +334,7 @@ Describe 'T022 records rule: downstream projects keep today''s answers' {
     It 'only scripts/internal/continuous-co-review/_load.ps1 does not switch the source-repository rule on' {
         $root = New-DownstreamFixture -Name 'downstream-loader-only' -WithLoader
         Test-ContinuousCoReviewSpecrewSourceRepo -RepoRoot $root | Should -BeFalse
-        foreach ($path in @('.github/agents/squad.agent.md', '.specify/extensions/specrew-speckit/scripts/x.ps1', 'docs/examples/check.ps1')) {
+        foreach ($path in @('.github/agents/squad.agent.md', '.specify/extensions/specrew-speckit/scripts/x.ps1', 'docs/examples/guide.md')) {
             Test-RecordsOnly -Paths @($path) -Root $root | Should -BeTrue -Because "one stray _load.ps1 must not change $path"
         }
     }

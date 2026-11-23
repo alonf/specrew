@@ -9261,13 +9261,20 @@ function Test-SpecrewLifecycleExecutionRecordPath {
     foreach ($name in $recordFiles) {
         if ($relative.Equals($name, $comparison)) { return $true }
     }
-    if ($relative.StartsWith('closeout', $comparison) -and $relative -notmatch '/') { return $true }
+    # Round 2 of 203 iteration 002's review (finding-7a5e1b6f01a5008d): a closeout* name and the descendants of quality/,
+    # checklists/, dashboards/ and gates/ are records only when they are a record KIND, the document and data forms the
+    # lifecycle writes there. Anything else is source wherever it sits (a script under quality/ can run). This list is for
+    # places where nothing executes data files; do not copy it to a place where a .yml or .json is an agent definition or
+    # hook settings. The gate's fallback copy of this function holds the same list (records-only-source-repo-narrowed
+    # holds the two bodies equal).
+    $recordKind = [IO.Path]::GetExtension($relative).ToLowerInvariant() -cin @('.md', '.markdown', '.txt', '.rst', '.adoc', '.json', '.jsonl', '.yml', '.yaml')
+    if ($relative.StartsWith('closeout', $comparison) -and $relative -notmatch '/') { return $recordKind }
 
     # workshop/ IS DELIBERATELY ABSENT (maintainer ruling, 2026-08-11): the workshop holds the binding
     # standard the implementation is judged against - INPUT by the ruling's own test. An allowlist is
     # safe because omissions nag; that safety is void for any entry wrongly included.
     foreach ($directory in @('quality/', 'checklists/', 'dashboards/', 'gates/')) {
-        if ($relative.StartsWith($directory, $comparison)) { return $true }
+        if ($relative.StartsWith($directory, $comparison)) { return $recordKind }
     }
     return $false
 }

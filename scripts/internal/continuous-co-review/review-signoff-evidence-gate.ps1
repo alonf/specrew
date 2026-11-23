@@ -407,6 +407,16 @@ function Get-SpecrewCarriedSignoffOverrideAuthorization {
     return $best
 }
 
+function Test-ReviewCampaignPathIsRecordKind {
+    # Round 2 of 203 iteration 002's review (finding-7a5e1b6f01a5008d): the document and data forms the lifecycle writes as
+    # records. For places where nothing executes data files only; a .yml or .json elsewhere can be an agent definition or
+    # hook settings, which is why the source repository's machinery and host directories are decided by name, not by this.
+    # The extension names a kind of file, so it is compared without case on every volume.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Path)
+    return ([IO.Path]::GetExtension($Path).ToLowerInvariant() -cin @('.md', '.markdown', '.txt', '.rst', '.adoc', '.json', '.jsonl', '.yml', '.yaml'))
+}
+
 function Test-ReviewCampaignSourceRepoTextPathIsRecord {
     # Feature 203 T022 (the maintainer's "203 T022: 1", B5F-087): in the Specrew source repository a Markdown or text file
     # is records only in a named records place - the active feature's records allowlist under specs/, what the syncs and
@@ -425,16 +435,29 @@ function Test-ReviewCampaignSourceRepoTextPathIsRecord {
     if ($Path.StartsWith('specs/', $Comparison)) {
         return Test-ReviewCampaignPathIsFeatureProcessRecord -Path $Path -FeatureId $FeatureId -Comparison $Comparison
     }
+    # Round 2 of 203 iteration 002's review: this is the source repository's whole records list outside specs/, for every
+    # kind of file. An exact name is a record whatever its extension; a path under a prefix is a record only when it is a
+    # record kind. The non-text names below came from the census of what this repository's records, boundary, closeout
+    # and review commits write under .specrew and .squad (on this branch and on main, 2026-11-23): the lifecycle event log,
+    # the feature claims, the closed-iterations list, the validator summary, the start context, the version-check cache,
+    # the refocus channel record, and the sign-off gate, test evidence and pause decision records. Left out on purpose,
+    # so they stay source: the verification plans, config.yml, iteration-config.yml, reviewer-hosts.json, work-kind.yml,
+    # roadmap.yml, repository-governance.yml, .squad/config.json, .squad/casting/**, the host mirrors and their
+    # .specrew-managed markers, .claude/settings.local.json and .github/workflows/**.
     foreach ($record in @(
             '.squad/decisions.md', '.squad/decisions-archive.md', '.squad/identity/now.md',
             '.specrew/cross-platform-backlog.md', '.specrew/reviewer-regression-log.md',
+            '.squad/events/lifecycle-events.jsonl', '.squad/active-features.yml',
+            '.specrew/closed-iterations.yml', '.specrew/last-validator-summary.json', '.specrew/start-context.json',
+            '.specrew/version-check-cache.json', '.specrew/runtime/refocus-channel1.json',
             'README.md', 'CHANGELOG.md', 'CONTRIBUTING.md', 'NOTICE.md', 'SECURITY.md', 'CODE_OF_CONDUCT.md')) {
         if ($Path.Equals($record, $Comparison)) { return $true }
     }
     foreach ($prefix in @(
             '.squad/decisions/', '.squad/log/', '.squad/orchestration-log/',
-            '.specrew/review/inline/', 'proposals/')) {
-        if ($Path.StartsWith($prefix, $Comparison)) { return $true }
+            '.specrew/review/inline/', '.specrew/review/signoff-gate/', '.specrew/review/test-evidence/',
+            '.specrew/review/pause-decision/', 'proposals/')) {
+        if ($Path.StartsWith($prefix, $Comparison)) { return (Test-ReviewCampaignPathIsRecordKind -Path $Path) }
     }
     if ($Path.StartsWith('docs/', $Comparison) -and $Path.EndsWith('.md', [StringComparison]::OrdinalIgnoreCase) -and
         -not $Path.StartsWith('docs/methodology/', $Comparison)) { return $true }
@@ -549,20 +572,21 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
         # non-Markdown docs are source. Wrong "records" is unread text that agents execute;
         # wrong "source" costs one review round. Apply this before machinery or shared classification.
         if ($isSpecrewSourceRepo) {
-            # The extension names the KIND of file, not which file, so it is compared without case on every volume:
-            # notes.MD is Markdown to every agent that loads it (the volume's $comparison would let it skip this rule on a
-            # case-sensitive volume and fall back to today's records answer). Directory prefixes keep $comparison.
-            $isMarkdown = $path.EndsWith('.md', [StringComparison]::OrdinalIgnoreCase)
-            $isText = $path.EndsWith('.txt', [StringComparison]::OrdinalIgnoreCase)
-            if ($path.StartsWith('.specify/', $comparison) -or
-                ($path.StartsWith('docs/', $comparison) -and -not $isMarkdown)) { return $false }
-            if ($isMarkdown -or $isText) {
-                if (-not (Test-ReviewCampaignSourceRepoTextPathIsRecord -Path $path -FeatureId $FeatureId -Comparison $comparison)) {
-                    return $false
-                }
-                continue
+            # Round 2 of 203 iteration 002's review (finding-7a5e1b6f01a5008d; the reviewer session's ruling): in the one
+            # repository where the machinery and host directories ARE the product, a rule of kind is not enough (a .yml
+            # there can be an agent definition, a .json the hook settings), so every path is records only in a named
+            # records place - under specs/ the active feature's records, elsewhere Test-ReviewCampaignSourceRepoTextPathIsRecord's
+            # names - and source otherwise, whatever its extension. The machinery list and the shared classifier no longer
+            # answer here.
+            if (-not (Test-ReviewCampaignSourceRepoTextPathIsRecord -Path $path -FeatureId $FeatureId -Comparison $comparison)) {
+                return $false
             }
+            continue
         }
+        # Downstream, C1 of the round 2 inventory: a file under docs/ that is not a record kind can run, so it is source.
+        # The rest of the downstream rows (deployed machinery and host mirrors) stay records by design: an open design
+        # question put to the maintainer on 2026-11-23 (DRIFT-007's twin).
+        if ($path.StartsWith('docs/', $comparison) -and -not (Test-ReviewCampaignPathIsRecordKind -Path $path)) { return $false }
         $isRecords = $false
         foreach ($root in $recordsRoots) {
             if ([string]::IsNullOrWhiteSpace($root)) { continue }
@@ -664,12 +688,20 @@ function Test-ReviewCampaignPathIsFeatureProcessRecord {
     $recordFiles = @(
         'drift-log.md', 'state.md', 'tasks-progress.yml',
         'review.md', 'reviewer-index.md', 'code-map.md', 'coverage-evidence.md', 'dependency-report.md', 'review-diagrams.md',
+        'dashboard.md', 'security-surface.md',
         'review-signoff.md', 'review-signoff-listing.json', 'retro.md'
     )
     foreach ($name in $recordFiles) {
         if ($relative.Equals($name, $Comparison)) { return $true }
     }
-    if ($relative.StartsWith('closeout', $Comparison) -and $relative -notmatch '/') { return $true }
+    # Round 2 of 203 iteration 002's review (finding-7a5e1b6f01a5008d): a closeout* name and the descendants of quality/,
+    # checklists/, dashboards/ and gates/ are records only when they are a record KIND, the document and data forms the
+    # lifecycle writes there. Anything else is source wherever it sits (a script under quality/ can run). This list is for
+    # places where nothing executes data files; do not copy it to a place where a .yml or .json is an agent definition or
+    # hook settings. The gate's fallback copy of this function holds the same list (records-only-source-repo-narrowed
+    # holds the two bodies equal).
+    $recordKind = [IO.Path]::GetExtension($relative).ToLowerInvariant() -cin @('.md', '.markdown', '.txt', '.rst', '.adoc', '.json', '.jsonl', '.yml', '.yaml')
+    if ($relative.StartsWith('closeout', $Comparison) -and $relative -notmatch '/') { return $recordKind }
 
     # workshop/ IS DELIBERATELY ABSENT (maintainer ruling, 2026-08-11, on the signoff round's finding).
     # It sat in this list and was the one entry that inverted the list's own safety argument. A design
@@ -680,7 +712,7 @@ function Test-ReviewCampaignPathIsFeatureProcessRecord {
     # precisely the SILENCING failure this allowlist exists to make impossible. An allowlist is safe
     # because omissions nag; that safety is void for any entry wrongly INCLUDED.
     foreach ($directory in @('quality/', 'checklists/', 'dashboards/', 'gates/')) {
-        if ($relative.StartsWith($directory, $Comparison)) { return $true }
+        if ($relative.StartsWith($directory, $Comparison)) { return $recordKind }
     }
     return $false
 }
