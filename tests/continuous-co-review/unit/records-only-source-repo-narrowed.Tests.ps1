@@ -450,6 +450,17 @@ Describe 'records by kind and by named place (round 2 finding, finding-7a5e1b6f0
         }
     }
 
+    # Found by the crew's own reading before round 3, not by a reviewer: the census read past commits, and no stop answer had
+    # been committed yet, so the stop-answer records (written at a review stop, the one review-authority folder that is not
+    # gitignored) and the bypass audit were missing from the named places. T027's live stop writes exactly these.
+    It 'A in the source repository: a review stop answer and the bypass audit are records, and a script beside them is source' {
+        foreach ($path in @('.specrew/review/stop-answer/run-1/stop-review-0123abcd4567ef89.json', '.specrew/review/stop-answer/captures.jsonl',
+                '.specrew/bypass-audit/bypass-log.md')) {
+            Test-RecordsOnly -Paths @($path) | Should -BeTrue -Because "$path is a record the lifecycle writes"
+        }
+        Test-RecordsOnly -Paths @('.specrew/review/stop-answer/run-1/hook.ps1') | Should -BeFalse -Because 'a script under a records prefix is source'
+    }
+
     It 'C5 in the source repository: a document kind outside a named records place is source' {
         Test-RecordsOnly -Paths @('templates/coordinator.adoc') | Should -BeFalse
         Test-RecordsOnly -Paths @('scripts/internal/notes.rst') | Should -BeFalse
