@@ -386,3 +386,111 @@ Describe 'T022 records rule: the acceptance carry reads the delta without rename
         $fn | Should -Match 'diff --no-renames --name-only|diff --name-only --no-renames'
     }
 }
+
+# Round 2 of 203 iteration 002's review, finding-7a5e1b6f01a5008d (major), and the reviewer session's ruling that closes
+# the class, not the instance: the records-only decision asked WHERE a path is and not WHAT it is. The inventory and the
+# rule are in DRIFT entry of iteration 002; each case below is one row of that inventory.
+#   B2, B3 (the shared Test-SpecrewLifecycleExecutionRecordPath, every caller): a closeout* name and the descendants of
+#     quality/, checklists/, dashboards/ and gates/ are records only when they are a record KIND.
+#   A, C2, C3, C5 in the source repository: outside specs/, a path is records only in a named records place, whatever its
+#     extension (a .yml can be an agent definition, a .json the hook settings).
+#   C1 downstream: a non-record kind under docs/ is source.
+#   A, C2, C3 downstream (deployed machinery and host mirrors): unchanged, an open design question put to the maintainer on
+#     2026-11-23; pinned here so a change to them is deliberate.
+Describe 'records by kind and by named place (round 2 finding, finding-7a5e1b6f01a5008d)' {
+    It 'B3: a script under quality/, checklists/, dashboards/ or gates/ of the active feature is source' {
+        foreach ($path in @(
+                'specs/001-fixture/iterations/001/quality/check.ps1', 'specs/001-fixture/iterations/001/checklists/run.sh',
+                'specs/001-fixture/iterations/001/dashboards/render.py', 'specs/001-fixture/iterations/001/gates/gate.psm1',
+                'specs/001-fixture/quality/check.ps1')) {
+            Test-RecordsOnly -Paths @($path) | Should -BeFalse -Because "$path can run, so it is source wherever it sits"
+        }
+    }
+
+    It 'B2: a script named closeout* in the feature or iteration folder is source' {
+        Test-RecordsOnly -Paths @('specs/001-fixture/iterations/001/closeout-check.ps1') | Should -BeFalse
+        Test-RecordsOnly -Paths @('specs/001-fixture/closeout.ps1') | Should -BeFalse
+    }
+
+    It 'B2, B3: the records the lifecycle writes there stay records (pinned)' {
+        foreach ($path in @(
+                'specs/001-fixture/iterations/001/quality/mechanical-findings.json', 'specs/001-fixture/iterations/001/quality/hardening-gate.md',
+                'specs/001-fixture/iterations/001/checklists/requirements.md', 'specs/001-fixture/iterations/001/dashboards/burndown.json',
+                'specs/001-fixture/iterations/001/gates/before-implement.md', 'specs/001-fixture/iterations/001/quality/notes.txt',
+                'specs/001-fixture/iterations/001/closeout-summary.md', 'specs/001-fixture/closeout.md')) {
+            Test-RecordsOnly -Paths @($path) | Should -BeTrue -Because "$path is a record the lifecycle writes"
+        }
+    }
+
+    It 'A, C2, C3 in the source repository: a runnable file in a machinery or host directory is source whatever its extension' {
+        foreach ($path in @(
+                '.claude/settings.local.json', '.github/agents/squad.agent.yml', '.agents/skills/specrew-help/run.ps1',
+                '.squad/config.json', '.squad/casting/registry.json', '.specrew/verification-plan.json', '.specrew/config.yml',
+                '.cursor/rules/specrew-help/.specrew-managed', '.github/prompts/review.prompt.yml', '.copilot/hooks.json')) {
+            Test-RecordsOnly -Paths @($path) | Should -BeFalse -Because "$path is not a named records place"
+        }
+    }
+
+    It 'A, C2, C3 in the source repository: a script under a named records prefix is source' {
+        foreach ($path in @('.squad/log/run.ps1', '.specrew/review/inline/run-1/tool.ps1', 'proposals/tool.ps1', '.squad/decisions/inbox/hook.ps1')) {
+            Test-RecordsOnly -Paths @($path) | Should -BeFalse -Because "$path is under a records place but is not a record kind"
+        }
+    }
+
+    It 'A in the source repository: the records the syncs, the start and the review write there stay records (pinned, from the census)' {
+        foreach ($path in @(
+                '.squad/events/lifecycle-events.jsonl', '.squad/active-features.yml', '.specrew/closed-iterations.yml',
+                '.specrew/last-validator-summary.json', '.specrew/start-context.json', '.specrew/version-check-cache.json',
+                '.specrew/runtime/refocus-channel1.json', '.specrew/review/signoff-gate/latest.json',
+                '.specrew/review/test-evidence/0123abcd.json', '.specrew/review/pause-decision/stop-here.json',
+                '.specrew/review/pause-decision/captures.jsonl', '.specrew/review/inline/run-1/result.json')) {
+            Test-RecordsOnly -Paths @($path) | Should -BeTrue -Because "$path is a record the lifecycle writes"
+        }
+    }
+
+    It 'C5 in the source repository: a document kind outside a named records place is source' {
+        Test-RecordsOnly -Paths @('templates/coordinator.adoc') | Should -BeFalse
+        Test-RecordsOnly -Paths @('scripts/internal/notes.rst') | Should -BeFalse
+    }
+
+    It 'C1 downstream: a non-record kind under docs/ is source, and a document there stays records' {
+        $root = New-DownstreamFixture -Name 'round2-docs'
+        Test-RecordsOnly -Paths @('docs/check.ps1') -Root $root | Should -BeFalse -Because 'a script under docs/ can run'
+        Test-RecordsOnly -Paths @('docs/guide.md') -Root $root | Should -BeTrue -Because 'a document under docs/ stays records downstream (pinned)'
+    }
+
+    It 'B3 downstream: a script under the active iteration''s quality/ is source there too' {
+        $root = New-DownstreamFixture -Name 'round2-quality'
+        Test-RecordsOnly -Paths @('specs/001-fixture/iterations/001/quality/check.ps1') -Root $root | Should -BeFalse
+        Test-RecordsOnly -Paths @('specs/001-fixture/iterations/001/quality/mechanical-findings.json') -Root $root | Should -BeTrue
+    }
+
+    It 'A, C2, C3 downstream stay as they are: deployed machinery and host mirrors are records by design (open design question, 2026-11-23; pinned)' {
+        $root = New-DownstreamFixture -Name 'round2-design-row'
+        foreach ($path in @('.specify/extensions/specrew-speckit/scripts/tool.ps1', '.claude/skills/specrew-help/SKILL.md', '.github/agents/squad.agent.md')) {
+            Test-RecordsOnly -Paths @($path) -Root $root | Should -BeTrue -Because "$path is a deployment write downstream (DRIFT-007's twin)"
+        }
+    }
+
+    It 'the gate''s fallback body and the shared Test-SpecrewLifecycleExecutionRecordPath give the same answer for every probe' {
+        $probes = @(
+            'drift-log.md', 'state.md', 'tasks-progress.yml', 'review.md', 'review-signoff-listing.json', 'retro.md', 'plan.md', 'spec.md', 'dashboard.md', 'security-surface.md', 'reviewer-index.md', 'review-signoff.md',
+            'closeout.md', 'closeout-summary.md', 'closeout.ps1', 'closeout-check.sh', 'closeout/notes.md',
+            'quality/mechanical-findings.json', 'quality/hardening-gate.md', 'quality/notes.txt', 'quality/check.ps1', 'quality/x.yml',
+            'quality/x.jsonl', 'quality/x.rst', 'quality/x.adoc', 'quality/x.markdown', 'quality/x.yaml', 'quality/x.psm1', 'quality/x',
+            'checklists/a.md', 'checklists/run.sh', 'dashboards/b.json', 'dashboards/render.py', 'gates/c.md', 'gates/gate.psd1',
+            'workshop/product-domain.md', 'tool.ps1')
+        $paths = @(foreach ($p in $probes) { "specs/001-fixture/iterations/001/$p"; "specs/001-fixture/$p" })
+        $probeFile = Join-Path $script:Temp 'probes.txt'
+        [IO.File]::WriteAllLines($probeFile, $paths)
+        # Each body in a process of its own: the gate alone runs its fallback (the shared function is not loaded).
+        $gateOnly = "Set-StrictMode -Version Latest; . '$script:GatePath'; foreach (`$p in [IO.File]::ReadAllLines('$probeFile')) { '{0}={1}' -f `$p, [bool](Test-ReviewCampaignPathIsFeatureProcessRecord -Path `$p -FeatureId '001-fixture' -Comparison ([StringComparison]::OrdinalIgnoreCase)) }"
+        $shared = "Set-StrictMode -Version Latest; . '$script:SharedGovernance'; foreach (`$p in [IO.File]::ReadAllLines('$probeFile')) { '{0}={1}' -f `$p, [bool](Test-SpecrewLifecycleExecutionRecordPath -Path `$p -FeatureId '001-fixture') }"
+        $fromGate = @(& pwsh -NoProfile -NonInteractive -Command $gateOnly 2>&1 | ForEach-Object { [string]$_ })
+        $fromShared = @(& pwsh -NoProfile -NonInteractive -Command $shared 2>&1 | ForEach-Object { [string]$_ })
+        $fromGate.Count | Should -Be $paths.Count -Because ($fromGate -join "`n")
+        $fromShared.Count | Should -Be $paths.Count -Because ($fromShared -join "`n")
+        for ($i = 0; $i -lt $paths.Count; $i++) { $fromGate[$i] | Should -BeExactly $fromShared[$i] -Because 'the two bodies must agree path by path' }
+        @($fromShared | Where-Object { $_ -like '*quality/check.ps1=True' }).Count | Should -Be 0 -Because 'a script under quality/ is not a record (round 2 finding)'
+    }
+}
