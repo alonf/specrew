@@ -1774,3 +1774,50 @@ The following resolution strategies remain available if drift is detected later 
   `authorization-consumers.Tests.ps1`'s round 3 cases (each branch, each window, the sidechain and envelope records,
   and the live typed and Codex typed approvals pinned). The POSIX file URL reader matches `System.Uri.LocalPath`,
   guarded by `review-link-file-url-local-path.tests.ps1`. The downstream design row stays open with the maintainer.
+
+### DRIFT-054 — Round 3's finding 2 decided and fixed: downstream, a file that can run is records only where the machinery list names its place; the f203-i001-suites lane limit raised
+
+- **The maintainer's two decisions**, relayed by the reviewer session with their words and the time:
+  - Finding 2, typed in the reviewer session on 2026-11-23 at about 13:14 local: "203 deployed files: fix it in 203". A
+    scope change: the open design row of DRIFT-053 is decided.
+  - The lane limit, typed at about 13:15 local: "203 lane limit: raise f203-i001-suites to 1500". `timeout_seconds` for
+    `f203-i001-suites` went 900 to 1,500 in `.specrew/verification-plan.json` (`3fa3111e1`). No other lane changed.
+- **The crew stopped before code, and the shape changed once.** A probe on a downstream fixture (outside the repository)
+  showed the shape as first relayed would not reach the finding's own example:
+  - Part (c) of `Get-ContinuousCoReviewMachineryPaths` names every existing host framework subfolder (`.github/skills`,
+    `.claude/agents`, `.cursor/rules` and the rest) as machinery, whatever its kind and with or without a marker.
+  - `.github/skills/release/scripts/publish.ps1` was records through that list before the classifier was asked. So was
+    Squad's `.copilot/skills/distributed-mesh/sync-mesh.ps1`.
+  - The reviewer session ruled option 3 of three, inside the maintainer's decision: the records-only check alone, with
+    the strip and the digest unchanged. It then ruled that the project's own MCP server configuration belongs with the
+    hook configuration.
+- **The rule, downstream** (`review-signoff-evidence-gate.ps1`, `Test-ReviewCampaignDeltaIsRecordsOnly`):
+  1. The project's own hook and MCP server configuration is source by name: `.claude/settings.json`,
+     `.cursor/hooks.json`, `.cursor/mcp.json`, `.copilot/mcp-config.json` and `.copilot/hooks/**/*.json`
+     (`Test-ReviewCampaignPathIsHostCommandConfig`). No Specrew deployer writes any of them inside the project. It is a
+     list of names: a new host or a new configuration file needs a new entry.
+  2. A framework subfolder that is machinery only by its vocabulary name holds records of a record kind and Specrew's
+     generated agent files, and nothing else. A folder that a `.specrew-managed` marker names stays machinery, the
+     subfolder itself included. The generated files, by name (`Test-ReviewCampaignPathIsGeneratedHostAgentFile`):
+     `.codex/agents/<role>.toml` (`Install-CodexCrewRuntime`) and `.cursor/rules/<role>.mdc` (`Install-CursorCrewRuntime`).
+     The vocabulary is one function now, `Get-ContinuousCoReviewHostMirrorVocabulary`, which both the list and the check
+     read.
+  3. The shared classifier's directory exemption counts record kinds only. This covers round 2's C1 row (a script under
+     `docs/`), so the gate's separate `docs/` line is gone: the general condition decides it.
+  4. The generated Claude launcher `.claude/specrew-hook-launch.ps1` is a downstream-only machinery entry. The source
+     repository keeps reviewing it, and 203's reviewed digest does not move.
+- **Round 2's inventory rows this decides:** A, C2 and C3 downstream follow the rule above. C1 downstream is now the
+  general rule. The source repository's rows are unchanged. The Linux CI guard's samples are derived from the shared
+  classifier's rules, which did not change, so they did not change.
+- **Known costs, recorded and not fixed:**
+  - An unmarked runnable file that another tool deploys in a framework subfolder is source. A Squad redeploy that
+    changes `sync-mesh.ps1` or `sync-mesh.sh` stales a review.
+  - The visibility half: downstream the reviewer still cannot see a project's own script under a framework subfolder,
+    because the strip removes the whole subfolder. Hand-back line.
+- **Test first:** red `8e4ea1522` (6 of 22 in `records-only-covers-what-deployment-writes.Tests.ps1`), fix `13bd983b8`, 22 of 22.
+  No pinned case changed its answer. The batch: 35 suites green (the records-only, sign-off, digest, strip, path-identity and verification-plan-runner suites), PSScriptAnalyzer no errors, the real home hook set unchanged.
+- **Class closure**: downstream, every way a path can read as records is now a named place, a marker, a record kind
+  or a listed generated name. It is guarded by `records-only-covers-what-deployment-writes.Tests.ps1`'s round 3 cases
+  (each rule, its pins, and the launcher in both repositories) and by `records-only-source-repo-narrowed.Tests.ps1`'s
+  inventory pins. The two lists of names are open, with a hand-back line for a guard that derives them.
+- **Rework:** about 2.5 SP (the decided shape about 2.0, option 3's part about 0.5), so the overrun is about 6.5.

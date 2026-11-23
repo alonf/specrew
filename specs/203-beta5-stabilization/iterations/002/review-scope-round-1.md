@@ -68,18 +68,26 @@ Round 3 (`23a32b6dc`, Codex) found two more and named the open question:
   fields only when the reader's origin is typed-user. The table is in DRIFT-053. Red `9c7a3cc9c` and `f55873841`, fix
   `1de5a0165`.
 - `finding-266f3aac0b802944`: a POSIX file URL's fragment was read as path text. Red `1c4a1f0d8`, fix `feaaeacff`.
-- `finding-9cc1155f2c83f5f7`: the downstream design row below. Not fixed; the maintainer decides.
+- `finding-9cc1155f2c83f5f7`: downstream, a project's own script in a host folder read as records. Decided by the
+  maintainer on 2026-11-23 at about 13:14 local ("203 deployed files: fix it in 203"). Red `8e4ea1522`, fix `13bd983b8`; the rule
+  is below and in DRIFT-054.
 
 The two T022 findings were one defect: the records-only decision asked where a path is and not what it is. The fix
 closes the class, not the instance. Every way `Test-ReviewCampaignDeltaIsRecordsOnly` can answer "records" is listed
 in the inventory in `23056509c`'s commit message and in the iteration's drift log (DRIFT-052), row by row, with what now
 decides it: a record kind for the feature's record folders and `closeout*`, a named records place for every path
-outside `specs/` in this repository, and a record kind under `docs/` downstream. Attack the table, not the last hole:
-a row where something that runs can still read as records.
+outside `specs/` in this repository, and downstream the rule below. Attack the table, not the last hole: a row where
+something that runs can still read as records.
 
-- **Open design question put to the maintainer on 2026-11-23, not decided:** downstream, deployed machinery and host
-  mirrors are records by design (DRIFT-007's twin). A finding about that row is a finding, and its disposition is the
-  maintainer's.
+- **Downstream, decided by the maintainer on 2026-11-23 at about 13:14 local** ("203 deployed files: fix it in 203"):
+  a file that can run is records only where the machinery list names its place, by name or by a `.specrew-managed`
+  marker.
+  - The shared classifier's directory exemption counts record kinds only.
+  - A framework subfolder that is machinery only by its vocabulary name (`.github/skills`, `.cursor/rules` and the rest)
+    holds record kinds and Specrew's generated `.codex/agents/*.toml` and `.cursor/rules/*.mdc`, and nothing else.
+  - The project's own hook and MCP server configuration is source by name.
+  - The generated Claude launcher is a downstream-only machinery entry; in this repository it is reviewed.
+  - The records-only check alone changed: the strip and the digest did not.
 
 ## What to Attack First
 
@@ -114,6 +122,14 @@ deferred work and the known items named here: a new failure you find in the code
 - `project-path-resolution-regression`'s update --info case writes the real npm cache (a hand-back item).
 - The known flaky tests: `co-review-service.Tests.ps1:129`, `empty-result-retry.Tests.ps1`, and HookRenderDedupe I3a
   on records-only pushes.
+- **Known limitations of the downstream rule, recorded and handed on** (DRIFT-054):
+  - Downstream, the reviewer cannot see a project's own script under a host framework subfolder, because the strip
+    removes the whole subfolder. Only the records-only check was in this iteration's scope; the visibility half is a
+    hand-back line.
+  - An unmarked runnable file another tool deploys in a framework subfolder (Squad's `sync-mesh.ps1` and `.sh`) is
+    source, so a redeploy that changes it stales a review. This cost was accepted.
+  - The hook and MCP server configuration names and the generated agent file names are lists of names. A new host or a
+    new file of either class needs a new entry; a guard that derives them from the host manifests is a hand-back line.
 
 ## Severity
 
