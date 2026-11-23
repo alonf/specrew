@@ -263,7 +263,200 @@ fixed in 203.
     cause in that run was a test that failed only in a clean Windows checkout (a line-ending assumption), found only by
     running the command by hand. **Still in the merged tree: not checked in full.** The orchestrator builds the
     diagnosis beside the sealed reason (`review-campaign-orchestrator.ps1:495-501`) and carries it into the round's
-    outcome (`:2265`, `:2437-2480`); whether it reaches the console on this path was not traced.
+    outcome (`:2265`, `:2437-2480`); whether it reaches the console on this path was not traced. **Seen on 203's pin
+    too** (`da78b600`, 2026-11-23, round 1's first launch, iteration 002 DRIFT-052): the diagnosis reached neither the
+    console nor the run's `result.json`; the failing suite was never named, and the relaunch passed.
+
+- **N. The workshop checkpoint and the workshop repair in a later iteration** ("Desktop N: pass it", typed in the
+  reviewer session at 02:28 local on 2026-11-23, relayed). In a downstream project's third iteration, the agent
+  asked the human a design question and tried to save the answer with the feature-level lens checkpoint
+  (`confirm-workshop-lens.ps1 -FeatureRef`). The checkpoint refused at its transition check: "The workshop plan is not
+  in a state where the '<lens>' discussion can be closed. Confirm the workshop agenda first (or ask for the plan to be
+  repaired) ...". The agent followed that to the repair command, which stopped on a missing version field. That
+  project's feature-level `lens-applicability.json` has `workshop_intake`, `confirmation_required`, `selected`,
+  `agenda`, `product_domain_record` and `workshop`, and none of `schema_version`, `agenda_contract`,
+  `human_turn_contract`, `agenda_status` or `agenda_confirmation`. Nothing in the project changed, and the human's
+  decision was intact. N1 to N4 are the class proposal 142's amendment (A1) addresses: a refusal names its repair and
+  the state it found, and a repair says what it will discard. N5 is proposal 177's ground (the workshop skill and what
+  its results feed), not proposal 140's (the reviewer's instructions). Neither script has changed on 203's branch or
+  on main since feature 202, so 205's reordering of the workshop lenses did not reach them.
+  - **N1. The repair crashes where it should refuse.** It runs under `Set-StrictMode -Version Latest` and reads
+    `$state.schema_version` before its own contract check, so a state file without that property throws the
+    language's property error, not the script's token `workshop-repair-state-contract-invalid`. A one-line check under
+    the same strict mode, on an object without the property, throws `PropertyNotFoundStrict` ("The property
+    'schema_version' cannot be found on this object"). The console text from the downstream run was not seen.
+    **Still present on main** (`repair-workshop-controller-state.ps1:11` and `:100`).
+  - **N2. Nothing says the repair is feature-wide and resets everything.** Applied, it overwrites the feature's
+    `lens-applicability.json` with the canonical empty pending state (`selected`, `agenda` and `workshop` empty), and
+    `discarded_workshop` lists every workshop key. Its message says "I can return only the unfinished technical agenda
+    to its pre-confirmation state". It supports only schema 1.1 with `agenda_status` `pending-confirmation`, takes no
+    iteration (its parameters are `-ProjectRoot` and `-FeatureRef`), and keeps only files under
+    `specs/<feature>/workshop` as preserved records, so an iteration's workshop notes are outside its list. **Still
+    present on main** (`:3-8`, `:56-70`, `:100-106`, `:136-154`, `:210`, `:271-273`).
+  - **N3. The checkpoint's refusal recommends that repair.** For a technical lens, "Confirm the workshop agenda first
+    (or ask for the plan to be repaired)" sends an agent in a later iteration to a command that would reset the
+    feature's workshop state or crash. The refusal does not say which state it found or that the scope is the feature.
+    A related branch already avoids this for a confirmed agenda (B4F-030, `:175-180`). This transition branch does not.
+    **Still present on main** (`confirm-workshop-lens.ps1:113-125`).
+  - **N4. No path for a controller file in the older shape.** A feature whose `lens-applicability.json` predates schema
+    1.1 can use neither the checkpoint nor the repair, and nothing migrates it or names the cause. **Still present on
+    main, by search:** the only `schema_version` check over this file in the workshop scripts is the repair's, and
+    no migration of the older shape was found. Not traced in full.
+  - **N5. The skill does not say plainly that the lens checkpoint is not the tool in a later iteration.** It gives the
+    authority per scope (the feature-level file at intake, the iteration's at design analysis) and the Co-Design
+    Record in `design-analysis.md` with `co_design: true`. Its step 7 says to close a lens with
+    `confirm-workshop-lens.ps1`, which takes only `-FeatureRef` and no iteration. **Still present on main**
+    (`squad-templates/skills/design-workshop.md:301-305`, `:486-488`, `:495-503`; 203's only change to this file is the
+    turn-end paragraph).
+- **P. Host parity: Codex as the writer reaches the gates less prepared than Claude** ("Desktop P: pass it", typed in
+  the reviewer session at 02:45 local on 2026-11-23, relayed). It was seen on two downstream projects with Codex as the
+  writer. The maintainer's question behind it, typed just before: "With Claude I don't have the problems we are having
+  with codex, it looks like we are not enforcing the process on codex, is this a prblems of wrong hooks, oe something
+  else?"
+  - **The hooks are not the cause**, read by the reviewer session. The user-level Codex hook file binds SessionStart,
+    UserPromptSubmit and Stop to the Specrew launcher with `-HostKind codex`. The project's runtime records show all
+    three firing from Codex up to minutes before the read: hook-health markers for Codex's session start and stop,
+    turn-end records, and hook-output-authority entries.
+  - **The gates held on Codex every time that night:** the boundary gate's preflight (uncommitted paths, then
+    `verdict-commit-durable`), the lens checkpoint's transition check, and the design-analysis pre-plan gate.
+  - **Caution:** the comparison is not like for like. The crews on the maintainer's laptop run a newer pinned engine
+    and have a reviewer session ruling at every step, while the downstream sessions have only the human. The fairest
+    data point is the maintainer's own: one downstream project had fewer issues while Claude was its writer, on the
+    same release.
+  - **P1. Codex's Stop hook can only block or say nothing.** Codex's manifest lists Stop among its decision-only
+    events ("Codex Stop expects JSON and only permits decision:"block"; non-blocking Stop nudges must be suppressed as
+    `{}`"). Claude's output shape is `plain-or-hookSpecificOutput`, with no decision-only events. In one project's
+    last 400 hook-output-authority records, Stop gave 123 "envelope" and 2 "payload". The same ratio was not counted
+    for a Claude session, so this is a capability difference read in the manifest, not a measured effect. **Still
+    present on main** (`hosts/codex/host.psd1:57-60`, `hosts/claude/host.psd1:72-73`; 203 does not change Codex's
+    manifest).
+  - **P2. The agent reads skills in parts.** The Codex sessions' own command logs show the first 85 or 90 lines of a
+    skill or command file read (`Get-Content ... -TotalCount 85`), or a phrase searched with the first 13 hits taken.
+    The rule missed that night, where a design agreement is recorded in a later iteration (the Co-Design Record), sits
+    far past that point in the workshop skill. Claude Code loads a skill whole through its skill tool. The reviewer
+    session weighs this part most. **Seen in the session logs the maintainer pasted; not traced** (this is agent
+    behaviour, and the transcripts were not read).
+  - **P3. No slash commands on Codex.** A skill runs only when the agent or the human calls it with the `$` prefix,
+    which `specrew start --host codex` prints on the released install. **Not traced** in this tree.
+  - **P4. Nothing intercepts a tool call between gates, on any host.** The deployer reports "PreToolUse dormant" for
+    every host, and Claude's manifest keeps the seat empty "until the first gate-kind provider row exists".
+    Enforcement is at the gates, and on Codex the agent reaches them less prepared, so the human sees more refusals.
+    **Still present on main** (`scripts/internal/deploy-refocus-hooks.ps1:926` and `:996`, `hosts/claude/host.psd1:37-38`).
+  - **What it suggests**, as a question for planning and not a decision: per-phase "what this phase requires next"
+    text delivered by the prompt hook, which every host receives whole; and stop-time reminders carried to the next
+    prompt on hosts whose Stop hook cannot carry them.
+  - **Proposals.** No open proposal is about host parity.
+    - Proposal 146 (refocus hooks, the Claude and Codex triad, shipped) owns the delivery channels P1 to P3 are
+      about. P belongs in an amendment of it: the prompt hook carries each phase's next requirement whole, and a
+      stop-time reminder that a decision-only Stop cannot show is carried to the next prompt.
+    - Proposal 065 (launch-mode boundary enforcement, shipped) enforces inside the boundary skills, which refuse to
+      advance. It is not what the dormant PreToolUse seat implements.
+    - The tool-call intercept is proposal 180 (the PreToolUse lifecycle-entry gate), still a candidate and scoped to
+      Claude Code. P4 belongs there, as a note that the seat is dormant on every host.
+- **Passing findings from now on** (the maintainer, typed in the reviewer session at 03:39 local on 2026-11-23,
+  relayed): "You should auto pass any finding: again: pass it". The reviewer session reads this as follows: from now on
+  it passes every Specrew finding to the list that holds it, quoting these words and this time, without asking the
+  maintainer per candidate. That covers recording a finding. It does not cover fixing one, a scope change, a merge or
+  any approval line. F again and O below are the first two passed this way.
+- **F again. A plan sync in a later iteration writes a phase label that its own state check then refuses** (a second
+  sighting of 206's bug-list item 73, candidate F of 2026-11-17; passed under the 03:39 decision above).
+  - What was seen: the iteration-state-truth gate refused the plan sync twice.
+    - The first refusal: a file named `review-diagrams.md` sat in the iteration folder at plan time, because the agent
+      had put its planning diagrams under that name.
+    - After the rename, the second: "still says 'Execution has not started yet.' even though metadata says Current
+      Phase='plan', Iteration Status='planning', Last Completed Task='(none)', In Progress='(none)'".
+    - The repair used, on the maintainer's word in that session: delete that one sentence, with a drift entry. The
+      refusal names no repair (206's item 68).
+  - Why, read by the reviewer session: the store's last authorization was the previous iteration's
+    iteration-closeout. So `Invoke-SpecrewIterationStateTruthGate` caps the mirror replay at `plan`, and
+    `Sync-SpecrewCrossingMirrors` writes Current Phase `plan` before the check runs. The page before the sync read
+    `planning`, which is exempt.
+  - How this differs from the first sighting: no session-start writer was involved. The sentence was a plain bullet
+    under Execution Summary, outside any managed block, and the `plan` label came from the sync itself.
+  - The progress check's phase exemption lists `tasks`, `before-implement`, `planning` and `not-started`, and not `plan`.
+    **Still present on main** (`scripts/internal/sync-boundary-state.ps1:953`, read by the crew; `:837` on the
+    release). 203's branch changes the file elsewhere, not this line. The cap and the mirror write ahead of the check
+    are **not traced** by the crew.
+  - **F2. A planning diagram under a reserved file name reads as "execution has started".** The gate lists
+    `review-diagrams.md` with `code-map.md`, `coverage-evidence.md`, `dashboard.md`, `dependency-report.md`,
+    `reviewer-index.md` and `review.md` as evidence, and tests only that the file is present. Its refusal names the
+    files ("evidence artifacts exist: ..."), but does not say that the name alone is the cause or that the name is
+    reserved. **Still present on main** (`sync-boundary-state.ps1:915-923`, `:962-969`).
+- **O. Specrew's deployed consumer workflows hard-code the hosted runner** (passed under the 03:39 decision above).
+  - What was seen: `specrew-methodology-gate.yml` and `specrew-work-kind.yml`, as deployed into a project, say
+    `runs-on: ubuntu-latest`. A private project that had used up its hosted Actions minutes for the month had both jobs
+    refused before their first step ("The job was not started because recent account payments have failed or your
+    spending limit needs to be increased"). Its own workflows ran on a self-hosted runner chosen through a repository
+    variable.
+  - The files are Specrew-deployed, so the project may not edit them, and an update would overwrite an edit. There is
+    no variable or setting to choose the runner. **Still present on main** (`templates/github/workflows/
+    specrew-methodology-gate.yml:20`, `specrew-work-kind.yml:22`; neither reads a variable). That an update overwrites
+    an edit is **not traced** by the crew.
+  - Both jobs call provider-neutral scripts already deployed in the project, so the checks could be run locally, but
+    nothing tells the user that. A job that never started shows red, which reads as a failed check.
+  - **Placement:** feature 182's ground. The work-kind workflow's header says GitHub Actions is the v1 wiring of a
+    provider-neutral validator, and that other CI systems wire the same script. No proposal covers a configurable
+    runner: the proposals that mention runners (031, 042, 087, 089, 092, 173, 205) are about other things. It is a
+    candidate for the next bug bash. `tests/unit/consumer-workflow-allowlist.tests.ps1` guards these templates and
+    would have to accept the change.
+- **Q. The governance validator's output at a readiness check** (passed under the maintainer's 03:39 decision of
+  2026-11-23). Seen at a before-implement readiness check on a downstream project.
+  - **Q1. The class-closure refusal says the field is missing when only its form is wrong.** The drift entry carried
+    the label as "**Class closure**" with its text after it, and named a recurrence guard, but with no colon after the
+    label. The validator refused with "drift-log.md event '<id>' is missing required Class closure (name the executable
+    recurrence guard, or write 'NONE — <why>')". The message does not show the form it wants,
+    "**Class closure**: <text>".
+    - The second sighting, on two engines: 203's own DRIFT-051 met it on this branch on 2026-11-23, where
+      "**Class closure:**" with the colon inside the bold was refused.
+    - **Still present on main** (`extensions/specrew-speckit/scripts/validate-governance.ps1:413`, which matches only
+      `^\s*[-*]\s+\*\*Class closure\*\*:`, and `:420`, the message).
+    - Proposal 142's amendment A1: a refusal names what it found and its repair.
+  - **Q2. One failure under seventeen warnings.** The same run printed 17 lines of "WARN [trust-hardening]
+    handoff-block-missing: Boundary commit <sha> at <boundary> has no preceding handoff evidence", one for every boundary
+    commit of the feature back to its specify boundary, two closed iterations included, before the single FAIL. They
+    repeat on every run and cannot be acted on for commits already made, and the one line that mattered came last.
+    - The same here: every governance run on 203's branch prints three of them, for boundary commits at tasks and
+      before-implement.
+    - **Still present on main.** `Test-HandoffEvidenceGovernance` warns for every event in
+      `.specrew/handoff-evidence.json`, with no filter for a closed or frozen iteration and no limit to the active one
+      (`validate-governance.ps1:1874-2002`, the warning at `:1998`).
+    - Placement: proposal 120 introduced the check (Pillar 1, FR-018), and no proposal covers warnings on closed
+      history, so this is a plain item against proposal 120's check. 206's T008 rule that a frozen legacy iteration is
+      judged by no check is the nearest precedent, and this check does not use it. Wanted: warn only for the active
+      iteration's boundaries, and print failures before warnings, or summarise the warnings in one line.
+- **R. The review pause** (passed under the maintainer's 03:39 decision of 2026-11-23). Seen in a downstream project's
+  second review round. The maintainer's words about it, typed in the reviewer session at about 04:42 local: "why does
+  it behave like this? I mean the stop message should tell it what to do, not to stop and ask me".
+  - **R1. One human decision needs two commands, and the message names the wrong one first.** A round ended without a
+    complete review, and the campaign paused ("review-round-paused:pause-decision-pending"). The pause text's
+    Recommendation says to ask the human to type "approved for review round", and "Once they have typed it, run:
+    specrew review --live --approve-round".
+    - The human typed it, and the agent ran that command.
+    - The engine answered "Round approved by the human's typed phrase ... recorded it as cmp-<...>-round-2", then
+      stopped again, exit 1, with the same waiting text: round 1's pause decision was still pending.
+    - Only the footer names the command that moves it, `specrew review --live --pause-choice <1|2|3>`. So the typed
+      approval, which the text itself calls "the answer", does not answer the pause. A second command carrying the same
+      decision is needed, and the first command the message recommends ends in a refusal-shaped stop. The agent
+      stopped and went back to the human.
+    - **Still present on main:** `continuous-co-review-navigator.ps1:1523-1524` ("Once they have typed it, run:
+      specrew review --live --approve-round"), and `:1553-1559`, the three-way `--pause-choice` mapping.
+    - **Changed on 203's branch** (T008, iteration 001; the pin `da78b600` this campaign runs on has it):
+      - Review rounds take no approval of their own: the budget approved at before-implement pays for them, and
+        `--approve-round` is refused in plain words (`specrew-review.ps1:340`).
+      - The only pause answer left is the human's typed `stop the review here`, relayed as `--pause-choice stop-here`.
+        `--pause-choice` 1 to 3 is refused (`:1193`).
+      - Every review stop (a) to (d) shows one layout (`Format-ReviewCampaignStopSurface`,
+        `review-campaign-orchestrator.ps1:1684`): why it stopped, what happened, the one decision, and the lines the
+        human can send, each stating its consequence. No line asks for a round.
+      - A typed stop answer is landed by the next launch (`specrew-review.ps1:1376-1385`).
+      - T027 meets this live at the campaign's first stop.
+    - Proposal 142's amendment A1: a stop names the one next action.
+  - **R2. A round that "did not finish, so it found nothing and cleared nothing" still counts as used.** The release
+    reads "You have used 1 of 4 review rounds" after such a round. **Still present on main**: the round count line is
+    `continuous-co-review-navigator.ps1:1207`, and main does not have the rule below. **Changed on 203's branch**: a
+    run that brings back no complete review spends nothing (DRIFT-052 item 3, `specrew-review.ps1:1375`). This campaign
+    shows it: round 1's first launch, failed in preflight, left budget_total 4 with its reservation released and no
+    spend fact.
 
 ## Fixed in 203, for Completeness
 

@@ -1576,3 +1576,88 @@ The following resolution strategies remain available if drift is detected later 
   (the native exe, codex-cli 0.171.0). The rule is scratch folders only; the worktree showed only the two writer
   files and the home hook set was unchanged. The rule stands.
 - **Class closure**: NONE - records of tasks closed and a sweep difference closed, no defect class; the guards are T031's suite and the per-push CI that ran green. The iteration's open rows are T027 and T028, the review campaign's.
+
+### DRIFT-052 — The review campaign, rounds 1 and 2: a preflight failure nobody could explain, three major findings fixed test first, and the class behind two of them closed by kind and by name
+
+- **Round 1, first launch (unexplained):** run `run-20261122-231259995-e86323e5`, launched at 01:13 local on
+  2026-11-23 on `103c4247a` from the pin `da78b600`, with `--host codex`. It ended in the preflight at 02:03 local
+  (3,001.9 s): "verification-command-failed:f203-i001-suites:diagnostics-require-command-scoped-disclosure". Nothing
+  was spent: the reservation was released and the budget grant still read 4.
+  - The engine builds a diagnosis next to the sealed reason (exit code, duration, timed out or not). It reached
+    neither the console nor `result.json`: the hand-back's M4, now seen on this engine too.
+  - Each of the lane's 22 suites, run alone in the review target's layout at the same head, exited 0 (about 455 s).
+    All ten lanes in that layout exited 0 (1,886 s).
+  - None of the known flaky suites is in any active lane.
+  - The relaunch on the same tree, plan and command passed its preflight on a quiet machine (the 206 crew holding its
+    local runs). An outside watcher sampled every 30 s: every lane well inside its limit, no suite sitting, CPU under
+    35 percent, 22 GB free.
+  - `%TEMP%` held 40,554 entries at 02:49, about twice the count of a few days before; the deletion is the
+    maintainer's. Recorded as unexplained.
+  - The crew had not run the lanes in the review layout before this launch, as it did before every iteration 001
+    round. From now on that run is a condition of every round word (the reviewer session).
+- **Round 1:** run `run-20261123-005022241-ca19123a` (codex, 2,301.5 s: preflight 1,801.6 s, Codex about 490 s). Two
+  majors, both fixed with the failing test committed first:
+  1. `finding-80a86c770ffb9e76` (T020). A tail read took a pending reservation's inferred turn identity as the exact
+     cited turn. Red `99867e215` used the real shape: a ledger row with its prompt event, the hook's attachment under
+     the record, 2.5 MiB later a scheduled record repeating the line. It went red 1 of 30.
+     - Fix `adc19c77d`: the resolver records how each identity was found, and the sender check reads the whole
+       transcript when a partial window's hit is only pending.
+     - The other T020 fixtures register rows without a prompt event; they were not rewritten.
+  2. `finding-a0cc0ae3cd9703dc` (T022). On a case-sensitive volume, a path that the shared classifier exempts only by
+     ignoring case fell through to records.
+     - Red `21d6fc625`: 1 of 34 on Windows, 2 of 34 in WSL. Fix `8bbb4c908`, in the gate only.
+     - Then `5e2ee6f95`: a case that reads the classifier's directory rules from its source and holds the gate's list
+       equal to them. It is shown red both ways by mutation, and adds a Specrew CI Deterministic gate step running
+       the suite on Linux (9 s in WSL).
+     - `2f1f87309`: the helper's comment now says what is true (a missing prefix fails toward records).
+- **Round 2, first launch:** refused before anything ran, at 04:29 local on `2f1f87309`, with `--host copilot`:
+  "Specrew did not start the review on copilot, because the reviewer for this round is codex, the current one in the
+  approved order (codex, copilot, claude). Nothing was launched, recorded or spent. Run the review without --host, or
+  with --host codex."
+  - The reviewer session had read the granted order as a rotation; the engine reads it as a failover order, and the
+    engine's reading is the granted one. It is a clean refusal: it says what it found, what it did not do, and the
+    command that works.
+  - The relaunch without `--host` showed "remaining<=600.0s" where round 1 with `--host codex` showed 900 s. The run
+    records carry no reviewer timeout and Codex took about 285 s, so whether no `--host` shortens the reviewer's
+    limit is not settled; round 3 uses `--host codex`.
+- **Round 2:** run `run-20261123-023134738-abef8e9c` (codex, 2,162.9 s). One major, `finding-7a5e1b6f01a5008d`
+  (T022): a script under the active iteration's `quality/`, `checklists/`, `dashboards/` or `gates/` read as
+  records-only.
+  - The reviewer session ruled to close the class, not the instance: both T022 findings were the decision asking
+    where a path is and not what it is.
+  - Inventory (the full rows are in the fix commit's message):
+
+    | Row | Where | Runnable there? | After this fix |
+    | --- | --- | --- | --- |
+    | A | the machinery list | yes | source repo: by named place; downstream: unchanged (design question) |
+    | B1 | named feature records | no (exact names, record kinds) | unchanged; the gate's fallback aligned |
+    | B2, B3 | `closeout*`, the four record folders | yes | records only as a record kind, in the shared function |
+    | C1 | `docs/` | yes | downstream: a non-record kind is source |
+    | C2, C3 | dot-directories, `.github` host directories | yes | source repo: by named place; downstream: unchanged |
+    | C4 | `.github/<name>.md` | Markdown | unchanged |
+    | C5 | document extensions | in effect | source repo: by named place |
+    | D | T022's named places | only turns records into source | extended to every kind, census names added |
+
+  - Red `98aaa8e92`: 8 of 46 on Windows and in WSL. The two-bodies-equal guard also found that the gate's "verbatim"
+    fallback lacked `dashboard.md` and `security-surface.md`.
+  - Fix `23056509c`: the kind rule in `Test-SpecrewLifecycleExecutionRecordPath` (shared, and its `.specify` mirror
+    with its hash record), the same in the gate's fallback, and the source repository decided by named place. The
+    census of what this repository's records commits write found no committed record that changes its answer.
+  - 46 of 46 on Windows and in WSL, and a batch of 21 suites green.
+- **Open design question, put to the maintainer on 2026-11-23, not decided:** downstream, deployed machinery and host
+  mirrors are records by design (DRIFT-007's twin). Do they stay records, and if so what keeps an agent from editing
+  them unreviewed after a passing review? The reviewer session recommends keeping the design for 203 and taking the
+  question to the follow-up (206's item 83 and proposal 218 are the same ground).
+- **Main moved twice and was not taken in** (the reviewer session's word): 334e11881 (proposal 142's amendment) and
+  490760725 (pull request 4099, the Squad install fix). The merge-base stayed 551bf5cde.
+  - `git merge-tree` against 490760725 has no conflict. Four files changed on both sides and auto-merged:
+    `.specrew-extension-runtime.json`, whose 174 hashes checked against the merged tree with 0 mismatched (it is to
+    be regenerated at the final merge, not kept), `specrew-ci.yml`, `cross-platform-validation.yml` and
+    `Specrew.psd1`.
+- **Budget:** 2 of 4 rounds spent (the spend facts `res-0ba837311857bc09423c`, `res-b738039ce422de6fde14`). The failed
+  first launch and the refused one spent nothing. The real home hook set was hashed around every launch and every
+  batch, and did not change.
+- **Class closure**: the records-only decision is now held by kind and by named place (the inventory above), guarded by
+  records-only-source-repo-narrowed.Tests.ps1, which runs on Specrew CI's Linux job: the case per inventory row, the
+  case that holds the gate's case-only list equal to the shared classifier, and the case that holds the gate's
+  fallback body equal to the shared function. The downstream design row stays open with the maintainer.

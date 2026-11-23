@@ -14,7 +14,8 @@ it comes first in the review frame. It adds to the spec and plan and does not re
     (`specs/203-beta5-stabilization/iterations/001/review.md`). Read them where iteration 002 builds on them; do not
     re-review them as new.
     That is about where to spend effort, not about silence: a defect you can prove in them is still reportable.
-- **Reviewed head:** `c541ee854` or later (records only after that, this file among them).
+- **Reviewed head:** the commit that carries this version of the file, or later records. Rounds 1 and 2 reviewed
+  `103c4247a` and `2f1f87309`; the fixes of their findings, below, are code.
 - **The iteration's contract:** `specs/203-beta5-stabilization/spec.md` and
   `specs/203-beta5-stabilization/iterations/002/plan.md`. `.specify/**` is excluded from the frozen tree; its copies of
   the extension scripts are mirrors checked by their hash record. Review the sources under `extensions/`.
@@ -41,6 +42,30 @@ it comes first in the review frame. It adds to the spec and plan and does not re
 | DRIFT-048 | A review link's four-slash file URL reads as its local path on Linux and macOS, not as a UNC host (FR-046 rework) | `extensions/specrew-speckit/scripts/turn-end-store.ps1` (`6fd9b6518`), `tests/unit/review-link-file-url-local-path.tests.ps1` (`7823c0cfd`) |
 | DRIFT-050 | SC-001's fixture without its own feature claim, and a case pinning the claim decline (test-only) | `tests/integration/project-path-resolution-regression.ps1`, `tests/unit/sc001-fixture-identity.tests.ps1`, `tests/unit/every-suite-is-named-by-a-lane.tests.ps1` |
 | Other | A source checkout's build id is eight characters (`5cec4bf60`); three test fixes for timing and the sealed iteration (`eee6946a6`, `a0c2e6046`, `2d6590f61`) | `scripts/internal/version-check.ps1`; `tests/continuous-co-review/unit/review-posix-runtime.Tests.ps1`, `tests/integration/self-repo-review-integrity.tests.ps1`, `tools/maintenance/sweep/sweep-driver.tests.ps1` |
+
+## Found in Earlier Rounds
+
+Round 1 (`103c4247a`, Codex) and round 2 (`2f1f87309`, Codex) found three majors, each fixed with its failing test
+committed first:
+
+- `finding-80a86c770ffb9e76` (T020): a tail read took a pending reservation's inferred identity as the exact cited
+  turn. Red `99867e215`, fix `adc19c77d`.
+- `finding-a0cc0ae3cd9703dc` (T022): on a case-sensitive volume, a path the shared classifier exempts only by ignoring
+  case read as records. Red `21d6fc625`, fix `8bbb4c908`; the guard that holds the gate's list equal to the classifier
+  `5e2ee6f95` (it also runs the suite on Specrew CI's Linux job); comment `2f1f87309`.
+- `finding-7a5e1b6f01a5008d` (T022): a script under the active iteration's `quality/` (and `checklists/`,
+  `dashboards/`, `gates/`) read as records. Red `98aaa8e92`, fix `23056509c`.
+
+The two T022 findings were one defect: the records-only decision asked where a path is and not what it is. The fix
+closes the class, not the instance. Every way `Test-ReviewCampaignDeltaIsRecordsOnly` can answer "records" is listed
+in the inventory in `23056509c`'s commit message and in the iteration's drift log (DRIFT-052), row by row, with what now
+decides it: a record kind for the feature's record folders and `closeout*`, a named records place for every path
+outside `specs/` in this repository, and a record kind under `docs/` downstream. Attack the table, not the last hole:
+a row where something that runs can still read as records.
+
+- **Open design question put to the maintainer on 2026-11-23, not decided:** downstream, deployed machinery and host
+  mirrors are records by design (DRIFT-007's twin). A finding about that row is a finding, and its disposition is the
+  maintainer's.
 
 ## What to Attack First
 
