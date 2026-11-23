@@ -21,6 +21,11 @@
 .PARAMETER MinimumSquadVersion
     Minimum required Squad version.
 
+.PARAMETER SquadSdkVersion
+    The squad-sdk version to name beside the CLI in the printed install and repair command (optional). squad-cli
+    0.11.0 declares its SDK as "*", and squad-sdk 2.0.0 breaks it, so the module's callers pass the SDK paired with
+    the CLI in scripts/internal/supported-versions.yml (squad.sdk). Without it the command names the CLI alone.
+
 .PARAMETER PassThru
     Return structured validation results instead of exiting directly.
 
@@ -37,6 +42,7 @@ param(
     [string]$SquadVersion,
     [string]$MinimumSpecKitVersion = '0.12.9',
     [string]$MinimumSquadVersion = '0.11.0',
+    [string]$SquadSdkVersion,
     [switch]$PassThru
 )
 
@@ -307,6 +313,28 @@ function Get-CommandVersion {
     }
 }
 
+function Get-SquadInstallCommandLine {
+    # The Squad install a person is told to run. The same text as Get-SquadInstallCommandText in the module's
+    # scripts/internal/squad-install.ps1, which this file cannot load because it is also deployed into projects;
+    # tests/unit/squad-install-pair.tests.ps1 holds the two equal. The SDK is named beside the CLI in the same
+    # command, because only then does a global install resolve the CLI's "*" to it.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CliVersion,
+
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$SdkVersion
+    )
+
+    $text = 'npm install -g "@bradygaster/squad-cli@{0}"' -f $CliVersion
+    if (-not [string]::IsNullOrWhiteSpace($SdkVersion)) {
+        $text += ' "@bradygaster/squad-sdk@{0}"' -f $SdkVersion
+    }
+
+    return $text
+}
+
 function Get-ValidationResult {
     param(
         [Parameter(Mandatory = $true)]
@@ -346,7 +374,7 @@ function Get-ValidationResult {
     $isOperational = $isInstalled -and [string]::IsNullOrWhiteSpace($probeError) -and [string]::IsNullOrWhiteSpace($versionParseError)
     $repairCommand = switch ($Platform) {
         'Spec Kit' { Get-SpecKitInstallCommandText -Version $MinimumVersion -ForceInstall $true }
-        'Squad' { 'npm install -g "@bradygaster/squad-cli@{0}"' -f $MinimumVersion }
+        'Squad' { Get-SquadInstallCommandLine -CliVersion $MinimumVersion -SdkVersion $SquadSdkVersion }
         default { $InstallCommand }
     }
 
@@ -400,7 +428,7 @@ $results = @(
         -CommandName 'squad' `
         -MinimumVersion $MinimumSquadVersion `
         -Detection $resolvedSquadVersion `
-        -InstallCommand ('npm install -g "@bradygaster/squad-cli@{0}"' -f $MinimumSquadVersion)
+        -InstallCommand (Get-SquadInstallCommandLine -CliVersion $MinimumSquadVersion -SdkVersion $SquadSdkVersion)
 )
 
 if ($PassThru) {

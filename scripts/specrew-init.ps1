@@ -43,6 +43,12 @@ if (-not (Test-Path -LiteralPath $versionCheckHelperPath -PathType Leaf)) {
 }
 . $versionCheckHelperPath
 
+$squadInstallHelperPath = Join-Path $PSScriptRoot 'internal\squad-install.ps1'
+if (-not (Test-Path -LiteralPath $squadInstallHelperPath -PathType Leaf)) {
+    throw "Missing squad-install helper '$squadInstallHelperPath'."
+}
+. $squadInstallHelperPath
+
 $skillCatalogStateHelperPath = Join-Path $PSScriptRoot 'internal\skill-catalog-state.ps1'
 if (-not (Test-Path -LiteralPath $skillCatalogStateHelperPath -PathType Leaf)) {
     throw "Missing skill-catalog state helper '$skillCatalogStateHelperPath'."

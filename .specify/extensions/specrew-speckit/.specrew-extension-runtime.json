@@ -460,7 +460,7 @@
     },
     {
       "path": "scripts/validate-versions.ps1",
-      "sha256": "0e7eff83f88d274bfa428a1c05028bc7de4be14f8bbc7f70b5b70ddcd764a37d"
+      "sha256": "423d9583a4504309dc6b6acdc7ffcdbd45bf549ec283651b88a89d96dfda4be5"
     },
     {
       "path": "scripts/version-label.ps1",

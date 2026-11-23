@@ -13,6 +13,7 @@
 #     min:         <semver>   # absolute floor; Specrew refuses below this
 #     max_tested:  <semver>   # latest version Specrew validated against this release
 #     notes:       <string>   # optional; surfaces in `--info` (e.g. "X.Y.Z released; adoption pending")
+#     sdk:         <semver>   # squad only, optional; the SDK installed beside max_tested (see the squad block)
 
 schema: v1
 
@@ -25,3 +26,9 @@ squad:
   min: "0.11.0"
   max_tested: "0.11.0"
   notes: "Single tested pin (F-198 I2). No breaking release notes 0.9.1->0.11.0 (v0.11.0 adds 'squad registry'; renames '.NET Aspire'->'Aspire' in help text). Probe + .squad layout suites validated 2026-07-10 (F-198 T003)."
+  # The SDK installed beside squad-cli max_tested, in the same `npm install -g` (scripts/internal/squad-install.ps1).
+  # squad-cli 0.11.0 declares "@bradygaster/squad-sdk": "*"; squad-sdk 2.0.0 (published 2026-11-19) dropped exports
+  # the 0.11.0 CLI imports, so the CLI installed alone fails at start. Named only for max_tested; any other CLI
+  # version installs alone. Remove this key when Specrew moves to a squad release whose CLI and SDK agree. The CI
+  # workflows' SQUAD_SDK_VERSION must equal it (tests/unit/squad-install-pair.tests.ps1).
+  sdk: "1.1.0"

@@ -10,8 +10,9 @@
 #   - Get-DependencyValidationIssue       translate validator results to issue list
 #   - Resolve-DependencyValidationIssue   resolve issues + log actions
 #
-# Squad coupling: Install-MissingDependency hardcodes `npm install -g @bradygaster/squad-cli`
-# for the Squad branch. This is the Squad-only deployment path; moves to hosts/copilot/handlers.ps1
+# Squad coupling: Install-MissingDependency installs Squad with npm for the Squad branch. The command comes from
+# scripts/internal/squad-install.ps1 (Get-SquadInstallArguments), which names the paired SDK beside the CLI; that
+# helper is loaded by specrew-init.ps1. This is the Squad-only deployment path; moves to hosts/copilot/handlers.ps1
 # as part of Install-CopilotHostRuntime when Proposal 024 Slice 3 ships. Allow-listed in the
 # host-coupling firewall test for now via specrew-init.ps1 wholesale entry.
 
@@ -41,7 +42,7 @@ function Install-MissingDependency {
             }
 
             $command = 'npm'
-            $arguments = @('install', '-g', ('@bradygaster/squad-cli@{0}' -f $Dependency.MinimumVersion))
+            $arguments = @(Get-SquadInstallArguments -CliVersion $Dependency.MinimumVersion -SdkVersion (Get-SquadSdkVersionFor -CliVersion $Dependency.MinimumVersion))
         }
         default {
             throw "Unsupported dependency platform '$($Dependency.Platform)'."
@@ -71,8 +72,10 @@ function Invoke-VersionValidation {
         [string]$MinimumSquadVersion
     )
 
+    # The validator prints the install and repair text; it names the paired SDK only when it is told it.
+    $squadSdkVersion = [string](Get-SquadSdkVersionFor -CliVersion $MinimumSquadVersion)
     try {
-        return @(& $ScriptPath -MinimumSpecKitVersion $MinimumSpecKitVersion -MinimumSquadVersion $MinimumSquadVersion -PassThru)
+        return @(& $ScriptPath -MinimumSpecKitVersion $MinimumSpecKitVersion -MinimumSquadVersion $MinimumSquadVersion -SquadSdkVersion $squadSdkVersion -PassThru)
     }
     catch {
         Write-Error ("Dependency validation failed unexpectedly. Re-run '{0}' directly for details. {1}" -f $ScriptPath, $_.Exception.Message)

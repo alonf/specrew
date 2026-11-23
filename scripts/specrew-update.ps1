@@ -27,6 +27,12 @@ if (-not (Test-Path -LiteralPath $versionCheckHelperPath -PathType Leaf)) {
 }
 . $versionCheckHelperPath
 
+$squadInstallHelperPath = Join-Path $PSScriptRoot 'internal\squad-install.ps1'
+if (-not (Test-Path -LiteralPath $squadInstallHelperPath -PathType Leaf)) {
+    throw "Missing squad-install helper '$squadInstallHelperPath'."
+}
+. $squadInstallHelperPath
+
 function Get-NativeExitCode {
     if (Get-Variable -Name LASTEXITCODE -Scope Global -ErrorAction SilentlyContinue) {
         return $global:LASTEXITCODE
@@ -364,10 +370,13 @@ function Get-VersionValidationResults {
         [string]$MinimumSquadVersion
     )
 
+    # The validator prints the install and repair text; it names the paired SDK only when it is told it.
+    $squadSdkVersion = [string](Get-SquadSdkVersionFor -CliVersion $MinimumSquadVersion)
     return @(
         & $ValidateScriptPath `
             -MinimumSpecKitVersion $MinimumSpecKitVersion `
             -MinimumSquadVersion $MinimumSquadVersion `
+            -SquadSdkVersion $squadSdkVersion `
             -PassThru
     )
 }
@@ -617,7 +626,9 @@ function Install-PlatformVersion {
                 throw "Cannot upgrade Squad because 'npm' is unavailable."
             }
 
-            & npm install -g ("@bradygaster/squad-cli@{0}" -f $Version)
+            # The CLI and its paired SDK in one command: a later install of the CLI alone nests the newest SDK again.
+            $squadArguments = @(Get-SquadInstallArguments -CliVersion $Version -SdkVersion (Get-SquadSdkVersionFor -CliVersion $Version))
+            & npm @squadArguments
             if ((Get-NativeExitCode) -ne 0) {
                 throw ("Failed to upgrade Squad to {0}." -f $Version)
             }
