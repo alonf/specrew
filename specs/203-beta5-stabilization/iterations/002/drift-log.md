@@ -1821,3 +1821,51 @@ The following resolution strategies remain available if drift is detected later 
   (each rule, its pins, and the launcher in both repositories) and by `records-only-source-repo-narrowed.Tests.ps1`'s
   inventory pins. The two lists of names are open, with a hand-back line for a guard that derives them.
 - **Rework:** about 2.5 SP (the decided shape about 2.0, option 3's part about 0.5), so the overrun is about 6.5.
+
+### DRIFT-055 — Finding 2 narrowed to the parts that work: the reviewed-state digest strips the machinery list, so the gate-only rule for host subfolders could never be reached
+
+- **The maintainer's decision**, relayed by the reviewer session with their words and the time: "203 host folders:
+  record the limit, follow up", typed on 2026-11-23 at about 14:44 local. It narrows their earlier "203 deployed files:
+  fix it in 203" (about 13:14 local, DRIFT-054) to the parts that work.
+- **How the gap was found.** The reviewer session ruled two follow-ups on `13bd983b8`: `.agents` as a host folder, and a
+  marker added in the same change. Its second ruling asked whether the delta is cumulative. The answer is yes, but it is
+  a diff of reviewed-state digests:
+  - All three callers of `Test-ReviewCampaignDeltaIsRecordsOnly` diff the reviewed tree against the current one, through
+    `Get-ReviewCampaignChangedPathsSinceResult` (since the latest result, and since the running round) and the carried
+    acceptance.
+  - `Get-ContinuousCoReviewReviewedStateDigest` strips the whole machinery list from the digest, the same list as the
+    worktree strip.
+  - End to end on a downstream git fixture (digest, change, digest, then the check on the real delta):
+    `.github/skills/release/scripts/publish.ps1` and `.agents/skills/release/scripts/publish.ps1` left the digest
+    unchanged, so the check was never asked. `.claude/hooks/pre.ps1`, `.claude/settings.json` and `src/app.ps1` moved it
+    and read as source.
+  - So part 2 of DRIFT-054 (a vocabulary-only framework subfolder holds record kinds only) could never be reached in the
+    sign-off path. Its cases called the check with a delta that cannot occur. Neither follow-up was built.
+- **The miss.** The gate-only ruling (option 3) was made without asking where the delta comes from, and the crew's sizing
+  and red cases called the check directly. The end-to-end probe was the missing evidence. From now on, a records-only
+  case for the sign-off path is proven through the digest, not by calling the check.
+- **What stays, each proven through the digest** (test `967c8a148`, removal `4f9b95e60`):
+  1. The project's own hook and MCP server configuration is source by name.
+  2. The shared classifier's directory exemption counts record kinds only. Round 2 already closed scripts under `docs/`
+     (C1); this head only moved them into the general rule.
+  3. The generated Claude launcher is a downstream-only machinery entry. This head moves the downstream strip and
+     digest for that one file: a change to it downstream does not move the digest, and in a source-shaped repository it
+     does.
+- **What was removed:** the vocabulary-only branch in the gate, `Test-ReviewCampaignPathIsGeneratedHostAgentFile`, the
+  vocabulary function (the machinery list's two lists are back where they were), and the gate-level cases that pinned
+  an impossible delta. One case pins the limit and says so in its title. The follow-up will turn it around.
+- **The recorded limit:** downstream, the host tool folders are outside the review, both the reviewer's worktree and the
+  reviewed-state digest:
+  - every existing `.github`, `.claude`, `.codex`, `.cursor`, `.copilot`, `.gemini` or `.antigravity` subfolder named
+    agents, skills, commands, chatmodes, prompts, rules or instructions;
+  - `.agents` and `.antigravitycli`;
+  - any folder a `.specrew-managed` marker names, a marker added in the same change included;
+  - the tool folders `.specify`, `.specrew` and `.squad`, unchanged from before.
+  `finding-9cc1155f2c83f5f7` is closed for the three parts above and open for this list, by the maintainer's decision.
+  The follow-up is a hand-back proposal candidate.
+- **Verification:** records-only-covers-what-deployment-writes 20 of 20 and records-only-source-repo-narrowed 47 of 47; a batch of 35 suites green after the removal (records-only, sign-off, digest, strip, path-identity, verification-plan-runner); PSScriptAnalyzer no errors; the real home hook set unchanged.
+- **Class closure**: the records-only check for the sign-off path is guarded through the digest by
+  `records-only-covers-what-deployment-writes.Tests.ps1` (each kept part, the launcher in both repositories, and the
+  limit case). The host tool folders are open by the maintainer's decision, with the follow-up.
+- **Rework:** finding 2 took about 3.0 SP in all (the build about 2.5, the probes and the narrowing about 0.5), so the
+  overrun is about 7.0, not DRIFT-054's 6.5.
