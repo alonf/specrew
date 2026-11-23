@@ -398,12 +398,14 @@ Describe 'T022 records rule: the acceptance carry reads the delta without rename
 #     extension (a .yml can be an agent definition, a .json the hook settings).
 #   C1 downstream: a non-record kind under docs/ is source. Since round 3's finding 2 this is the general downstream rule
 #     (the shared classifier's directory exemption counts record kinds only), not a docs/ rule of its own.
-#   A, C2, C3 downstream (deployed machinery and host mirrors): decided by the maintainer on 2026-11-23 at about 13:14 local
-#     ("203 deployed files: fix it in 203", round 3's finding-9cc1155f2c83f5f7). A file that can run is records only where
-#     the machinery list names its place, by name or by a .specrew-managed marker; record kinds and Specrew's generated
-#     agent files stay records, and the project's own hook and MCP server configuration is source by name. Its cases are
-#     in records-only-covers-what-deployment-writes.Tests.ps1; the ones pinned here are deployment writes that keep
-#     their answer.
+#   A, C2, C3 downstream (deployed machinery and host mirrors): round 3's finding-9cc1155f2c83f5f7, decided by the
+#     maintainer on 2026-11-23 ("203 deployed files: fix it in 203", about 13:14 local) and narrowed to the parts that work
+#     ("203 host folders: record the limit, follow up", about 14:44 local). Outside the machinery list a file that can run
+#     in a host folder is source, and so is the project's own hook and MCP server configuration; the generated Claude
+#     launcher is downstream machinery. The machinery list's folders stay outside the downstream review (the strip and the
+#     digest), the recorded limit. Its cases, proven through the digest, are in
+#     records-only-covers-what-deployment-writes.Tests.ps1; the ones pinned here are deployment writes that keep their
+#     answer.
 Describe 'records by kind and by named place (round 2 finding, finding-7a5e1b6f01a5008d)' {
     It 'B3: a script under quality/, checklists/, dashboards/ or gates/ of the active feature is source' {
         foreach ($path in @(

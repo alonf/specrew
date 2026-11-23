@@ -433,23 +433,6 @@ function Test-ReviewCampaignPathIsHostCommandConfig {
     return ($Path.StartsWith('.copilot/hooks/', $Comparison) -and $Path.EndsWith('.json', [StringComparison]::OrdinalIgnoreCase))
 }
 
-function Test-ReviewCampaignPathIsGeneratedHostAgentFile {
-    # Specrew's own generated agent files of a non-record kind in a host framework subfolder, which carry no
-    # .specrew-managed marker. Downstream they stay records by name, so a Specrew redeploy does not stale a review
-    # (round 3 of 203 iteration 002's review, the reviewer session's ruling on finding-9cc1155f2c83f5f7). The writers:
-    #   .codex/agents/<role>.toml  - Install-CodexCrewRuntime (hosts/codex/handlers.ps1)
-    #   .cursor/rules/<role>.mdc   - Install-CursorCrewRuntime (hosts/cursor/handlers.ps1)
-    # A list of names: a deployer that writes a new unmarked non-record kind there needs a new entry here.
-    [OutputType([bool])]
-    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][StringComparison]$Comparison)
-    $segments = $Path.Split('/')
-    if ($segments.Count -ne 3 -or [string]::IsNullOrWhiteSpace($segments[2])) { return $false }
-    $extension = [IO.Path]::GetExtension($segments[2]).ToLowerInvariant()
-    if ($segments[0].Equals('.codex', $Comparison) -and $segments[1].Equals('agents', $Comparison) -and $extension -ceq '.toml') { return $true }
-    if ($segments[0].Equals('.cursor', $Comparison) -and $segments[1].Equals('rules', $Comparison) -and $extension -ceq '.mdc') { return $true }
-    return $false
-}
-
 function Test-ReviewCampaignSourceRepoTextPathIsRecord {
     # Feature 203 T022 (the maintainer's "203 T022: 1", B5F-087): in the Specrew source repository a Markdown or text file
     # is records only in a named records place - the active feature's records allowlist under specs/, what the syncs and
@@ -556,19 +539,10 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
     if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) { return $false }
 
     $recordsRoots = @()
-    $vocabularyRoots = @()
     try {
         $isSpecrewSourceRepo = Test-ContinuousCoReviewSpecrewSourceRepo -RepoRoot $resolvedRoot
         foreach ($machinery in @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $resolvedRoot)) {
             if (-not [string]::IsNullOrWhiteSpace($machinery)) { $recordsRoots += (([string]$machinery -replace '\\', '/').Trim('/')) }
-        }
-        # Part (c)'s vocabulary, from the same file as the machinery list. A copy of the engine without it cannot tell a
-        # subfolder named only by vocabulary from one a marker names, so it fails closed.
-        if (-not $isSpecrewSourceRepo) {
-            $vocabulary = Get-ContinuousCoReviewHostMirrorVocabulary
-            foreach ($hostDir in @($vocabulary.HostDirs)) {
-                foreach ($subdir in @($vocabulary.FrameworkSubdirs)) { $vocabularyRoots += ($hostDir + '/' + $subdir) }
-            }
         }
     }
     catch { return $false }
@@ -628,44 +602,26 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
             }
             continue
         }
-        # Downstream, round 3 of 203 iteration 002's review (finding-9cc1155f2c83f5f7), decided by the maintainer on
-        # 2026-11-23 at about 13:14 local ("203 deployed files: fix it in 203") and shaped by the reviewer session's rulings:
-        # a file that can run is records only where the machinery list names its place, by name or by a .specrew-managed
-        # marker. Four parts, each guarded by records-only-covers-what-deployment-writes.Tests.ps1:
+        # Downstream, round 3 of 203 iteration 002's review (finding-9cc1155f2c83f5f7). The maintainer decided "203
+        # deployed files: fix it in 203" (2026-11-23, about 13:14 local), then narrowed it to the parts that work: "203 host
+        # folders: record the limit, follow up" (about 14:44 local). Three parts, each proven through the reviewed-state
+        # digest by records-only-covers-what-deployment-writes.Tests.ps1:
         #   1. the project's own hook and MCP server configuration is source by name;
-        #   2. a host framework subfolder that is machinery only by vocabulary (part (c) of the machinery list) holds
-        #      records of a record kind and Specrew's generated agent files; any other file there is source. A folder a
-        #      marker names, the subfolder itself included, stays machinery. The strip and the digest keep the whole
-        #      subfolder; this is the records-only check alone;
-        #   3. the shared classifier's directory exemption counts record kinds only (below), which also covers round 2's
+        #   2. the shared classifier's directory exemption counts record kinds only (below), which also covers round 2's
         #      C1 row, a script under docs/;
-        #   4. the generated Claude launcher is a downstream-only machinery entry (Get-ContinuousCoReviewMachineryPaths).
-        # Known cost: an unmarked runnable file another tool deploys in a framework subfolder (Squad's sync-mesh.ps1 and
-        # .sh) is source, so a redeploy that changes it stales a review.
+        #   3. the generated Claude launcher is a downstream-only machinery entry (Get-ContinuousCoReviewMachineryPaths).
+        # THE RECORDED LIMIT: every path on the machinery list (the host tool folders: a framework subfolder, .agents,
+        # .antigravitycli, a marked folder, and the tool folders .specify, .specrew and .squad) is stripped from the
+        # reviewer's worktree and from the reviewed-state digest, so a change there never reaches this check. Bringing a
+        # project's own runnable files there into the review is a follow-up proposal, not a rule here.
         if (Test-ReviewCampaignPathIsHostCommandConfig -Path $path -Comparison $comparison) { return $false }
         $isRecords = $false
-        $vocabularyRoot = $null
         foreach ($root in $recordsRoots) {
             if ([string]::IsNullOrWhiteSpace($root)) { continue }
             if ($path.Equals($root, $comparison) -or $path.StartsWith(($root + '/'), $comparison)) {
-                $byVocabularyOnly = $false
-                foreach ($vocabularyName in $vocabularyRoots) {
-                    if ($root.Equals($vocabularyName, $comparison)) { $byVocabularyOnly = $true; break }
-                }
-                if ($byVocabularyOnly -and -not (Test-Path -LiteralPath (Join-Path (Join-Path $resolvedRoot $root) '.specrew-managed') -PathType Leaf)) {
-                    $vocabularyRoot = $root
-                    continue
-                }
                 $isRecords = $true
                 break
             }
-        }
-        if (-not $isRecords -and $null -ne $vocabularyRoot) {
-            if (-not (Test-ReviewCampaignPathIsRecordKind -Path $path) -and
-                -not (Test-ReviewCampaignPathIsGeneratedHostAgentFile -Path $path -Comparison $comparison)) {
-                return $false
-            }
-            $isRecords = $true
         }
         if (-not $isRecords -and (Test-ReviewCampaignPathIsFeatureProcessRecord -Path $path -FeatureId $FeatureId -Comparison $comparison)) {
             $isRecords = $true
@@ -673,7 +629,7 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
         # The shared source classifier, outside specs/ only (see the block above): a host mirror, a
         # document, or a dot-directory deployment write is not the reviewed surface. specs/ paths that
         # the allowlist did not accept keep staling - they are review INPUT. A path the classifier exempts by its
-        # directory alone is records only when it is a record kind (part 3 above): a script in .claude/ or docs/ can run.
+        # directory alone is records only when it is a record kind (part 2 above): a script in .claude/ or docs/ can run.
         # The classifier's directory exemptions ignore case; this gate's do not. A path the classifier exempts only by
         # ignoring case (Docs/check.ps1 against docs/ on a case-sensitive volume) is a different path on this volume, so
         # the two disagree and the path stays source: fail closed (round 1 of 203 iteration 002, finding-a0cc0ae3cd9703dc).

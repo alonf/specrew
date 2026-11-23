@@ -68,17 +68,6 @@ function Test-ContinuousCoReviewSpecrewSourceRepo {
     )
 }
 
-function Get-ContinuousCoReviewHostMirrorVocabulary {
-    # The agent-framework mirror vocabulary of part (c) below: the AI-host directories and the framework subfolder names
-    # under them. One function, because the records-only check reads it too: downstream, a subfolder that is machinery
-    # only by this vocabulary holds records of a record kind and Specrew's generated agent files, and nothing else
-    # (round 3 of 203 iteration 002's review, finding-9cc1155f2c83f5f7; Test-ReviewCampaignDeltaIsRecordsOnly).
-    return [pscustomobject]@{
-        HostDirs         = @('.github', '.claude', '.codex', '.cursor', '.copilot', '.gemini', '.antigravity')
-        FrameworkSubdirs = @('agents', 'skills', 'commands', 'chatmodes', 'prompts', 'rules', 'instructions')
-    }
-}
-
 function Get-ContinuousCoReviewMachineryPaths {
     # SINGLE SOURCE of "the methodology's deployed machinery" (the de-fragilization point — one function,
     # consumed by BOTH the worktree-strip AND the diff-exclude). Two parts, both authoritative-by-construction,
@@ -148,8 +137,9 @@ function Get-ContinuousCoReviewMachineryPaths {
         # The generated Claude project launcher (deploy-refocus-hooks.ps1 writes it beside .claude/settings.local.json
         # for the guarded-project-encoded command mode). Downstream it is deployed machinery, so a redeploy that changes
         # its body does not stale a review (round 3 of 203 iteration 002's review, finding-9cc1155f2c83f5f7, the
-        # maintainer's "203 deployed files: fix it in 203"). In the Specrew source repository it is tracked product
-        # code under review, so it is added here only, never to the shared list above.
+        # maintainer's "203 deployed files: fix it in 203"). This moves the downstream strip and digest for this one
+        # file. In the Specrew source repository it is tracked product code under review, so it is added here only,
+        # never to the shared list above.
         $core += '.claude/specrew-hook-launch.ps1'
     }
     # (No rootless early return here any more - the refusal at the top of the function makes an empty
@@ -201,9 +191,8 @@ function Get-ContinuousCoReviewMachineryPaths {
     # agent mirrors. They carry no `.specrew-managed` marker, so (b) cannot find them and all five
     # generated `.codex/agents/*.toml` stayed in the frozen candidate while analogous host mirrors
     # were stripped - letting regenerated reviewer instructions perturb the certified source identity.
-    $vocabulary = Get-ContinuousCoReviewHostMirrorVocabulary
-    $hostDirs = @($vocabulary.HostDirs)
-    $frameworkSubdirs = @($vocabulary.FrameworkSubdirs)
+    $hostDirs = @('.github', '.claude', '.codex', '.cursor', '.copilot', '.gemini', '.antigravity')
+    $frameworkSubdirs = @('agents', 'skills', 'commands', 'chatmodes', 'prompts', 'rules', 'instructions')
     $mirrors = foreach ($h in $hostDirs) {
         foreach ($s in $frameworkSubdirs) {
             $rel = "$h/$s"
