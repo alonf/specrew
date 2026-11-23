@@ -594,9 +594,13 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
 function Test-ReviewCampaignPathMatchesExemptPrefixOnlyIgnoringCase {
     # True when $Path starts with one of the shared classifier's exempt directory prefixes
     # (Test-SpecrewReviewAuthorshipSourcePath in shared-governance.ps1) only when case is ignored, and not under the
-    # volume's own rule. On a case-insensitive volume the two always agree, so this is false there. The list mirrors
-    # the classifier's directory rules; its extension rules (.md, .txt and the like) name a kind of file, not a place,
-    # and stay case-insensitive on every volume. A prefix missing here fails toward source, never toward records.
+    # volume's own rule. On a case-insensitive volume the two always agree, so this is false there. The list must hold
+    # every directory exemption of the classifier; its extension rule (.md, .txt and the like) names a kind of file, not
+    # a place, and stays case-insensitive on every volume. A directory missing here FAILS TOWARD RECORDS: the classifier
+    # is then asked, exempts the path by ignoring case, and the commit reads as records-only. The case "every directory
+    # the shared classifier exempts, written in another case, is source on a case-sensitive volume" in
+    # tests/continuous-co-review/unit/records-only-source-repo-narrowed.Tests.ps1 reads the classifier's rules from its
+    # source and holds the two equal.
     param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][StringComparison]$Comparison)
     $exemptPrefixes = @(
         'specs/', 'docs/', '.specrew/', '.squad/', '.specify/', '.agents/', '.cursor/', '.copilot/', '.claude/',
