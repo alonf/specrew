@@ -1724,6 +1724,15 @@ The following resolution strategies remain available if drift is detected later 
     typed under the same key, in the tail or in one window. The first draft of the fix had let it, and had narrowed
     T020's message-ID exclusion.
   - Fix `1de5a0165`, 39 of 39 on Windows and in WSL, and a batch of 14 authority suites green.
+  - The reviewer session then asked whether a host record that stays a candidate could take the pending reservation
+    ahead of the real message.
+    - It could, in one shape: the real message's hook output in no part of the transcript, its ledger row carrying a
+      prompt event, and a newer host record with the same text. The resolver walked entries newest first, the host
+      record claimed the row, and the real message fell to 'missed'. A probe confirmed it: a false refusal, never a
+      false acceptance.
+    - With the hook output in the transcript, the binding protects the real message, and that is pinned.
+    - Red `c3b96a6e9` (1 of 41, with the binding pin). Fix `aa5bde5f7`: two passes in the pending step, records a
+      person could have typed first. 41 of 41 on Windows and in WSL, and the authority batch of 14 green.
   - **The signals, before and after:**
 
     | Signal the reader computes | Sender check before | After |
@@ -1737,6 +1746,7 @@ The following resolution strategies remain available if drift is detected later 
     | the queued-attachment fields | read | unchanged |
     | which branch matched | any branch, newest wins | a record a person could have typed wins in every branch; host records only when nothing else matches |
     | the window | a pending hit in the tail went on to the whole transcript | so does a host-record hit |
+    | who claims a pending reservation | the newest entry with its text and session | records a person could have typed first, host records only what is left |
 
 - **Finding 2, `finding-9cc1155f2c83f5f7` (major): the open design row.** Downstream host directories carry an approval
   across executable changes, for example a project's own `.github/skills/release/scripts/publish.ps1`. No fix in 203; the
