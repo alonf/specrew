@@ -300,3 +300,60 @@
 - **This push**: it carries this entry and DRIFT-206-015. The 206 branch does not take main in, so it stays red on the
   same two steps that DRIFT-206-015 names, for the same cause.
 - **Class closure**: NONE. Option C stays a release blocker for the next beta, in the follow-up seed.
+
+## DRIFT-206-017 — the proposal 142 amendment merged; two rerun-exception sightings; the Squad install fix opened; parts 2 and 3 passed to the next bug bash
+
+- **Recorded**: 2026-11-23, on the 206 branch only.
+- **Proposal 142's branch took main in**: on the reviewer session's routine ruling, `proposal/142-state-doctor-detect-and-repair`
+  merged main (`551bf5cd`, the CI squad pin) as `32a9189e`. Specrew CI and Test were green on push. Cross-Platform
+  Validation does not run on pushes to `proposal/**`.
+- **Pull request #4098 merged past the required review, by the maintainer's word**: "proposal 142 amendment: open the
+  PR, merge commit, use --admin" (2026-11-23 02:19 local, relayed). The administrator bypass was for that pull request
+  only. It changed proposals only, two files. All 22 checks were green at `32a9189e` with main unmoved. It was merged
+  with `gh pr merge 4098 --merge --admin`, merge commit `334e1188` on main, 02:50 local. The branch and its worktree are
+  kept.
+- **Main's push CI on `334e1188`**: Test `45091080045` and Cross-Platform Validation `45091080038` (8 of 8) were green.
+  Specrew CI `45091080177` failed the Deterministic gate on attempt 1, with the Contract lane skipped. It was green,
+  6 of 6, on attempt 2.
+  - **Sighting (rerun exception)**: `reviewer-hook-suppression.Tests.ps1` case 1 failed alone, 1 of 131 in the F-198
+    honesty regression suite: "the reviewer launch path passes SPECREW_REFOCUS_DISABLE=1 to the spawned reviewer child
+    process". One rerun. The reviewer session accepted it.
+- **The Squad install fix, pull request #4099**: "squad install fix: 206 crew, small PR off main" (02:21 local,
+  relayed) and "squad install fix: include the update repair" (02:32 local, relayed). Branch `fix/squad-install-pair`
+  off `551bf5cd`, head `31d3e613`.
+  - Commits: `7e8fb79b` test (red 19); `47c2024b` fix; `0108ba06` test (red 8); `c1a3f624` fix; `31d3e613` records.
+  - Every Squad install Specrew runs or prints now names `squad-sdk` beside the CLI, from `squad.sdk` in
+    `scripts/internal/supported-versions.yml`. `specrew update` reinstalls a Squad that is installed but not working,
+    and says so. Cross-Platform Validation's Ubuntu job again proves that `specrew init` installs Squad by itself.
+  - The deployed copy of `validate-versions.ps1` changed, and its entry in `.specrew-extension-runtime.json` was
+    refreshed in place with the value `Get-SpecrewDeployedExtensionManifest` computes. No update or deploy script was
+    run.
+  - The reading corrected by measurement: on a broken 0.11.0 pair, update did not report "already-current". The probe
+    read Node's version (24.15.0) from the crash output, and update printed "Current 24.15.0 is beyond
+    Specrew-validated max_tested 0.11.0. Use --upstream-latest to target upstream. No action taken."
+  - The pull request's CI: all 22 checks green at `31d3e613`. Ubuntu Validation `45094583500` printed "no squad on
+    PATH: specrew init must install it", "==> Installing missing dependency: Squad", "added 222 packages" (the pair;
+    the CLI alone adds 220), and "squad CLI healthy: squad-cli 0.11.0, squad-sdk 1.1.0".
+  - **Sighting (rerun exception)**: the push-event Specrew CI `45094533810` failed the Deterministic gate on attempt 1.
+    `co-review-service.Tests.ps1:129` failed alone, 1 of 131 (bug list item 3, feature 203's). One rerun; attempt 2 was
+    6 of 6. The reviewer session accepted it.
+  - Not merged; the merge is the maintainer's word.
+- **The local-run hold**: the reviewer session held local test runs from about 02:45 to 03:25 local, for the 203
+  crew's review preflight. This crew's last runs before it were the update-repair sandbox measurement (ended about
+  02:40) and a targeted batch (ended about 02:30). Nothing of this crew's ran during the hold.
+- **Parts 2 and 3 passed to the next bug bash**: the maintainer, 2026-11-23 03:39 local, relayed: "You should auto
+  pass any finding: again: pass it". It is a standing decision to pass findings to the list that holds them; it does
+  not cover fixing, scope changes, merges or approvals.
+  - **Item 90 (minor)**: the Squad version probe keeps only the first output line of a failed `squad --version`
+    (`validate-versions.ps1:239` and `:300`). It also reads Node's version out of the crash output as Squad's, so
+    `specrew update --info` on a broken pair reports Squad as 24.15.0, "ahead-of-supported".
+  - **Item 91 (minor)**: `bootstrap-to-iteration` and `brownfield-conflict-handling` print SKIP and pass when the
+    bootstrap exits non-zero, so a broken toolchain reads as green.
+  - Numbering continues 206's list, which ends at 89; the next bug bash may renumber.
+  - **Where the seed text waits**: commit `1dd59c3e` on `fix/squad-install-pair`, local only. On the reviewer
+    session's ruling, it rides with the next push this crew makes to main for its own reason: a further push of #4099,
+    or the next pull request off main. There is no records-only pull request for it. Until it lands, this entry is
+    the record of items 90 and 91.
+- **This push**: the 206 branch still does not take main in, so its CI is red on the same two steps DRIFT-206-015
+  names (the Deterministic gate's task-progress step and Ubuntu Validation's "Test specrew init"), for the same cause.
+- **Class closure**: NONE.
