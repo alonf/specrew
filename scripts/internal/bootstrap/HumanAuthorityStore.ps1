@@ -1696,6 +1696,40 @@ function Resolve-SpecrewTranscriptEntryActIdentity {
     }
     $history = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($row in $rows) { if ([string]::IsNullOrWhiteSpace($row.PromptEvent)) { [void]$history.Add($row.TurnId) } }
+    # A pending reservation goes to the entry its text and session fit, newest entry first. Round 3 of 203 iteration 002's
+    # review (the reviewer session's ruling on finding-be18f96e95952c83): in two passes, so a record a person could have
+    # typed claims first and a host record (meta-flagged or sidechain, still a candidate because it names its sender) claims
+    # only what is left. Walking all entries newest first let a newer host record with the same text take the reservation
+    # of the real message when its hook output was in no part of the transcript, and the approval was refused.
+    $claimPending = {
+        param($Entry)
+        $text = ([string]$Entry.Turn.text).Trim()
+        $hashes = @((Get-SpecrewHumanAuthorityHash -Text $text))
+        try {
+            $form = Resolve-SpecrewApprovalForm -Text $text -HostKind ([string]$Entry.Turn.host)
+            if ($null -ne $form -and -not [string]::IsNullOrWhiteSpace([string]$form.Text)) { $hashes += Get-SpecrewHumanAuthorityHash -Text ([string]$form.Text).Trim() }
+        }
+        catch { $null = $_ }
+        for ($p = $pending.Count - 1; $p -ge 0; $p--) {
+            $row = $pending[$p]
+            if ($hashes -cnotcontains $row.ContentHash) { continue }
+            if (-not [string]::IsNullOrWhiteSpace($row.Session) -and -not [string]::IsNullOrWhiteSpace([string]$Entry.Session) -and $row.Session -cne [string]$Entry.Session) { continue }
+            $pending.RemoveAt($p)
+            return [string]$row.TurnId
+        }
+        return ''
+    }
+    $isUnbound = { param($Entry) $u = [string]$Entry.Turn.record_uuid; return ([string]::IsNullOrWhiteSpace($u) -or -not $boundTo.ContainsKey($u)) }
+    $isHostEntry = { param($Entry) return [bool]($Entry.Turn.PSObject.Properties['is_compact_summary'] -or $Entry.Turn.PSObject.Properties['record_is_sidechain']) }
+    $claimed = @{}
+    foreach ($hostPass in @($false, $true)) {
+        for ($i = $Entries.Count - 1; $i -ge 0 -and $pending.Count -gt 0; $i--) {
+            $candidate = $Entries[$i]
+            if (-not (& $isUnbound $candidate) -or (& $isHostEntry $candidate) -ne $hostPass) { continue }
+            $claim = & $claimPending $candidate
+            if (-not [string]::IsNullOrWhiteSpace($claim)) { $claimed[$i] = $claim }
+        }
+    }
     for ($i = $Entries.Count - 1; $i -ge 0; $i--) {
         $entry = $Entries[$i]
         $turn = $entry.Turn
@@ -1709,23 +1743,9 @@ function Resolve-SpecrewTranscriptEntryActIdentity {
         if (-not [string]::IsNullOrWhiteSpace($uuid) -and $boundTo.ContainsKey($uuid)) {
             foreach ($promptEvent in $boundTo[$uuid]) { if ($byEvent.ContainsKey($promptEvent)) { $resolved = [string]$byEvent[$promptEvent].TurnId; $source = 'bound'; break } }
         }
-        elseif ($pending.Count -gt 0) {
-            $text = ([string]$turn.text).Trim()
-            $hashes = @((Get-SpecrewHumanAuthorityHash -Text $text))
-            try {
-                $form = Resolve-SpecrewApprovalForm -Text $text -HostKind ([string]$turn.host)
-                if ($null -ne $form -and -not [string]::IsNullOrWhiteSpace([string]$form.Text)) { $hashes += Get-SpecrewHumanAuthorityHash -Text ([string]$form.Text).Trim() }
-            }
-            catch { $null = $_ }
-            for ($p = $pending.Count - 1; $p -ge 0; $p--) {
-                $row = $pending[$p]
-                if ($hashes -cnotcontains $row.ContentHash) { continue }
-                if (-not [string]::IsNullOrWhiteSpace($row.Session) -and -not [string]::IsNullOrWhiteSpace([string]$entry.Session) -and $row.Session -cne [string]$entry.Session) { continue }
-                $resolved = $row.TurnId
-                $source = 'pending'
-                $pending.RemoveAt($p)
-                break
-            }
+        elseif ($claimed.ContainsKey($i)) {
+            $resolved = [string]$claimed[$i]
+            $source = 'pending'
         }
         if ([string]::IsNullOrWhiteSpace($resolved) -and $history.Contains([string]$entry.Base)) { $resolved = [string]$entry.Base; $source = 'history' }
         if ([string]::IsNullOrWhiteSpace($resolved)) {
