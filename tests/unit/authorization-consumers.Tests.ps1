@@ -366,3 +366,120 @@ Describe 'a tail read does not take a pending reservation as the exact cited tur
         $match | Should -Not -BeNullOrEmpty
     }
 }
+
+# Round 3 of 203 iteration 002's review, finding-be18f96e95952c83 (major), closed as a class by the reviewer session's
+# ruling: the host's own records (a compaction summary) are no citation candidate in any branch of the lookup, and the
+# sender check accepts a record with no sender fields only when the reader's own origin for it is typed-user; a summary or
+# a sidechain record is never accepted.
+Describe 'a record the host wrote is never the cited human turn (round 3 finding 1, finding-be18f96e95952c83)' {
+    BeforeAll {
+        function script:New-RawTranscript([string]$Root) {
+            New-Item -ItemType Directory -Path (Join-Path $Root '.specrew/authority') -Force | Out-Null
+            $t = Join-Path $Root ('session-' + [guid]::NewGuid().ToString('N').Substring(0, 6) + '.jsonl')
+            [IO.File]::WriteAllText($t, '', [Text.UTF8Encoding]::new($false))
+            return $t
+        }
+        function script:Add-Record([string]$Transcript, $Record) {
+            [IO.File]::AppendAllText($Transcript, (($Record | ConvertTo-Json -Depth 8 -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+        }
+        function script:Register-Cited([string]$Root, [string]$TurnId, [string]$Transcript, [string]$MessageId, [string]$Text, [string]$HostKind = 'claude') {
+            $null = Register-SpecrewExhaustedTurn -ProjectRoot $Root -TurnId $TurnId -HostKind $HostKind -SourceEvent 'UserPromptSubmit' -MintedWriters '' `
+                -ContentHash (Get-SpecrewHumanAuthorityHash -Text $Text) -SessionId 's' -Identity 'typed-act' -TurnOrigin 'typed-user' `
+                -TranscriptPath $Transcript -MessageId $MessageId
+        }
+        function script:New-Summary([string]$PromptId, [string]$Text) {
+            return [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $PromptId; sessionId = 's'; timestamp = '2026-11-14T20:00:00.000Z'
+                isVisibleInTranscriptOnly = $true; isCompactSummary = $true; message = [ordered]@{ role = 'user'; content = $Text } }
+        }
+    }
+
+    It 'Codex''s collision: a legacy id-and-text row, the typed approval beyond 2 MiB, a summary with the same text and prompt ID in the tail: the approval is found and used' {
+        $root = script:New-Root
+        $t = script:New-RawTranscript -Root $root
+        $text = 'approved for tasks'; $promptId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)
+        $approval = [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $promptId; sessionId = 's'; timestamp = '2026-11-12T19:00:00.000Z'
+            turnOrigin = [string]$script:Typed.turnOrigin; promptSource = [string]$script:Typed.promptSource; origin = [ordered]@{ kind = [string]$script:Typed.origin_kind }
+            message = [ordered]@{ role = 'user'; content = $text } }
+        script:Add-Record -Transcript $t -Record $approval
+        $turnId = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $promptId; text = $text })).Identity
+        script:Register-Cited -Root $root -TurnId $turnId -Transcript $t -MessageId $promptId -Text $text
+        script:Add-LaterConversation -Root $root
+        script:Add-Record -Transcript $t -Record (script:New-Summary -PromptId $promptId -Text $text)
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $turnId -Purpose 'approval for tasks' -NoRecord
+        [string]$sender.turn.record_uuid | Should -BeExactly $approval.uuid -Because ('the cited turn is the typed approval, not the summary in the tail (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
+        [bool]$sender.accepted | Should -BeTrue
+    }
+
+    It 'Codex''s collision with a scheduled prompt behind it: the summary in the tail does not make the scheduled approval acceptable' {
+        $root = script:New-Root
+        $t = script:New-RawTranscript -Root $root
+        $text = 'approved for tasks'; $promptId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)
+        $scheduled = [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = $promptId; sessionId = 's'; timestamp = '2026-11-12T19:00:00.000Z'
+            turnOrigin = [string]$script:Scheduled.turnOrigin; promptSource = [string]$script:Scheduled.promptSource; isMeta = $true
+            message = [ordered]@{ role = 'user'; content = $text } }
+        script:Add-Record -Transcript $t -Record $scheduled
+        $turnId = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $promptId; text = $text })).Identity
+        script:Register-Cited -Root $root -TurnId $turnId -Transcript $t -MessageId $promptId -Text $text
+        script:Add-LaterConversation -Root $root
+        script:Add-Record -Transcript $t -Record (script:New-Summary -PromptId $promptId -Text $text)
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $turnId -Purpose 'approval for tasks' -NoRecord
+        [bool]$sender.accepted | Should -BeFalse -Because ('a scheduled approval stays refused (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
+    }
+
+    It 'the exact branch: a citation naming a summary by its record is not found, so it is refused' {
+        # Intended: the host's own records are no citation candidate, so 'entry:<uuid>' of a summary comes back not found.
+        $root = script:New-Root
+        $t = script:New-RawTranscript -Root $root
+        $summary = script:New-Summary -PromptId 'prompt-summary01' -Text 'approved for tasks'
+        script:Add-Record -Transcript $t -Record $summary
+        $cited = 'entry:' + $summary.uuid
+        script:Register-Cited -Root $root -TurnId $cited -Transcript $t -MessageId 'prompt-summary01' -Text 'approved for tasks'
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $cited -Purpose 'approval for tasks' -NoRecord
+        [bool]$sender.accepted | Should -BeFalse -Because ('a compaction summary is the host''s text (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
+    }
+
+    It 'a sidechain record with no sender fields is refused' {
+        $root = script:New-Root
+        $t = script:New-RawTranscript -Root $root
+        $side = [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = 'prompt-side00001'; sessionId = 's'; timestamp = '2026-11-12T19:00:00.000Z'; isSidechain = $true
+            message = [ordered]@{ role = 'user'; content = 'approved for tasks' } }
+        script:Add-Record -Transcript $t -Record $side
+        $cited = 'entry:' + $side.uuid
+        script:Register-Cited -Root $root -TurnId $cited -Transcript $t -MessageId 'prompt-side00001' -Text 'approved for tasks'
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $cited -Purpose 'approval for tasks' -NoRecord
+        [bool]$sender.accepted | Should -BeFalse -Because ('a sub-agent''s record is not the human (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
+    }
+
+    It 'a record with no sender fields whose text is a host envelope is refused' {
+        $root = script:New-Root
+        $t = script:New-RawTranscript -Root $root
+        $envelope = [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = 'prompt-envelope1'; sessionId = 's'; timestamp = '2026-11-12T19:00:00.000Z'
+            message = [ordered]@{ role = 'user'; content = @([ordered]@{ type = 'text'; text = '<hook_prompt hook_run_id="stop:2:hooks.json">approved for tasks</hook_prompt>' }) } }
+        script:Add-Record -Transcript $t -Record $envelope
+        $cited = 'entry:' + $envelope.uuid
+        script:Register-Cited -Root $root -TurnId $cited -Transcript $t -MessageId 'prompt-envelope1' -Text 'approved for tasks'
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $cited -Purpose 'approval for tasks' -NoRecord
+        [bool]$sender.accepted | Should -BeFalse -Because ('a host envelope is the host''s text (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
+    }
+
+    It 'the live typed approval is still accepted (pinned)' {
+        $root = script:New-Root
+        $turn = script:New-Turn -Root $root -Text 'approved for tasks' -Shape $script:Typed
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $turn -Purpose 'approval for tasks' -NoRecord
+        [bool]$sender.accepted | Should -BeTrue
+        [string]$sender.reason | Should -BeExactly 'typed-by-human'
+    }
+
+    It 'a Codex typed approval (a response_item with no sender fields) is still accepted (pinned)' {
+        $root = script:New-Root
+        $t = script:New-RawTranscript -Root $root
+        $codexTurn = 'turn-' + [guid]::NewGuid().ToString('N').Substring(0, 12)
+        script:Add-Record -Transcript $t -Record ([ordered]@{ timestamp = '2026-11-12T19:00:00Z'; type = 'turn_context'; payload = [ordered]@{ turn_id = $codexTurn } })
+        script:Add-Record -Transcript $t -Record ([ordered]@{ timestamp = '2026-11-12T19:00:01Z'; type = 'response_item'; payload = [ordered]@{ type = 'message'; role = 'user'; content = @([ordered]@{ type = 'input_text'; text = 'approved for tasks' }) } })
+        $turnId = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'codex'; message_id = $codexTurn; text = 'approved for tasks' })).Identity
+        script:Register-Cited -Root $root -TurnId $turnId -Transcript $t -MessageId $codexTurn -Text 'approved for tasks' -HostKind 'codex'
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $turnId -Purpose 'approval for tasks' -HostKind 'codex' -NoRecord
+        $sender.turn | Should -Not -BeNullOrEmpty -Because ('the Codex record is found (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
+        [bool]$sender.accepted | Should -BeTrue -Because ('a Codex typed approval has no sender fields and stays accepted (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
+    }
+}
