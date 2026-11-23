@@ -191,6 +191,27 @@ Describe 'T022 records rule: in the source repository these are source, and a co
         Test-RecordsOnly -Paths @('docs/examples/check.PS1') | Should -BeFalse -Because 'a non-Markdown file under docs/ is source'
     }
 
+    # Round 1 of 203 iteration 002's review, finding-a0cc0ae3cd9703dc (major). The guard above compares directory
+    # prefixes with the volume's case rule, but a non-Markdown path that misses it still reaches the shared classifier,
+    # whose exemptions ((?i)^(specs|docs)/, the dot-directories) ignore case. On a case-sensitive volume Docs/check.ps1
+    # is a different path from docs/check.ps1: the guard does not see it, the classifier calls it a document, and the
+    # commit reads as records-only, so a passing review would be kept for a script nobody reviewed. Where the guard
+    # and the classifier disagree on case, the path is source.
+    It 'a script under a directory the guard tells apart by case is source on this volume (round 1 finding 2)' {
+        # No mock: the volume this test runs on. On a case-insensitive volume Docs/ is docs/ and the guard catches it;
+        # on a case-sensitive one (Linux CI, WSL) it is a distinct directory and must not fall through to records.
+        Test-RecordsOnly -Paths @('Docs/check.ps1') | Should -BeFalse -Because 'Docs/check.ps1 is a script, and the guard and the classifier must not disagree into records'
+    }
+
+    It 'on a case-sensitive volume, a path the classifier exempts only by ignoring case is source (round 1 finding 2)' {
+        Mock -CommandName Get-ContinuousCoReviewPathComparison -MockWith { [StringComparison]::Ordinal }
+        Test-RecordsOnly -Paths @('Docs/check.ps1') | Should -BeFalse -Because 'Docs/ is not docs/ on this volume'
+        Test-RecordsOnly -Paths @('.Specify/extensions/specrew-speckit/scripts/tool.ps1') | Should -BeFalse -Because '.Specify/ is not the .specify/ the guard names'
+        Test-RecordsOnly -Paths @('Specs/tool.ps1') | Should -BeFalse -Because 'Specs/ is not the specs/ the fallback excludes'
+        Test-RecordsOnly -Paths @('docs/examples/check.ps1') | Should -BeFalse -Because 'the exact docs/ prefix stays source (pinned)'
+        Test-RecordsOnly -Paths @('specs/001-fixture/iterations/001/drift-log.md') | Should -BeTrue -Because 'an exact records place keeps its records (pinned)'
+    }
+
     It 'a records file riding with one source file still stales' {
         Test-RecordsOnly -Paths @('specs/001-fixture/iterations/001/drift-log.md', 'templates/coordinator-instructions.md') | Should -BeFalse
     }
