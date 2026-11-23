@@ -81,6 +81,15 @@ Assert-Act (Resolve-SpecrewTypedAct -Turn $summaryTurn -Pending (New-Pending -Pa
 $bareSummary = New-Turn -Text 'approved for review round' -Id ([string]$summary.promptId) -Compact
 Assert-Act (Resolve-SpecrewTypedAct -Turn $bareSummary -Pending $nothing) 'none' 'not-human' $false 'even a summary that is only the phrase yields no act'
 
+Write-Host '--- a sub-agent''s record is not a typed turn, whatever its fields say (203 iteration 002, round 4, finding-d4b2f612fa8ffcf1) ---'
+# The one author function (Get-SpecrewTranscriptTurnAuthor) makes a sidechain record host text even when its own sender fields
+# say human; the sender check already refused it when the approval was used, and the classifier now agrees.
+$sideTurn = New-Turn -Text 'approved for tasks'
+foreach ($field in @{ record_turn_origin = 'human'; record_prompt_source = 'typed'; record_origin_kind = 'human'; record_is_meta = $null }.GetEnumerator()) { $sideTurn | Add-Member -NotePropertyName $field.Key -NotePropertyValue $field.Value }
+Assert-Act (Resolve-SpecrewTypedAct -Turn $sideTurn -Pending (New-Pending -From 'plan' -To 'tasks')) 'boundary-verdict' '' $false 'the control: the same turn without the sidechain flag is the boundary verdict'
+$sideTurn | Add-Member -NotePropertyName record_is_sidechain -NotePropertyValue $true
+Assert-Act (Resolve-SpecrewTypedAct -Turn $sideTurn -Pending (New-Pending -From 'plan' -To 'tasks')) 'none' 'not-human' $false 'a sub-agent''s record whose fields say human yields no act and no report'
+
 Write-Host '--- a pasted transcript beginning with the phrase is not typed (DRIFT-023) ---'
 $pasteTurn = Get-Content -LiteralPath (Join-Path $fixtures 'claude\pasted-transcript\tui-paste-begins-with-phrase.turn.json') -Raw | ConvertFrom-Json
 Assert-Act (Resolve-SpecrewTypedAct -Turn $pasteTurn -Pending $nothing) 'none' 'not-standalone' $false 'the 14:39 paste yields no act and no report'
