@@ -636,6 +636,27 @@ function Install-PlatformVersion {
     }
 }
 
+function Test-SquadNeedsRepair {
+    # A Squad that is installed but does not work: `squad` is on PATH, the probe ran, and the CLI did not start or gave
+    # no usable version (validate-versions.ps1's IsOperational). Such a Squad is reinstalled whatever its status reads:
+    # a crashed CLI's output can carry another program's version (Node's, from the crash trace), and the project's
+    # recorded squad_version says nothing about whether the CLI works. A Squad that is missing, a healthy Squad and
+    # Spec Kit keep their existing paths.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Platform,
+
+        [AllowNull()]
+        [object]$Validation
+    )
+
+    if ($Platform -ne 'Squad' -or $null -eq $Validation) {
+        return $false
+    }
+
+    return ([bool]$Validation.IsInstalled -and -not [bool]$Validation.IsOperational)
+}
+
 function Get-RequestedScopes {
     param(
         [bool]$All,
@@ -1559,9 +1580,20 @@ foreach ($platform in @('Spec Kit', 'Squad')) {
 
     $platformStatus = if ($platform -eq 'Spec Kit') { $specKitStatus } else { $squadStatus }
 
+    # An installed Squad that does not work is reinstalled, and the output says so: the status above can read
+    # "current" (from the recorded squad_version) or "ahead-of-supported" (from a version in the crash output).
+    $platformValidation = if ($validationByPlatform.ContainsKey($platform)) { $validationByPlatform[$platform] } else { $null }
+    $repairDetail = $null
+    if (Test-SquadNeedsRepair -Platform $platform -Validation $platformValidation) {
+        $repairCommand = Get-SquadInstallCommandText -CliVersion $upgradeTarget -SdkVersion (Get-SquadSdkVersionFor -CliVersion $upgradeTarget)
+        $probeDetail = if ($platformValidation.ProbeError) { [string]$platformValidation.ProbeError } else { 'it gave no usable version' }
+        Write-Host ("Squad is installed but the 'squad' command does not work ({0}). Reinstalling it: {1}" -f $probeDetail, $repairCommand) -ForegroundColor Yellow
+        $repairDetail = "was installed but not working; reinstalled: {0}" -f $repairCommand
+    }
+
     # Skip upgrade when already current OR ahead of supported (user intentionally beyond max_tested).
     # ahead-of-supported requires --upstream-latest to actually do anything (and even then, upstream might equal current).
-    if ($platformStatus -eq 'current') {
+    if (-not $repairDetail -and $platformStatus -eq 'current') {
         $null = $summary.Add([pscustomobject]@{
                 Platform = $platform
                 Action   = 'already-current'
@@ -1570,7 +1602,7 @@ foreach ($platform in @('Spec Kit', 'Squad')) {
         continue
     }
 
-    if ($platformStatus -eq 'ahead-of-supported' -and -not $UpstreamLatest) {
+    if (-not $repairDetail -and $platformStatus -eq 'ahead-of-supported' -and -not $UpstreamLatest) {
         $null = $summary.Add([pscustomobject]@{
                 Platform = $platform
                 Action   = 'ahead-of-supported'
@@ -1583,8 +1615,8 @@ foreach ($platform in @('Spec Kit', 'Squad')) {
         Install-PlatformVersion -Platform $platform -Version $upgradeTarget
         $null = $summary.Add([pscustomobject]@{
                 Platform = $platform
-                Action   = 'upgraded'
-                Detail   = $upgradeTarget
+                Action   = if ($repairDetail) { 'repaired' } else { 'upgraded' }
+                Detail   = if ($repairDetail) { $repairDetail } else { $upgradeTarget }
             })
     }
     catch {
