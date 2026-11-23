@@ -1302,8 +1302,10 @@ function Resolve-SpecrewTypedAct {
 
     # Who wrote it (FR-015, FR-019). Never reported: the human did not type it, so telling them it was "not recorded"
     # would be false (measure c). A compaction summary quotes the human's earlier approvals (R4, Claude 2.1.312).
-    $compact = & $prop $Turn 'is_compact_summary'
-    if ($compact -eq $true -or [string]$compact -match '(?i)^\s*true\s*$') { return (& $none 'not-human' $false) }
+    # Round 4 of 203 iteration 002's review (finding-d4b2f612fa8ffcf1): person or host is the one answer of
+    # Get-SpecrewTranscriptTurnAuthor; this classifier keeps its own order and its peer-wrapper and origin text rules.
+    $author = Get-SpecrewTranscriptTurnAuthor -Turn $Turn
+    if ([string]$author.kind -ceq 'host-text') { return (& $none 'not-human' $false) }
     $origin = ([string](& $prop $Turn 'origin')).Trim()
     # Feature 203 T013 (maintainer ruling 2026-11-12; B5F-064, B5F-066): THE TRANSCRIPT RECORD DECIDES WHO TYPED IT, where
     # there is one. Claude records a typed message as turnOrigin human with promptSource typed or queued; a peer message is
@@ -1311,11 +1313,8 @@ function Resolve-SpecrewTypedAct {
     # promptSource. A scheduled prompt is raw text with no wrapper, so no text rule can see it. A turn whose record carries
     # these fields is the human's only when they say so; a record without them (an older host) leaves the text rules to
     # decide, as before.
-    $recordSender = Get-SpecrewTranscriptRecordSender -TurnOrigin ([string](& $prop $Turn 'record_turn_origin')) -PromptSource ([string](& $prop $Turn 'record_prompt_source')) `
-        -IsMeta (& $prop $Turn 'record_is_meta') -OriginKind ([string](& $prop $Turn 'record_origin_kind')) `
-        -RecordKind ([string](& $prop $Turn 'record_kind')) -HumanTurn (& $prop $Turn 'record_human_turn') -CommandMode ([string](& $prop $Turn 'record_command_mode'))
-    if ([bool]$recordSender.fields_present) {
-        if ([bool]$recordSender.accepted) { $origin = 'typed-user' }
+    if ([bool]$author.fields_present) {
+        if ([bool]$author.could_be_typed) { $origin = 'typed-user' }
         else { return (& $none 'not-human' $false) }
     }
     # Feature 203 T013 (B5F-064): another Claude session's message, in the wrapper the host puts around it, is never the
@@ -1720,7 +1719,9 @@ function Resolve-SpecrewTranscriptEntryActIdentity {
         return ''
     }
     $isUnbound = { param($Entry) $u = [string]$Entry.Turn.record_uuid; return ([string]::IsNullOrWhiteSpace($u) -or -not $boundTo.ContainsKey($u)) }
-    $isHostEntry = { param($Entry) return [bool]($Entry.Turn.PSObject.Properties['is_compact_summary'] -or $Entry.Turn.PSObject.Properties['record_is_sidechain']) }
+    # Round 4 (finding-d4b2f612fa8ffcf1): the first pass is every record a person could have typed, by the one answer
+    # (Get-SpecrewTranscriptTurnAuthor); before, only the two host flags were read, and an sdk program's record claimed first.
+    $isHostEntry = { param($Entry) return (-not [bool](Get-SpecrewTranscriptTurnAuthor -Turn $Entry.Turn).could_be_typed) }
     $claimed = @{}
     foreach ($hostPass in @($false, $true)) {
         for ($i = $Entries.Count - 1; $i -ge 0 -and $pending.Count -gt 0; $i--) {
@@ -1903,11 +1904,7 @@ function Read-SpecrewCitedTypedTurn {
         # with its own sentence.
         $candidates = [System.Collections.Generic.List[object]]::new()
         foreach ($candidate in $entries) {
-            $ct = $candidate.Turn
-            $hostText = $ct.PSObject.Properties['is_compact_summary'] -and
-                [string]::IsNullOrWhiteSpace([string]$ct.record_turn_origin) -and [string]::IsNullOrWhiteSpace([string]$ct.record_prompt_source) -and
-                [string]::IsNullOrWhiteSpace([string]$ct.record_origin_kind)
-            if (-not $hostText) { $candidates.Add($candidate) | Out-Null }
+            if (-not [bool](Get-SpecrewTranscriptTurnAuthor -Turn $candidate.Turn).unnamed_host_text) { $candidates.Add($candidate) | Out-Null }
         }
         Resolve-SpecrewTranscriptEntryActIdentity -ProjectRoot $ProjectRoot -Entries $candidates -ParentOf $parentOf -Records $records -HookEvents $hookEvents
         # The citation names an entry by the act identity it resolved to, or by its record ('entry:<uuid>'). A message id,
@@ -1916,10 +1913,12 @@ function Read-SpecrewCitedTypedTurn {
         # A host record that names its sender (a scheduled prompt, Stop feedback with fields) stays a candidate, so it is
         # refused with its own sentence when it is the one cited, but it never displaces a record a person could have
         # typed: in every branch the newest such record wins, and a host record is returned only when nothing else matches.
-        $isHostRecord = { param($e) [bool]($e.Turn.PSObject.Properties['is_compact_summary'] -or $e.Turn.PSObject.Properties['record_is_sidechain']) }
+        # Round 4 (finding-d4b2f612fa8ffcf1): "a record a person could have typed" is the one answer
+        # (Get-SpecrewTranscriptTurnAuthor), not the two host flags: an sdk program's newer record under the same key won.
+        $isHostRecord = { param($e) [bool](Get-SpecrewTranscriptTurnAuthor -Turn $e.Turn).host_record }
         $pickNewest = {
             param([object[]]$Matched)
-            $person = @($Matched | Where-Object { -not (& $isHostRecord $_) })
+            $person = @($Matched | Where-Object { [bool](Get-SpecrewTranscriptTurnAuthor -Turn $_.Turn).could_be_typed })
             if ($person.Count -ge 1) { return $person[$person.Count - 1] }
             if (@($Matched).Count -ge 1) { return @($Matched)[@($Matched).Count - 1] }
             return $null
@@ -2527,6 +2526,53 @@ function Get-SpecrewTranscriptRecordSender {
     return $result
 }
 
+function Get-SpecrewTranscriptTurnAuthor {
+    # Round 4 of 203 iteration 002's review (finding-d4b2f612fa8ffcf1; the reviewer session's ruling): WHO COULD HAVE TYPED A
+    # TRANSCRIPT RECORD, answered in one place. Ten places decided this, each from its own subset of the signals, and they
+    # disagreed: the pending-claim order, the pick and the partial-window rule read only the two host flags, so an sdk
+    # program's record (its own fields refuse it) was "a person" there and took the real message's reservation. Every
+    # caller takes its answer from here and reads no host flag or sender field itself (guarded by
+    # tests/unit/transcript-turn-author.Tests.ps1). Pure. Turn: as Read-SpecrewCitedTypedTurn builds it.
+    # Returns:
+    #   kind               'human' (its fields say a person typed it) | 'unverified-typed' (no sender fields; the reader's
+    #                      origin is typed-user: an older host, Codex) | 'host-text' (a compaction summary or a sub-agent's
+    #                      record whose fields do not refuse it) | the sender its fields name when they refuse it ('peer',
+    #                      'scheduled', 'task-notification', 'self-command', 'other') | 'unverified-host' (no sender fields;
+    #                      the reader's origin is not typed-user)
+    #   could_be_typed     true only for 'human' and 'unverified-typed'
+    #   sender             the sender the sender check reports ('human', 'unverified', or the refusing one; 'other' for
+    #                      host text and unverified-host)
+    #   fields_present     the record carries sender fields (Get-SpecrewTranscriptRecordSender)
+    #   host_record        meta-flagged or sidechain
+    #   unnamed_host_text  meta-flagged and naming no sender in turnOrigin, promptSource or origin.kind: the host's own
+    #                      text (a summary, Stop feedback), which is no citation candidate
+    #   peer_name, peer_address
+    [OutputType([pscustomobject])]
+    param([AllowNull()]$Turn)
+    $prop = { param($n) if ($null -ne $Turn -and $Turn.PSObject.Properties[$n]) { $Turn.$n } else { $null } }
+    $isTrue = { param($v) ($v -eq $true) -or ([string]$v -match '(?i)^\s*true\s*$') }
+    $summary = & $isTrue (& $prop 'is_compact_summary')
+    $sidechain = & $isTrue (& $prop 'record_is_sidechain')
+    $turnOrigin = [string](& $prop 'record_turn_origin'); $promptSource = [string](& $prop 'record_prompt_source'); $originKind = [string](& $prop 'record_origin_kind')
+    $s = Get-SpecrewTranscriptRecordSender -TurnOrigin $turnOrigin -PromptSource $promptSource -IsMeta (& $prop 'record_is_meta') -OriginKind $originKind `
+        -PeerName ([string](& $prop 'record_peer_name')) -PeerAddress ([string](& $prop 'record_peer_address')) `
+        -RecordKind ([string](& $prop 'record_kind')) -HumanTurn (& $prop 'record_human_turn') -CommandMode ([string](& $prop 'record_command_mode'))
+    $hostRecord = ($summary -or $sidechain)
+    $fields = [bool]$s.fields_present
+    $kind = if ($fields -and -not [bool]$s.accepted) { [string]$s.sender }
+    elseif ($hostRecord) { 'host-text' }
+    elseif ($fields) { 'human' }
+    elseif (([string](& $prop 'origin')).Trim() -ceq 'typed-user') { 'unverified-typed' }
+    else { 'unverified-host' }
+    $sender = switch -CaseSensitive ($kind) { 'human' { 'human' } 'unverified-typed' { 'unverified' } 'host-text' { 'other' } 'unverified-host' { 'other' } default { $kind } }
+    $named = -not ([string]::IsNullOrWhiteSpace($turnOrigin) -and [string]::IsNullOrWhiteSpace($promptSource) -and [string]::IsNullOrWhiteSpace($originKind))
+    return [pscustomobject][ordered]@{
+        kind = $kind; could_be_typed = ($kind -cin @('human', 'unverified-typed')); sender = $sender; fields_present = $fields
+        host_record = $hostRecord; unnamed_host_text = ($summary -and -not $named)
+        peer_name = $(if ($sender -ceq 'peer') { [string]$s.peer_name } else { '' }); peer_address = $(if ($sender -ceq 'peer') { [string]$s.peer_address } else { '' })
+    }
+}
+
 function Get-SpecrewAuthorizationSenderRefusal {
     # The sentence the human reads when an authorization is not used because of who sent it (maintainer ruling 2026-11-12:
     # it says what to do next).
@@ -2602,10 +2648,12 @@ function Resolve-SpecrewAuthorizationSender {
                         $partialWindow = ([long]$window -lt $transcriptLength)
                         if ($partialWindow -and $null -ne $read -and $null -ne $read.Turn -and $read.Turn.PSObject.Properties['act_identity_source'] -and
                             [string]$read.Turn.act_identity_source -ceq 'pending') { continue }
-                        # Round 3 (finding-be18f96e95952c83): nor is a host record (meta-flagged or sidechain), which the lookup
-                        # returns only when nothing a person could have typed matched in this window.
+                        # Round 3 (finding-be18f96e95952c83): nor is a record a person could not have typed, which the lookup
+                        # returns only when nothing a person could have typed matched in this window. Round 4
+                        # (finding-d4b2f612fa8ffcf1): any such record, not only a meta-flagged or sidechain one
+                        # (Get-SpecrewTranscriptTurnAuthor): an sdk program's record in the tail sent the lookup no further.
                         if ($partialWindow -and $null -ne $read -and $null -ne $read.Turn -and
-                            ($read.Turn.PSObject.Properties['is_compact_summary'] -or $read.Turn.PSObject.Properties['record_is_sidechain'])) { continue }
+                            -not [bool](Get-SpecrewTranscriptTurnAuthor -Turn $read.Turn).could_be_typed) { continue }
                         if ($null -ne $read -and $null -ne $read.Turn) { $turn = $read.Turn; break }
                     }
                     if ($null -ne $turn) { break }
@@ -2627,25 +2675,18 @@ function Resolve-SpecrewAuthorizationSender {
         $result.message = Get-SpecrewAuthorizationSenderRefusal -Sender 'not-found' -Purpose $Purpose
     }
     else {
-        $prop = { param($n) if ($turn.PSObject.Properties[$n]) { $turn.$n } else { $null } }
-        $s = Get-SpecrewTranscriptRecordSender -TurnOrigin ([string](& $prop 'record_turn_origin')) -PromptSource ([string](& $prop 'record_prompt_source')) `
-            -IsMeta (& $prop 'record_is_meta') -OriginKind ([string](& $prop 'record_origin_kind')) -PeerName ([string](& $prop 'record_peer_name')) -PeerAddress ([string](& $prop 'record_peer_address')) `
-            -RecordKind ([string](& $prop 'record_kind')) -HumanTurn (& $prop 'record_human_turn') -CommandMode ([string](& $prop 'record_command_mode'))
         # Round 3 of 203 iteration 002's review (finding-be18f96e95952c83; the reviewer session's ruling): the text rules
         # behind 'fields-absent-text-rules' ran on the prompt's text at capture, not on the record this lookup landed on, so
         # a record's missing sender fields are not evidence that a human typed it. A compaction summary or a sub-agent's
         # (sidechain) record is never accepted; a record with no sender fields is accepted only when the reader's own origin
-        # for it is typed-user; a record whose fields say who sent it stays decided by its fields.
-        $hostRecord = ($turn.PSObject.Properties['is_compact_summary'] -and (& $prop 'is_compact_summary') -eq $true) -or
-            ($turn.PSObject.Properties['record_is_sidechain'] -and (& $prop 'record_is_sidechain') -eq $true)
-        # A record its own fields already refuse keeps the sender they name (a scheduled prompt is refused as one).
-        if (($hostRecord -and [bool]$s.accepted) -or (-not [bool]$s.fields_present -and [string](& $prop 'origin') -cne 'typed-user')) {
-            $s = [pscustomobject][ordered]@{ sender = 'other'; accepted = $false; fields_present = [bool]$s.fields_present; peer_name = ''; peer_address = '' }
-        }
-        $result.accepted = [bool]$s.accepted; $result.sender = [string]$s.sender; $result.peer_name = [string]$s.peer_name; $result.peer_address = [string]$s.peer_address
-        $result.record_uuid = [string](& $prop 'record_uuid')
-        $result.reason = if ($s.accepted) { $(if ($s.fields_present) { 'typed-by-human' } else { 'fields-absent-text-rules' }) } else { 'not-typed-by-human' }
-        if (-not $s.accepted) { $result.message = Get-SpecrewAuthorizationSenderRefusal -Sender $result.sender -Purpose $Purpose -PeerName $result.peer_name }
+        # for it is typed-user; a record whose fields say who sent it stays decided by its fields, and keeps the sender they
+        # name (a scheduled prompt is refused as one). Round 4 (finding-d4b2f612fa8ffcf1): all of it is the one answer of
+        # Get-SpecrewTranscriptTurnAuthor.
+        $author = Get-SpecrewTranscriptTurnAuthor -Turn $turn
+        $result.accepted = [bool]$author.could_be_typed; $result.sender = [string]$author.sender; $result.peer_name = [string]$author.peer_name; $result.peer_address = [string]$author.peer_address
+        $result.record_uuid = if ($turn.PSObject.Properties['record_uuid']) { [string]$turn.record_uuid } else { '' }
+        $result.reason = if ($author.could_be_typed) { $(if ($author.fields_present) { 'typed-by-human' } else { 'fields-absent-text-rules' }) } else { 'not-typed-by-human' }
+        if (-not $author.could_be_typed) { $result.message = Get-SpecrewAuthorizationSenderRefusal -Sender $result.sender -Purpose $Purpose -PeerName $result.peer_name }
     }
     if ($NoRecord) { return $result }
     try {
