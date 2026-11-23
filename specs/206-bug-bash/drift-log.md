@@ -357,3 +357,38 @@
 - **This push**: the 206 branch still does not take main in, so its CI is red on the same two steps DRIFT-206-015
   names (the Deterministic gate's task-progress step and Ubuntu Validation's "Test specrew init"), for the same cause.
 - **Class closure**: NONE.
+
+## DRIFT-206-018 — the Squad install fix merged to main past the required review, by the maintainer's word; main green after one rerun
+
+- **Recorded**: 2026-11-23, on the 206 branch only.
+- **The decision**: the maintainer, 2026-11-23 04:26 local, relayed by the reviewer session: "squad install fix merge:
+  go, use --admin for PR 4099". The administrator bypass was for that pull request only.
+- **Before the merge**: pull request #4099 was open at head `31d3e613`, mergeable, with all 22 checks green and main at
+  `334e1188`.
+- **The merge**: `gh pr merge 4099 --merge --admin`, a merge commit, at 04:26 local. Merge commit `49076072` on main.
+  - The held seed commit `1dd59c3e` (items 90 and 91) was not pushed. It still waits on `fix/squad-install-pair`,
+    local only, for the next change this crew sends to main (DRIFT-206-017).
+  - The branch and its worktree are kept; their removal is the maintainer's word.
+- **Main's push CI on `49076072`**: every job green after one rerun.
+  - Cross-Platform Validation `45100272455`: 8 of 8. Ubuntu Validation proved a clean machine's `specrew init`
+    installs a healthy Squad by itself: "no squad on PATH: specrew init must install it", "==> Installing missing
+    dependency: Squad", "added 222 packages in 14s" (the pair; the CLI alone adds 220), "squad CLI healthy:
+    squad-cli 0.11.0, squad-sdk 1.1.0".
+  - Test `45100272447`: green.
+  - Specrew CI `45100272504`: on attempt 1 the Deterministic gate failed; the Contract lane and the gate's later steps
+    were skipped. Attempt 2 was 6 of 6. The Deterministic gate passed, including "Unit - Squad install names the
+    paired SDK (init, update, printed repair)", and the Contract lane passed.
+  - **Sighting (rerun exception)**: `co-review-service.Tests.ps1:129` failed alone, 1 of 131 in the F-198 honesty
+    regression suite ("a FAILED lease owner-handoff STOPS the spawned supervisor ... got System.Diagnostics.Process").
+    This is bug list item 3, feature 203's. One rerun; the reviewer session accepted it.
+- **Tonight's rerun-exception sightings, in all**: `co-review-service.Tests.ps1:129` alone twice (4099's push run
+  `45094533810`, and main on `49076072`); `reviewer-hook-suppression` case 1 alone once (main on `334e1188`). Each
+  took one rerun, and each passed on it.
+- **Feature 203's trial merge**, reported by the reviewer session: 203's branch merged against `49076072` without
+  conflict. Git auto-merged all four files both sides changed, including `.specrew-extension-runtime.json` (174
+  entries, each sha256 checked against its file in the merged tree, 0 mismatched). The 203 crew still regenerates that
+  record at its final merge, as the pull request says.
+- **What stays open**: items 90 and 91, passed to the next bug bash (DRIFT-206-017). The CI pin in the four workflows,
+  and `squad.sdk` with it, stays until Specrew moves to a squad release whose CLI and SDK agree.
+- **This push**: red on the two known steps (DRIFT-206-015), for the same cause; the 206 branch does not take main in.
+- **Class closure**: NONE.
