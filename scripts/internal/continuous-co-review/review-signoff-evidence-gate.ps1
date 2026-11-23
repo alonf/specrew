@@ -440,7 +440,10 @@ function Test-ReviewCampaignSourceRepoTextPathIsRecord {
     # record kind. The non-text names below came from the census of what this repository's records, boundary, closeout
     # and review commits write under .specrew and .squad (on this branch and on main, 2026-11-23): the lifecycle event log,
     # the feature claims, the closed-iterations list, the validator summary, the start context, the version-check cache,
-    # the refocus channel record, and the sign-off gate, test evidence and pause decision records. Left out on purpose,
+    # the refocus channel record, and the sign-off gate, test evidence and pause decision records. Added before round 3,
+    # from the crew's reading of the writers (the census read past commits, and no stop answer had been committed yet):
+    # the review stop answers (.specrew/review/stop-answer/, written at a review stop, the one review-authority folder that
+    # is not gitignored) and the work-kind bypass audit (.specrew/bypass-audit/). Left out on purpose,
     # so they stay source: the verification plans, config.yml, iteration-config.yml, reviewer-hosts.json, work-kind.yml,
     # roadmap.yml, repository-governance.yml, .squad/config.json, .squad/casting/**, the host mirrors and their
     # .specrew-managed markers, .claude/settings.local.json and .github/workflows/**.
@@ -456,7 +459,7 @@ function Test-ReviewCampaignSourceRepoTextPathIsRecord {
     foreach ($prefix in @(
             '.squad/decisions/', '.squad/log/', '.squad/orchestration-log/',
             '.specrew/review/inline/', '.specrew/review/signoff-gate/', '.specrew/review/test-evidence/',
-            '.specrew/review/pause-decision/', 'proposals/')) {
+            '.specrew/review/pause-decision/', '.specrew/review/stop-answer/', '.specrew/bypass-audit/', 'proposals/')) {
         if ($Path.StartsWith($prefix, $Comparison)) { return (Test-ReviewCampaignPathIsRecordKind -Path $Path) }
     }
     if ($Path.StartsWith('docs/', $Comparison) -and $Path.EndsWith('.md', [StringComparison]::OrdinalIgnoreCase) -and
