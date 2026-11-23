@@ -136,7 +136,7 @@ Describe 'R1: a typed stop line lands through the real launcher, with nothing pr
         $dispositions = @((Get-ReviewCampaignFindingDispositions -StoreRoot $project.store -CampaignId $script:CampaignId).Values)
         $dispositions.Count | Should -Be 1 -Because 'the typed line lands as the finding''s disposition'
         [string]$dispositions[0].answer | Should -BeExactly $Answer
-        [string]$dispositions[0].argument | Should -BeExactly $Argument
+        [string](Get-ReviewAuthorityProperty -Object $dispositions[0] -Name 'argument') | Should -BeExactly $Argument
         [string]$dispositions[0].finding_key | Should -BeExactly $script:FindingA
         $capture = @(script:Get-LauncherCaptures -Project $project)[0]
         [string]$capture.spent_at | Should -Not -BeNullOrEmpty -Because 'a landed line is spent once'
@@ -144,8 +144,8 @@ Describe 'R1: a typed stop line lands through the real launcher, with nothing pr
         $run.Out | Should -Match ([regex]::Escape('Your answer to the review stop was recorded: ' + $Line))
         $run.Text | Should -Match 'review-stop-open:a-budget-spent' -Because 'one finding is still open, so stop (a) still refuses, with nothing spent'
         $run.Out | Should -Match '1 finding open' -Because 'the stop text lists one finding fewer'
-        $run.Out | Should -Not -Match ([regex]::Escape($script:FindingA)) -Because 'the answered finding is no longer listed as open'
-        $run.Out | Should -Match ([regex]::Escape($script:FindingB))
+        $run.Out | Should -Not -Match ('- ' + [regex]::Escape($script:FindingA) + ' \(major\)') -Because 'the answered finding is no longer listed as open'
+        $run.Out | Should -Match ('- ' + [regex]::Escape($script:FindingB) + ' \(major\)')
         @(Get-ReviewCampaignOpenFindings -StoreRoot $project.store -CampaignId $script:CampaignId).Count | Should -Be 1
     }
 

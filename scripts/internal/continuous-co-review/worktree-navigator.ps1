@@ -420,7 +420,11 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
         $decision | Add-Member -NotePropertyName route -NotePropertyValue 'pause-pending' -Force
         $pendingCrossing = $null
         try { $pendingCrossing = Get-ReviewCampaignRecordedPendingCrossing -RepoRoot $resolved } catch { $pendingCrossing = $null }
-        $decision.stop_block = (@(Format-ReviewCampaignStopSurface -Stop $openStop -OpenFindings $openFindings -PendingCrossing $pendingCrossing) -join [Environment]::NewLine)
+        # Feature 203 iteration 002, round 4's stop: the stop names a line the human already typed, waiting or not applied.
+        $storedLines = @()
+        try { $storedLines = @(Get-ReviewCampaignStopStoredAnswerLines -ProjectRoot $resolved -StoreRoot $navStore -CampaignId ([string]$navIdentity.campaign_id) -Stop $openStop -OpenFindings $openFindings) }
+        catch { $storedLines = @('Specrew could not check whether you already typed a line for this stop; a line you typed may be waiting.') }
+        $decision.stop_block = (@(Format-ReviewCampaignStopSurface -Stop $openStop -OpenFindings $openFindings -PendingCrossing $pendingCrossing -StoredAnswerLines $storedLines) -join [Environment]::NewLine)
         $decision | Add-Member -NotePropertyName agent_directives -NotePropertyValue (Build-ReviewCampaignStopAgentDirective -PendingCrossing $pendingCrossing) -Force
         return $decision
     }

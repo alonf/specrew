@@ -1222,24 +1222,37 @@ function Test-ReviewCampaignVerdictSender {
     param([Parameter(Mandatory)][string]$RepoRoot, [AllowNull()]$Entry)
     if ($null -eq $Entry) { return $false }
     if (([string]$Entry['evidence_source']) -notmatch '^hook-captured') { return $true }
-    if (-not (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue)) {
-        $dir = Join-Path (Split-Path -Parent $PSScriptRoot) 'bootstrap'
-        $store = Join-Path $dir 'HumanAuthorityStore.ps1'
-        $accessor = Join-Path $dir 'ConversationCaptureAccessor.ps1'
-        if ((Test-Path -LiteralPath $store -PathType Leaf) -and (Test-Path -LiteralPath $accessor -PathType Leaf)) {
-            try {
-                $null = New-Module -Name 'SpecrewAuthorizationSenderCheck' -ArgumentList $accessor, $store -ScriptBlock {
-                    param($AccessorPath, $StorePath)
-                    . $AccessorPath
-                    . $StorePath
-                    Export-ModuleMember -Function *
-                } | Import-Module -Global -Force -DisableNameChecking -PassThru
-            }
-            catch { $null = $_ }
-        }
-    }
-    if (-not (Get-Command Test-SpecrewAuthorizationRecordSender -ErrorAction SilentlyContinue)) { return $false }
+    if (-not (Import-ReviewCampaignHumanAuthorityStore -RequiredFunctions @('Test-SpecrewAuthorizationRecordSender'))) { return $false }
     return [bool](Test-SpecrewAuthorizationRecordSender -ProjectRoot $RepoRoot -Record $Entry -Purpose 'before-implement approval this review budget comes from')
+}
+
+function Import-ReviewCampaignHumanAuthorityStore {
+    # Feature 203 iteration 002, round 4's stop (the maintainer's "land it with a preloaded launch, fix the loader in 203",
+    # 2026-11-23 22:52 local): ONE LOADER FOR THE BOOTSTRAP STORE BESIDE THIS FOLDER. The budget verdict's sender check and
+    # the landing of typed stop lines both read it, and the review command's live path does not load it: the landing found
+    # its reader missing and returned nothing, with no word, so a typed defer, drop, fix, allow reviewer or judgment answer
+    # never landed through a plain launch. Loaded as one module imported globally (the sender check's own construct, moved
+    # here). Returns whether every required function is present afterwards.
+    [OutputType([bool])]
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string[]]$RequiredFunctions)
+    $missing = { @($RequiredFunctions | Where-Object { -not (Get-Command -Name $_ -ErrorAction SilentlyContinue) }) }
+    if (@(& $missing).Count -eq 0) { return $true }
+    $dir = Join-Path (Split-Path -Parent $PSScriptRoot) 'bootstrap'
+    $store = Join-Path $dir 'HumanAuthorityStore.ps1'
+    $accessor = Join-Path $dir 'ConversationCaptureAccessor.ps1'
+    if ((Test-Path -LiteralPath $store -PathType Leaf) -and (Test-Path -LiteralPath $accessor -PathType Leaf)) {
+        try {
+            $null = New-Module -Name 'SpecrewAuthorizationSenderCheck' -ArgumentList $accessor, $store -ScriptBlock {
+                param($AccessorPath, $StorePath)
+                . $AccessorPath
+                . $StorePath
+                Export-ModuleMember -Function *
+            } | Import-Module -Global -Force -DisableNameChecking -PassThru
+        }
+        catch { $null = $_ }
+    }
+    return (@(& $missing).Count -eq 0)
 }
 
 function New-ReviewCampaignVerdictNotConfirmedRefusal {
@@ -1685,7 +1698,11 @@ function Format-ReviewCampaignStopSurface {
     # FR-011: every review stop in one layout - why; what happened, counted; the one decision; the lines the human can
     # send, each stating its consequence. No line asks for a round (FR-006).
     [OutputType([string[]])]
-    param([Parameter(Mandatory)]$Stop, [AllowEmptyCollection()][object[]]$OpenFindings = @(), [AllowNull()]$PendingCrossing = $null)
+    param(
+        [Parameter(Mandatory)]$Stop, [AllowEmptyCollection()][object[]]$OpenFindings = @(), [AllowNull()]$PendingCrossing = $null,
+        # One sentence per line the human already typed for this stop (Get-ReviewCampaignStopStoredAnswerLines).
+        [AllowEmptyCollection()][string[]]$StoredAnswerLines = @()
+    )
     $kind = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'stop_kind')
     $reason = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'stop_reason')
     $used = [int](Get-ReviewAuthorityProperty -Object $Stop -Name 'rounds_used'); $total = [int](Get-ReviewAuthorityProperty -Object $Stop -Name 'budget_total')
@@ -1749,6 +1766,9 @@ function Format-ReviewCampaignStopSurface {
     $lines.Add('Your decision: ' + $decision) | Out-Null
     $lines.Add('Send one of these lines as a normal chat message (a reply inside a question UI or picker is not captured):') | Out-Null
     foreach ($entry in @($sendable)) { $lines.Add(('  {0} - {1}' -f $entry.line, $entry.does)) | Out-Null }
+    # Feature 203 iteration 002, round 4's stop: a line the human already typed is named, waiting or not applied, so the stop
+    # never asks again for a line it has, and never hides one it could not apply.
+    foreach ($stored in @($StoredAnswerLines | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })) { $lines.Add([string]$stored) | Out-Null }
     # Fix 5 (maintainer classification 2026-11-09; T003's adjudication): when a lifecycle crossing is recorded and waiting,
     # the stop says it does not decide that approval, naming the crossing by its boundaries. The identifier stays on the
     # agent's channel (Build-ReviewCampaignStopAgentDirective). A half-written crossing names nothing.
@@ -1781,7 +1801,11 @@ function Invoke-ReviewCampaignStopAnswerLanding {
         [scriptblock]$ReadAnswers, [scriptblock]$CompleteAnswer
     )
     if ($null -eq $ReadAnswers) {
-        if (-not (Get-Command -Name 'Get-SpecrewStopAnswerAuthorizations' -ErrorAction SilentlyContinue)) { return [pscustomobject]@{ landed = @(); skipped = @() } }
+        # Feature 203 iteration 002, round 4's stop: the landing loads the store it reads. A store that cannot be loaded is
+        # a named failure the review command reports, never an empty result (which applied nothing and said nothing).
+        if (-not (Import-ReviewCampaignHumanAuthorityStore -RequiredFunctions @('Get-SpecrewStopAnswerAuthorizations', 'Complete-SpecrewStopAnswerAuthorization'))) {
+            throw 'stop-answer-reader-unavailable: the store of typed stop lines (scripts/internal/bootstrap/HumanAuthorityStore.ps1) could not be loaded'
+        }
         # Bound by value: a closure's own scope cannot see a function the caller dot-sourced.
         $reader = (Get-Command -Name 'Get-SpecrewStopAnswerAuthorizations').ScriptBlock
         $ReadAnswers = { param($runId) & $reader -ProjectRoot $ProjectRoot -RunId $runId -CampaignId $CampaignId }.GetNewClosure()
@@ -1799,20 +1823,77 @@ function Invoke-ReviewCampaignStopAnswerLanding {
     $stopRunId = [string](Get-ReviewAuthorityProperty -Object $stop -Name 'run_id')
     $stopKind = [string](Get-ReviewAuthorityProperty -Object $stop -Name 'stop_kind')
     $answerRef = { param($a) 'typed-stop-answer:' + ([string]$a.response_hash).Substring(0, [Math]::Min(32, ([string]$a.response_hash).Length)) }
+    # What happens to each line is decided once, by the plan the stop text reads too (Resolve-ReviewCampaignStopAnswerPlan).
+    $plan = @(Resolve-ReviewCampaignStopAnswerPlan -Answers @(& $ReadAnswers $stopRunId | Where-Object { $null -ne $_ }) -Stop $stop -CampaignId $CampaignId `
+            -OpenFindings @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId))
+    foreach ($step in $plan) {
+        $answer = $step.answer
+        if ([string]$step.action -ceq 'skip') { $skipped.Add([pscustomobject]@{ answer = $answer; reason = [string]$step.reason }) | Out-Null; continue }
+        if ([string]$step.action -ceq 'superseded') {
+            $null = & $CompleteAnswer $answer ('superseded-by:' + (& $answerRef $step.superseded_by))
+            $skipped.Add([pscustomobject]@{ answer = $answer; reason = 'superseded-by-newer-answer' }) | Out-Null
+            continue
+        }
+        $kind = [string]$answer.answer
+        $ref = & $answerRef $answer
+        # Feature 203 T012 (FR-024, FR-041): each landed fact names the answer's typed turn.
+        $answerTurn = if ($answer.PSObject.Properties['turn_identity']) { [string]$answer.turn_identity } else { '' }
+        $at = [DateTimeOffset]::UtcNow.ToString('o')
+        switch ($kind) {
+            'allow-reviewer' {
+                $null = Add-ReviewCampaignAllowedReviewerFact -StoreRoot $StoreRoot -CampaignId $CampaignId -HostName ([string]$answer.argument) -AuthorizationRef $ref -ObservedAt $at -TurnIdentity $answerTurn
+            }
+            { $_ -cin @('defer', 'drop', 'fix') } {
+                # Read again here: a line landed earlier in this loop may have closed the finding.
+                $named = [string]$answer.finding
+                $target = @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId | Where-Object { [string]$_.finding_id -ceq $named -or [string]$_.finding_key -ceq $named }) | Select-Object -First 1
+                if ($null -eq $target) { $skipped.Add([pscustomobject]@{ answer = $answer; reason = 'finding-not-open' }) | Out-Null; continue }
+                $null = Add-ReviewCampaignFindingDisposition -StoreRoot $StoreRoot -CampaignId $CampaignId -FindingKey ([string]$target.finding_key) `
+                    -Answer $kind -Argument ([string]$answer.argument) -AuthorizationRef $ref -ObservedAt $at -TurnIdentity $answerTurn
+            }
+            'judgment' {
+                $decisionFact = New-ReviewCampaignPauseDecisionFact -CampaignId $CampaignId -RunId $stopRunId -Choice answered -ObservedAt $at -TurnIdentity $answerTurn
+                $null = Write-ReviewCampaignPauseDecisionFact -StoreRoot $StoreRoot -Fact $decisionFact
+            }
+        }
+        # A dispute or deferral stop (b) is answered once its finding has the human's line.
+        if ($stopKind -ceq 'b-dispute-or-defer' -and $kind -cin @('defer', 'drop', 'fix')) {
+            try { $null = Write-ReviewCampaignPauseDecisionFact -StoreRoot $StoreRoot -Fact (New-ReviewCampaignPauseDecisionFact -CampaignId $CampaignId -RunId $stopRunId -Choice answered -ObservedAt $at -TurnIdentity $answerTurn) }
+            catch { if ($_.Exception.Message -notlike 'review-store-corruption:conflicting-immutable-fact:*') { throw } }
+        }
+        $null = & $CompleteAnswer $answer $ref
+        $landed.Add($answer) | Out-Null
+    }
+    return [pscustomobject]@{ landed = @($landed); skipped = @($skipped) }
+}
+
+function Resolve-ReviewCampaignStopAnswerPlan {
+    # What the landing does with each unspent typed line bound to the open stop, decided before anything is written: land,
+    # superseded (spent, naming the newer line) or skip (left unspent, with a reason). The landing follows it, and the stop
+    # text reads it to say the same thing (Feature 203 iteration 002, round 4's stop). Pure: it reads and writes nothing.
+    [OutputType([object[]])]
+    [CmdletBinding()]
+    param(
+        [AllowEmptyCollection()][object[]]$Answers = @(), [Parameter(Mandatory)]$Stop, [Parameter(Mandatory)][string]$CampaignId,
+        [AllowEmptyCollection()][object[]]$OpenFindings = @()
+    )
+    $stopKind = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'stop_kind')
+    $plan = [Collections.Generic.List[object]]::new()
+    $step = { param($a, [string]$Action, [string]$Reason, $By) [pscustomobject]@{ answer = $a; action = $Action; reason = $Reason; superseded_by = $By } }
     # Iteration review round B finding 4 (FR-006, FR-011): A LINE ANSWERS THE STOP IT WAS TYPED FOR. Captures are filed by run
     # ID, and two campaigns can each hold an open stop on the same explicit run ID; a line bound to another campaign's stop,
     # or to another kind of stop, is not this stop's answer. It is left unspent, for the stop it was typed for.
-    $answers = @(foreach ($a in @(& $ReadAnswers $stopRunId | Where-Object { $null -ne $_ })) {
+    $answers = @(foreach ($a in @($Answers | Where-Object { $null -ne $_ })) {
             $forCampaign = if ($a.PSObject.Properties['campaign_id']) { [string]$a.campaign_id } else { '' }
             $forKind = if ($a.PSObject.Properties['stop_kind']) { [string]$a.stop_kind } else { '' }
-            if ($forCampaign -cne $CampaignId -or $forKind -cne $stopKind) { $skipped.Add([pscustomobject]@{ answer = $a; reason = 'typed-for-another-stop' }) | Out-Null; continue }
+            if ($forCampaign -cne $CampaignId -or $forKind -cne $stopKind) { $plan.Add((& $step $a 'skip' 'typed-for-another-stop' $null)) | Out-Null; continue }
             $a
         })
     # Iteration review round A finding 2 (FR-021): THE NEWEST LINE FOR A FINDING IS THE HUMAN'S INSTRUCTION. The reader hands
     # the unspent lines oldest first; for each finding open now, only the newest `defer`/`drop`/`fix` line naming it is
     # applied. An older line for the same finding is not applied: it is spent as superseded, naming the newer line, so it
     # cannot land later. (Before, the older line closed the finding and the newer one was skipped as finding-not-open.)
-    $openNow = @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId)
+    $openNow = @($OpenFindings | Where-Object { $null -ne $_ })
     $targetKeyOf = {
         param($a)
         if ([string]$a.answer -cnotin @('defer', 'drop', 'fix')) { return '' }
@@ -1825,43 +1906,55 @@ function Invoke-ReviewCampaignStopAnswerLanding {
     foreach ($a in $answers) { $key = & $targetKeyOf $a; if ($key) { $newestFor[$key] = $a } }
     foreach ($answer in $answers) {
         $kind = [string]$answer.answer
-        $ref = & $answerRef $answer
-        $supersededKey = & $targetKeyOf $answer
-        if ($supersededKey -and -not [object]::ReferenceEquals($newestFor[$supersededKey], $answer)) {
-            $null = & $CompleteAnswer $answer ('superseded-by:' + (& $answerRef $newestFor[$supersededKey]))
-            $skipped.Add([pscustomobject]@{ answer = $answer; reason = 'superseded-by-newer-answer' }) | Out-Null
-            continue
+        $targetKey = & $targetKeyOf $answer
+        if ($targetKey -and -not [object]::ReferenceEquals($newestFor[$targetKey], $answer)) { $plan.Add((& $step $answer 'superseded' 'superseded-by-newer-answer' $newestFor[$targetKey])) | Out-Null; continue }
+        $outcome = switch ($kind) {
+            'allow-reviewer' { 'land' }
+            { $_ -cin @('defer', 'drop', 'fix') } { if ($targetKey) { 'land' } else { 'finding-not-open' } }
+            'judgment' { if ($stopKind -ceq 'c-judgment') { 'land' } else { 'not-a-judgment-stop' } }
+            default { 'unknown-answer' }
         }
-        # Feature 203 T012 (FR-024, FR-041): each landed fact names the answer's typed turn.
-        $answerTurn = if ($answer.PSObject.Properties['turn_identity']) { [string]$answer.turn_identity } else { '' }
-        $at = [DateTimeOffset]::UtcNow.ToString('o')
-        switch ($kind) {
-            'allow-reviewer' {
-                $null = Add-ReviewCampaignAllowedReviewerFact -StoreRoot $StoreRoot -CampaignId $CampaignId -HostName ([string]$answer.argument) -AuthorizationRef $ref -ObservedAt $at -TurnIdentity $answerTurn
-            }
-            { $_ -cin @('defer', 'drop', 'fix') } {
-                $named = [string]$answer.finding
-                $target = @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId $CampaignId | Where-Object { [string]$_.finding_id -ceq $named -or [string]$_.finding_key -ceq $named }) | Select-Object -First 1
-                if ($null -eq $target) { $skipped.Add([pscustomobject]@{ answer = $answer; reason = 'finding-not-open' }) | Out-Null; continue }
-                $null = Add-ReviewCampaignFindingDisposition -StoreRoot $StoreRoot -CampaignId $CampaignId -FindingKey ([string]$target.finding_key) `
-                    -Answer $kind -Argument ([string]$answer.argument) -AuthorizationRef $ref -ObservedAt $at -TurnIdentity $answerTurn
-            }
-            'judgment' {
-                if ($stopKind -cne 'c-judgment') { $skipped.Add([pscustomobject]@{ answer = $answer; reason = 'not-a-judgment-stop' }) | Out-Null; continue }
-                $decisionFact = New-ReviewCampaignPauseDecisionFact -CampaignId $CampaignId -RunId $stopRunId -Choice answered -ObservedAt $at -TurnIdentity $answerTurn
-                $null = Write-ReviewCampaignPauseDecisionFact -StoreRoot $StoreRoot -Fact $decisionFact
-            }
-            default { $skipped.Add([pscustomobject]@{ answer = $answer; reason = 'unknown-answer' }) | Out-Null; continue }
-        }
-        # A dispute or deferral stop (b) is answered once its finding has the human's line.
-        if ($stopKind -ceq 'b-dispute-or-defer' -and $kind -cin @('defer', 'drop', 'fix')) {
-            try { $null = Write-ReviewCampaignPauseDecisionFact -StoreRoot $StoreRoot -Fact (New-ReviewCampaignPauseDecisionFact -CampaignId $CampaignId -RunId $stopRunId -Choice answered -ObservedAt $at -TurnIdentity $answerTurn) }
-            catch { if ($_.Exception.Message -notlike 'review-store-corruption:conflicting-immutable-fact:*') { throw } }
-        }
-        $null = & $CompleteAnswer $answer $ref
-        $landed.Add($answer) | Out-Null
+        if ($outcome -ceq 'land') { $plan.Add((& $step $answer 'land' '' $null)) | Out-Null }
+        else { $plan.Add((& $step $answer 'skip' $outcome $null)) | Out-Null }
     }
-    return [pscustomobject]@{ landed = @($landed); skipped = @($skipped) }
+    return @($plan)
+}
+
+function Get-ReviewCampaignStopStoredAnswerLines {
+    # Feature 203 iteration 002, round 4's stop (FR-011; the promise at the review command's landing call: a line that cannot
+    # land stays unspent and the stop says so again): one sentence per unspent line the human typed for this stop. A line the
+    # next launch applies is waiting; a line it cannot apply is named with its reason; a store that cannot be read is said.
+    [OutputType([string[]])]
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot, [Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)]$Stop, [AllowEmptyCollection()][object[]]$OpenFindings = @()
+    )
+    $unreadable = 'Specrew could not check whether you already typed a line for this stop; a line you typed may be waiting.'
+    if (-not (Import-ReviewCampaignHumanAuthorityStore -RequiredFunctions @('Get-SpecrewStopAnswerAuthorizations'))) { return @($unreadable) }
+    $runId = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'run_id')
+    $answers = @()
+    try { $answers = @(Get-SpecrewStopAnswerAuthorizations -ProjectRoot $ProjectRoot -RunId $runId -CampaignId $CampaignId | Where-Object { $null -ne $_ }) }
+    catch { return @($unreadable) }
+    $because = @{
+        'typed-for-another-stop' = 'it was typed for a different review stop'
+        'finding-not-open'       = 'the finding it names is not open'
+        'not-a-judgment-stop'    = 'this stop does not take an answer in your own words'
+        'unknown-answer'         = 'Specrew does not recognize that line'
+    }
+    $lines = [Collections.Generic.List[string]]::new()
+    foreach ($step in @(Resolve-ReviewCampaignStopAnswerPlan -Answers $answers -Stop $Stop -CampaignId $CampaignId -OpenFindings $OpenFindings)) {
+        $typed = [string]$step.answer.verdict_text
+        switch ([string]$step.action) {
+            'land' { $lines.Add(('Your line "{0}" is recorded and is applied at the next review launch.' -f $typed)) | Out-Null }
+            'superseded' { $lines.Add(('Your line "{0}" is replaced by the newer line you typed for the same finding.' -f $typed)) | Out-Null }
+            default {
+                $reason = if ($because.ContainsKey([string]$step.reason)) { $because[[string]$step.reason] } else { [string]$step.reason }
+                $lines.Add(('Your line "{0}" was recorded but is not applied: {1}.' -f $typed, $reason)) | Out-Null
+            }
+        }
+    }
+    return @($lines)
 }
 
 function Get-ReviewCampaignSignoffFindings {
@@ -2028,6 +2121,15 @@ function New-ReviewCampaignOpenStopRefusal {
     )
     $kind = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'stop_kind')
     $openFindings = @(Get-ReviewCampaignOpenFindings -StoreRoot $StoreRoot -CampaignId ([string]$Identity.campaign_id))
+    # Feature 203 iteration 002, round 4's stop: the refusal names the lines the human already typed for this stop. The
+    # project is the one whose campaign store this is (<project>/.specrew/review/authority); any other store names none.
+    $storedLines = @()
+    $fullStore = [IO.Path]::GetFullPath($StoreRoot).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+    if ((($fullStore -replace '\\', '/') -split '/' | Select-Object -Last 3) -join '/' -ceq '.specrew/review/authority') {
+        $projectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $fullStore))
+        try { $storedLines = @(Get-ReviewCampaignStopStoredAnswerLines -ProjectRoot $projectRoot -StoreRoot $StoreRoot -CampaignId ([string]$Identity.campaign_id) -Stop $Stop -OpenFindings $openFindings) }
+        catch { $storedLines = @('Specrew could not check whether you already typed a line for this stop; a line you typed may be waiting.') }
+    }
     return [pscustomobject][ordered]@{
         status = 'paused'; reason = ('review-stop-open:' + $kind)
         reason_detail = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'recommendation')
@@ -2039,7 +2141,7 @@ function New-ReviewCampaignOpenStopRefusal {
         resolved_design_context = if ($null -ne $DesignContext) { @($DesignContext.resolved_refs) } else { @() }
         unresolved_design_context = @()
         pause = $Stop; pause_decision = $null; pause_run_id = [string](Get-ReviewAuthorityProperty -Object $Stop -Name 'run_id')
-        pause_surface = @(Format-ReviewCampaignStopSurface -Stop $Stop -OpenFindings $openFindings)
+        pause_surface = @(Format-ReviewCampaignStopSurface -Stop $Stop -OpenFindings $openFindings -StoredAnswerLines $storedLines)
         continuation_authorized = $false; continuation_reason = ('review-stop-open:' + $kind)
         diagnostics = @($Diagnostics)
     }

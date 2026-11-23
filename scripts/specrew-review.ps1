@@ -1391,7 +1391,11 @@ if ($Live) {
                     [Console]::Error.WriteLine(("[specrew-review] WARN STOP_ANSWER_NOT_LANDED {0}: {1}" -f [string]$skippedAnswer.reason, [string]$skippedAnswer.answer.verdict_text))
                 }
             }
-            catch { [Console]::Error.WriteLine('[specrew-review] WARN STOP_ANSWER_LANDING_FAILED ' + $_.Exception.Message) }
+            catch {
+                [Console]::Error.WriteLine('[specrew-review] WARN STOP_ANSWER_LANDING_FAILED ' + $_.Exception.Message)
+                # Feature 203 iteration 002, round 4's stop: said to the human too, never only on the warning channel.
+                if (-not $Json -and -not $Quiet) { Write-Host 'Specrew could not read the lines you typed at the review stop, so none of them was applied this time. They are kept for the next review launch.' -ForegroundColor Yellow }
+            }
             $campaignRun = Invoke-ReviewCampaignCommand -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) `
                 -RunId ([string]$parsedArgs.RunId) -ReviewerHost $campaignHost `
                 -ReviewerHostExplicit:(-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Host)) `
