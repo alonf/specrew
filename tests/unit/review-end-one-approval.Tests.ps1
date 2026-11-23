@@ -34,7 +34,8 @@ BeforeAll {
     }
 
     # A project whose one round reviewed the files exactly as they are now and returned one open major finding and one minor.
-    function script:New-EndProject([string]$Name) {
+    # -EmptyFindings: the same round's verdict is findings with an empty list, which the ReviewResult contract accepts at ingest.
+    function script:New-EndProject([string]$Name, [switch]$EmptyFindings) {
         $root = Join-Path $TestDrive $Name
         New-Item -ItemType Directory -Path (Join-Path $root 'specs/001-demo/iterations/007'), (Join-Path $root 'src') -Force | Out-Null
         [IO.File]::WriteAllText((Join-Path $root 'specs/001-demo/spec.md'), '# Demo design context', $script:Utf8)
@@ -48,9 +49,9 @@ BeforeAll {
             schema_version = '1.0'; campaign_id = $script:Campaign; run_id = $script:RunId; target_digest = $digest; harness_id = 'fixture'
             completion = 'complete'; verdict = 'findings'; runtime_outcome = 'completed'; termination_verified = $true; containment = 'verified'
             currentness = 'current'; validation = 'valid'; can_approve_current = $false; summary = 'fixture'
-            findings = @(
-                (script:New-EndFinding -Id 'finding-00000000000000a1' -Severity 'major' -Title 'Retry never backs off' -Location 'src/poll.ps1:41'),
-                (script:New-EndFinding -Id 'finding-00000000000000a2' -Severity 'minor' -Title 'Typo in help text' -Location 'src/app.ps1:3'))
+            findings = @(if (-not $EmptyFindings) {
+                (script:New-EndFinding -Id 'finding-00000000000000a1' -Severity 'major' -Title 'Retry never backs off' -Location 'src/poll.ps1:41')
+                (script:New-EndFinding -Id 'finding-00000000000000a2' -Severity 'minor' -Title 'Typo in help text' -Location 'src/app.ps1:3') })
             started_at = '2026-11-17T20:00:00Z'; ended_at = '2026-11-17T20:01:00Z'; duration_ms = 60000; examined_paths = @('src/app.ps1'); review_collected = $true
         }
         Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId $script:Campaign -RunId $script:RunId -TargetLineage 'lin-demo' -ObservedAt '2026-11-17T20:00:00Z' | Out-Null
@@ -60,9 +61,9 @@ BeforeAll {
     }
 
     # What the stop's landing records (the AcceptPort of the stop-here landing): the human's acceptance of this exact result.
-    function script:Add-EndDisposition([pscustomobject]$Project, [string]$Decision = 'accept-current') {
+    function script:Add-EndDisposition([pscustomobject]$Project, [string]$Decision = 'accept-current', [string]$Rationale = 'Remaining findings accepted at the stop') {
         $null = Add-ReviewCampaignHumanDisposition -StoreRoot $Project.store -CampaignId $script:Campaign -RunId $script:RunId `
-            -Decision $Decision -AuthorizedBy 'human' -AuthorizationRef 'turn-stop-1' -Rationale 'Remaining findings accepted at the stop' -TurnIdentity 'turn-stop-1'
+            -Decision $Decision -AuthorizedBy 'human' -AuthorizationRef 'turn-stop-1' -Rationale $Rationale -TurnIdentity 'turn-stop-1'
     }
 
     # The review record the sign-off sync demands, committed after the stop: a records-only change.
@@ -180,5 +181,26 @@ Describe 'T022: the ordinary review end takes one approval (DRIFT-078, DRIFT-091
         script:Add-EndDisposition -Project $project -Decision 'require-correction'
         script:Add-RecordsCommit -Project $project
         [string](script:Get-EndSignoff -Project $project).decision | Should -BeExactly 'block'
+    }
+
+    It 'a records commit after a stop that accepted an empty findings verdict stays stale: the acceptance does not make an inconsistent review authorize (203 iteration 002, round 4)' {
+        # Round 4 of 203 iteration 002's review (finding-4fa0bbeaf9c0ec00): a findings verdict that lists none is an
+        # inconsistent review (maintainer, 2026-11-09). At its exact digest it is refused before any human disposition is
+        # read; after a records commit, the human-acceptance alternative let it authorize. Proven through the reviewed-state
+        # digest: the records commit is a real commit, and the gate reads the digest difference.
+        $project = script:New-EndProject -Name 'records-after-stop-empty-list' -EmptyFindings
+        script:Add-EndDisposition -Project $project -Rationale 'Accepted at the stop'
+        script:Add-RecordsCommit -Project $project
+        $signoff = script:Get-EndSignoff -Project $project
+        [string]$signoff.decision | Should -BeExactly 'block' -Because 'a human acceptance answers the findings a review listed; a review that listed none has nothing to accept'
+        [string]$signoff.reason | Should -BeExactly 'records-only-delta-over-non-authorizing-result'
+    }
+
+    It 'at its exact digest, an accepted empty findings verdict is refused as before (pinned)' {
+        $project = script:New-EndProject -Name 'stop-at-digest-empty-list' -EmptyFindings
+        script:Add-EndDisposition -Project $project -Rationale 'Accepted at the stop'
+        $signoff = script:Get-EndSignoff -Project $project
+        [string]$signoff.decision | Should -BeExactly 'block'
+        [string]$signoff.reason | Should -BeExactly 'findings-verdict-without-findings'
     }
 }
