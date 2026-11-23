@@ -325,3 +325,44 @@ Describe 'a compaction summary is never the cited turn (T020, round E finding-cf
         $match | Should -BeNullOrEmpty
     }
 }
+
+# Round 1 of 203 iteration 002's review, finding-80a86c770ffb9e76 (major). The fixtures above register their ledger rows
+# without a prompt event, so they exercise the history path. In production the prompt hook records a prompt event and its
+# output sits under the message as a hook_additional_context attachment. The 2 MiB tail sees no attachment for an old
+# approval, so its row reads as pending (reserved, output not yet under any record), and a later record in the same
+# session with the same text takes that row's turn identity as an exact match. The approval must be found and used.
+Describe 'a tail read does not take a pending reservation as the exact cited turn (round 1 finding 1, finding-80a86c770ffb9e76)' {
+    It 'approval with its prompt-event attachment, 2.5 MiB of later conversation, then a scheduled record repeating the line with no hook output: the approval is found and used' {
+        $root = script:New-Root
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew/authority') -Force | Out-Null
+        $transcript = Join-Path $root ('session-' + [guid]::NewGuid().ToString('N').Substring(0, 6) + '.jsonl')
+        $text = 'approved for tasks'
+        $messageId = 'prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)
+        $promptEvent = [guid]::NewGuid().ToString('N')
+        $approvalUuid = [guid]::NewGuid().ToString()
+        $approval = [ordered]@{ type = 'user'; uuid = $approvalUuid; promptId = $messageId; sessionId = 's'; timestamp = '2026-11-12T19:00:00.000Z'
+            turnOrigin = [string]$script:Typed.turnOrigin; promptSource = [string]$script:Typed.promptSource; origin = [ordered]@{ kind = [string]$script:Typed.origin_kind }
+            message = [ordered]@{ role = 'user'; content = $text } }
+        # The prompt hook's output, under the message it answered, carrying the prompt event the hook recorded.
+        $hookOutput = [ordered]@{ type = 'attachment'; uuid = [guid]::NewGuid().ToString(); parentUuid = $approvalUuid; sessionId = 's'; timestamp = '2026-11-12T19:00:00.100Z'
+            attachment = [ordered]@{ type = 'hook_additional_context'; hookEvent = 'UserPromptSubmit'; content = @("<!-- specrew-prompt-event: $promptEvent -->") } }
+        [IO.File]::WriteAllText($transcript, ((($approval | ConvertTo-Json -Depth 6 -Compress), ($hookOutput | ConvertTo-Json -Depth 6 -Compress)) -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
+        $turnId = [string](Get-SpecrewTypedActIdentity -Turn ([pscustomobject]@{ host = 'claude'; message_id = $messageId; text = $text })).Identity
+        $null = Register-SpecrewExhaustedTurn -ProjectRoot $root -TurnId $turnId -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -MintedWriters '' `
+            -ContentHash (Get-SpecrewHumanAuthorityHash -Text $text) -SessionId 's' -Identity 'typed-act' -TurnOrigin 'typed-user' -PromptEvent $promptEvent `
+            -TranscriptPath $transcript -MessageId $messageId
+        script:Add-LaterConversation -Root $root
+        # A later scheduled record in the same session, repeating the line, whose prompt hook left no output.
+        $later = [ordered]@{ type = 'user'; uuid = [guid]::NewGuid().ToString(); promptId = ('prompt-' + [guid]::NewGuid().ToString('N').Substring(0, 12)); sessionId = 's'; timestamp = '2026-11-14T20:00:00.000Z'
+            turnOrigin = [string]$script:Scheduled.turnOrigin; promptSource = [string]$script:Scheduled.promptSource; isMeta = $true
+            message = [ordered]@{ role = 'user'; content = $text } }
+        [IO.File]::AppendAllText($transcript, (($later | ConvertTo-Json -Depth 6 -Compress) + "`n"), [Text.UTF8Encoding]::new($false))
+
+        $sender = Resolve-SpecrewAuthorizationSender -ProjectRoot $root -TurnIdentity $turnId -Purpose 'approval for tasks' -NoRecord
+        [string]$sender.turn.record_uuid | Should -BeExactly $approvalUuid -Because ('the cited turn is the typed approval, not the later scheduled record (sender {0}, reason {1})' -f $sender.sender, $sender.reason)
+        [bool]$sender.accepted | Should -BeTrue
+        $entry = [ordered]@{ from_boundary = 'plan'; to_boundary = 'tasks'; verdict_text = $text; authorizing_human = 'Alon'; recorded_at = '2026-11-12T19:00:00Z'; evidence_source = 'hook-captured-user-prompt'; turn_identity = $turnId }
+        $match = Find-SpecrewCycleScopedAuthorization -ProjectRoot $root -History @($entry) -ToBoundary 'tasks' -FromBoundary 'plan' -LastAuthorizedBoundary 'plan' 2>$null
+        $match | Should -Not -BeNullOrEmpty
+    }
+}
