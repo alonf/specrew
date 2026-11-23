@@ -577,14 +577,38 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
         # The shared source classifier, outside specs/ only (see the block above): a host mirror, a
         # document, or a dot-directory deployment write is not the reviewed surface. specs/ paths that
         # the allowlist did not accept keep staling - they are review INPUT.
+        # The classifier's directory exemptions ignore case; this gate's do not. A path the classifier exempts only by
+        # ignoring case (Docs/check.ps1 against docs/ on a case-sensitive volume) is a different path on this volume, so
+        # the two disagree and the path stays source: fail closed (round 1 of 203 iteration 002, finding-a0cc0ae3cd9703dc).
         if (-not $isRecords -and $null -ne $sharedClassifier -and
             -not $path.StartsWith('specs/', $comparison) -and
+            -not (Test-ReviewCampaignPathMatchesExemptPrefixOnlyIgnoringCase -Path $path -Comparison $comparison) -and
             -not (& $sharedClassifier -Path $path)) {
             $isRecords = $true
         }
         if (-not $isRecords) { return $false }
     }
     return $true
+}
+
+function Test-ReviewCampaignPathMatchesExemptPrefixOnlyIgnoringCase {
+    # True when $Path starts with one of the shared classifier's exempt directory prefixes
+    # (Test-SpecrewReviewAuthorshipSourcePath in shared-governance.ps1) only when case is ignored, and not under the
+    # volume's own rule. On a case-insensitive volume the two always agree, so this is false there. The list mirrors
+    # the classifier's directory rules; its extension rules (.md, .txt and the like) name a kind of file, not a place,
+    # and stay case-insensitive on every volume. A prefix missing here fails toward source, never toward records.
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][StringComparison]$Comparison)
+    $exemptPrefixes = @(
+        'specs/', 'docs/', '.specrew/', '.squad/', '.specify/', '.agents/', '.cursor/', '.copilot/', '.claude/',
+        '.github/skills/', '.github/agents/', '.github/prompts/', '.github/instructions/', '.github/chatmodes/',
+        '.github/ISSUE_TEMPLATE/', '.github/'
+    )
+    foreach ($prefix in $exemptPrefixes) {
+        if ($Path.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase) -and -not $Path.StartsWith($prefix, $Comparison)) {
+            return $true
+        }
+    }
+    return $false
 }
 
 function Test-ReviewCampaignPathIsFeatureProcessRecord {
