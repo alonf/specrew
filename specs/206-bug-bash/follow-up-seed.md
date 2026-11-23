@@ -14,8 +14,12 @@ to feature 203, and 1 closed without a fix (81).
 ## Release Blocker for the Next Beta: the Squad Install Specrew Runs and Advises
 
 The maintainer, 2026-11-22 01:50 local, relayed by the reviewer session: "CI squad pin: 206 crew, small PR off main".
-CI pins the SDK; this part, option C, is recorded here as a release blocker for the next beta and is not built yet.
-The reviewer session is asking the maintainer whether its first three parts become bug-list items.
+CI pins the SDK; this part, option C, is recorded here as a release blocker for the next beta.
+
+**Status, 2026-11-23**: parts 1 and 4 are fixed by the `fix/squad-install-pair` pull request ("squad install fix: 206
+crew, small PR off main", the maintainer, 02:21 local, relayed), together with the update repair below ("squad
+install fix: include the update repair", 02:32 local, relayed). Parts 2 and 3 are open: the maintainer has not passed
+them.
 
 The cause: `@bradygaster/squad-cli` 0.11.0 declares `"@bradygaster/squad-sdk": "*"`. `squad-sdk` 2.0.0, published
 2026-11-19, dropped `ensurePersonalSquadDir` and `resolvePersonalSquadDir`, which the CLI's `dist/cli/core/init.js`
@@ -32,8 +36,21 @@ advised the same CLI-only reinstall.
    2.0.0 inside the CLI again, even with SDK 1.1.0 installed beside it, and the CLI fails. The publish harness meets
    this: its phase 5 moves the baseline to the pinned CLI through the candidate's own `specrew update --all`
    (`tests/Dockerfile.publish-test`), so the next pre-publish run is red until this part is fixed.
+   **Fixed**: every install Specrew runs or prints names `squad-sdk` beside the CLI, from one declaration
+   (`squad.sdk` in `scripts/internal/supported-versions.yml`, built by `scripts/internal/squad-install.ps1`), for the
+   declared CLI version only. A CLI version other than the declared one installs alone and gets whatever SDK it
+   resolves; nothing checks its health at install time.
+   **Also fixed, the update repair**: `specrew update --all` and `--squad` did not repair a Squad that was installed
+   but broken. They now reinstall it with the pair and say so. Measured in a sandbox on 2026-11-23 before the fix: on
+   a broken 0.11.0 pair, update reported "Current 24.15.0 is beyond Specrew-validated max_tested 0.11.0. Use
+   --upstream-latest to target upstream. No action taken." and ran nothing.
 2. **The probe keeps only the first output line.** `validate-versions.ps1:239` keeps the first non-empty line of a
-   failed `squad --version`: the path to `init.js`, not the error. The real error is hidden.
+   failed `squad --version`: the path to `init.js`, not the error. The real error is hidden. A second consequence of
+   the same probe, measured on 2026-11-23: it reads a version out of the crash output. A broken 0.11.0 CLI's output
+   ends with "Node.js v24.15.0", and the probe records Squad's version as 24.15.0. Before the update repair, `specrew
+   update` therefore printed the "Current 24.15.0 is beyond ... No action taken." line above, and `specrew update
+   --info` still shows Squad as 24.15.0, "ahead-of-supported", on a broken pair. The update repair keys on the
+   probe's not-operational result, not on that version, so it works without this part.
 3. **Two suites turn their assertions into skips when the toolchain is broken.** `bootstrap-to-iteration.ps1`
    (lines 82 and 138) and `brownfield-conflict-handling.ps1` (lines 179 and 362) print SKIP and pass when the
    bootstrap exits non-zero, so a broken CLI reads as green in both.
@@ -41,7 +58,8 @@ advised the same CLI-only reinstall.
    pair before `specrew init`, so init finds a healthy Squad and does not install its own. Until the install fix
    lands, the job does not prove that a clean machine's `specrew init` can install Squad by itself, and it prints a
    `::warning` saying so. The day the product fix lands, this pre-install is removed and the job proves the product
-   path again.
+   path again. **Fixed** with part 1: the pre-install and the warning are removed, a step refuses a Squad already on
+   PATH, and the health check runs after `specrew init`.
 
 The CI pin is removed when Specrew moves to a squad release whose CLI and SDK agree; this part is fixed before then.
 
