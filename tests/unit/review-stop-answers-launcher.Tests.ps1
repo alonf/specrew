@@ -202,6 +202,22 @@ Describe 'R3: the stop text names a typed line that waits, or was recorded but n
         $text | Should -Match ([regex]::Escape('Your line "defer finding finding-0123456789abcdef to B5F-099" is recorded and is applied at the next review launch.'))
     }
 
+    It 'the navigator''s stop block, which the hook shows, names the waiting line (203 iteration 002, round 4''s stop)' {
+        # The stop text the human reads between launches comes from the navigator, not from the launcher's refusal.
+        $project = script:New-LauncherProject -Name 'r3-navigator'
+        script:Invoke-LauncherTyped -Project $project -Text 'defer finding finding-0123456789abcdef to B5F-099'
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-navigator.ps1')
+        New-Item -ItemType Directory -Path (Join-Path $project.root '.specify') -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $project.root '.specify/feature.json'), '{ "feature_directory": "specs/001-fixture" }', $script:Utf8)
+        Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+            [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
+        }
+        Mock -CommandName Get-ReviewCampaignVerdictPacketDecision -MockWith { throw 'packet-gate-must-not-run' }
+        $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $project.root
+        $decision.reason | Should -Be 'review-stop-open:a-budget-spent'
+        $decision.stop_block | Should -Match ([regex]::Escape('Your line "defer finding finding-0123456789abcdef to B5F-099" is recorded and is applied at the next review launch.'))
+    }
     It 'after a launch, a line that could not be applied is named in the refusal, with its reason' {
         $project = script:New-LauncherProject -Name 'r3-not-applied'
         script:Invoke-LauncherTyped -Project $project -Text 'drop finding finding-00000000000000ff'
