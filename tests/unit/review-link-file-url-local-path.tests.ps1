@@ -37,6 +37,16 @@ Describe 'ConvertTo-SpecrewFileUrlLocalPath, not Windows' {
         @{ Url = 'file:///tmp/a%25b/spec.md'; Expected = '/tmp/a%b/spec.md' }
         @{ Url = 'file://localhost/tmp/x/spec.md'; Expected = '/tmp/x/spec.md' }
         @{ Url = 'file://LOCALHOST/tmp/x/spec.md'; Expected = '/tmp/x/spec.md' }
+        # Round 3 of 203 iteration 002's review (finding-266f3aac0b802944): as System.Uri.LocalPath does on Windows (pinned
+        # there on 2026-11-23), the fragment and the query are cut before percent-decoding, so an encoded %23 or %3F in a
+        # name survives as a literal '#' or '?'.
+        @{ Url = 'file:///tmp/review.md#findings'; Expected = '/tmp/review.md' }
+        @{ Url = 'file:////tmp/review.md#findings'; Expected = '/tmp/review.md' }
+        @{ Url = 'file:///tmp/review.md?x=1'; Expected = '/tmp/review.md' }
+        @{ Url = 'file:///tmp/review.md?x=1#f'; Expected = '/tmp/review.md' }
+        @{ Url = 'file:///tmp/a%23b.md'; Expected = '/tmp/a#b.md' }
+        @{ Url = 'file:///tmp/a%3Fb.md#f'; Expected = '/tmp/a?b.md' }
+        @{ Url = 'file:///tmp/my%20dir/spec.md#top'; Expected = '/tmp/my dir/spec.md' }
     ) {
         ConvertTo-SpecrewFileUrlLocalPath -Url $Url -Platform Posix | Should -BeExactly $Expected
     }
@@ -88,6 +98,12 @@ Describe 'The packet reader resolves a review link to an existing file' {
 
     It 'reads the engine-written link to the file itself' {
         $links = @(Get-SpecrewReviewTargetLinks -Message ("Read {0} for the scope." -f $script:EngineUrl))
+        $links.Count | Should -Be 1
+        $links[0].path | Should -BeExactly ([System.IO.Path]::GetFullPath($script:Spec))
+    }
+
+    It 'reads an engine-written link with a fragment to the file itself (round 3 finding 3)' {
+        $links = @(Get-SpecrewReviewTargetLinks -Message ("Read {0}#findings for the scope." -f $script:EngineUrl))
         $links.Count | Should -Be 1
         $links[0].path | Should -BeExactly ([System.IO.Path]::GetFullPath($script:Spec))
     }
