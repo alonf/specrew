@@ -212,6 +212,41 @@ Describe 'T022 records rule: in the source repository these are source, and a co
         Test-RecordsOnly -Paths @('specs/001-fixture/iterations/001/drift-log.md') | Should -BeTrue -Because 'an exact records place keeps its records (pinned)'
     }
 
+    # The gate's prefix list (Test-ReviewCampaignPathMatchesExemptPrefixOnlyIgnoringCase) must hold every directory
+    # exemption of the shared classifier: a directory exempted by the classifier alone would fall through to records on a
+    # case-sensitive volume. This case reads the classifier's directory rules from its own source, so it goes red the day
+    # an exemption is added to the classifier and not to the gate (the reviewer session's ruling on round 1 finding 2).
+    It 'every directory the shared classifier exempts, written in another case, is source on a case-sensitive volume' {
+        . $script:SharedGovernance
+        $tokens = $null; $parseErrors = $null
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile($script:SharedGovernance, [ref]$tokens, [ref]$parseErrors)
+        $classifierAst = $ast.Find({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -ceq 'Test-SpecrewReviewAuthorshipSourcePath' }, $true)
+        $classifierAst | Should -Not -BeNullOrEmpty
+        # Every anchored rule: -match '(?i)^...'. The unanchored extension rule names a kind of file, not a place.
+        $rules = @([regex]::Matches($classifierAst.Extent.Text, "-match\s+'\(\?i\)\^([^']+)'") | ForEach-Object { $_.Groups[1].Value })
+        $rules.Count | Should -BeGreaterOrEqual 4 -Because 'the classifier has at least four directory rules today'
+        $expand = {
+            param([string]$Pattern)
+            $group = [regex]::Match($Pattern, '\((?:\?:)?([^()]+)\)')
+            if ($group.Success) {
+                foreach ($alternative in $group.Groups[1].Value.Split('|')) {
+                    & $expand ($Pattern.Substring(0, $group.Index) + $alternative + $Pattern.Substring($group.Index + $group.Length))
+                }
+                return
+            }
+            ($Pattern -replace '\[\^/\]\+', 'x' -replace '\$$', '' -replace '\\\.', '.')
+        }
+        $samples = @($rules | ForEach-Object { & $expand $_ })
+        $samples.Count | Should -BeGreaterOrEqual 16 -Because 'specs, docs, seven dot-directories, six .github directories and the .github Markdown rule'
+        $swap = { param([string]$s) -join ($s.ToCharArray() | ForEach-Object { if ([char]::IsUpper($_)) { [char]::ToLowerInvariant($_) } else { [char]::ToUpperInvariant($_) } }) }
+        Mock -CommandName Get-ContinuousCoReviewPathComparison -MockWith { [StringComparison]::Ordinal }
+        foreach ($sample in $samples) {
+            $path = if ($sample.EndsWith('/')) { (& $swap $sample) + 'tool.ps1' } else { & $swap $sample }
+            Test-SpecrewReviewAuthorshipSourcePath -Path $path | Should -BeFalse -Because "the classifier exempts $path by ignoring case (rule sample $sample)"
+            Test-RecordsOnly -Paths @($path) | Should -BeFalse -Because "$path is not $sample on a case-sensitive volume, so it is source"
+        }
+    }
+
     It 'a records file riding with one source file still stales' {
         Test-RecordsOnly -Paths @('specs/001-fixture/iterations/001/drift-log.md', 'templates/coordinator-instructions.md') | Should -BeFalse
     }

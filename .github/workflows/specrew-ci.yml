@@ -322,6 +322,15 @@ jobs:
         shell: pwsh
         run: pwsh -NoProfile -File ./tests/unit/workshop-agenda-grouping.tests.ps1
 
+      # Feature 203 iteration 002, review round 1 finding-a0cc0ae3cd9703dc (major): the records-only check on a
+      # case-sensitive volume. The defect shows only where case tells paths apart, so its regression runs on this
+      # Ubuntu job; the suite's last case also holds the gate's prefix list equal to the shared classifier's.
+      - name: Records-only check on a case-sensitive volume (203 review round 1, finding 2)
+        shell: pwsh
+        run: |
+          $r = Invoke-Pester -Path ./tests/continuous-co-review/unit/records-only-source-repo-narrowed.Tests.ps1 -PassThru -Output Detailed
+          if ($r.Result -ne 'Passed') { throw "records-only-source-repo-narrowed: result=$($r.Result) failed=$($r.FailedCount)" }
+
       - name: Tier-2 production harness contract dry run (zero provider spend)
         shell: pwsh
         run: pwsh -NoProfile -File ./tests/manual/review-production-harness-dry-run.ps1
