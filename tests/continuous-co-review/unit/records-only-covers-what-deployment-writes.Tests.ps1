@@ -143,29 +143,33 @@ Describe 'FR-009 one classifier, not a parallel list' {
     }
 }
 
-# Round 3 of 203 iteration 002's review, finding-9cc1155f2c83f5f7 (major), decided by the maintainer on 2026-11-23 at
-# about 13:14 local ("203 deployed files: fix it in 203") and shaped by the reviewer session's ruling (option 3): downstream,
-# a file that can run is records only where the machinery list names its place by name or by a .specrew-managed marker.
-#   - The shared classifier's directory exemption counts record kinds only (a script in .claude/, .cursor/, docs/ is source).
-#   - A host framework subfolder that is machinery only by its vocabulary name (part (c) of Get-ContinuousCoReviewMachineryPaths)
-#     holds records of a record kind and Specrew's own generated agent files by name; any other file there is source.
-#   - The deployed Claude launcher, .claude/specrew-hook-launch.ps1, is a downstream-only machinery entry; the Specrew source
-#     repository keeps reviewing it.
-#   - The project's own hook configuration is source by name.
-# The strip and the digest do not change for part (c). Every fixture file exists on disk, because part (c) names a
-# subfolder only when it exists, and in a real project the folder of a changed file always does.
-Describe 'downstream: a runnable file is records only where the machinery list names its place (round 3 finding 2)' {
+# Round 3 of 203 iteration 002's review, finding-9cc1155f2c83f5f7 (major). The maintainer decided "203 deployed files: fix
+# it in 203" (2026-11-23, about 13:14 local), then narrowed it to the parts that work: "203 host folders: record the limit,
+# follow up" (about 14:44 local), after an end-to-end probe showed that downstream the reviewed-state digest strips the
+# whole machinery list, so a change under a host tool folder never reaches the records-only check.
+#   - The project's own hook and MCP server configuration is source by name.
+#   - The shared classifier's directory exemption counts record kinds only: a script in .claude/, .cursor/, .copilot/ or
+#     docs/ outside the machinery list can run.
+#   - The generated Claude launcher, .claude/specrew-hook-launch.ps1, is a downstream-only machinery entry; the Specrew
+#     source repository keeps reviewing it.
+#   - THE RECORDED LIMIT: downstream, a project's own file under a host tool folder (a framework subfolder, .agents,
+#     .antigravitycli, a marked folder) is outside the review - not in the reviewer's worktree and not in the digest. A
+#     follow-up proposal brings it in; it will turn the limit case below around.
+# A records-only case for the sign-off path is proven through the digest (digest, change, digest, then the check on the
+# real delta), not by calling the check with a delta that may never occur.
+Describe 'downstream: what can run in a host folder is source where the review can see it (round 3 finding 2)' {
     BeforeAll {
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1')
+        $script:HostFixtures = @()
         function script:New-HostFixture {
-            param([Parameter(Mandatory)][string]$Name, [string[]]$Files = @(), [string[]]$Markers = @())
+            param([Parameter(Mandatory)][string]$Name, [string[]]$Files = @())
             $root = Join-Path ([IO.Path]::GetTempPath()) ('fr009-f2-' + $Name + '-' + [guid]::NewGuid().ToString('N'))
             $ext = Join-Path $root '.specify/extensions/specrew-speckit/scripts'
             New-Item -ItemType Directory -Path $ext -Force | Out-Null
             New-Item -ItemType Directory -Path (Join-Path $root 'specs/001-fixture/iterations/001') -Force | Out-Null
             Copy-Item -LiteralPath (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1') `
                 -Destination (Join-Path $ext 'shared-governance.ps1') -Force
-            foreach ($file in @($Files + @($Markers | ForEach-Object { $_.TrimEnd('/') + '/.specrew-managed' }))) {
+            foreach ($file in $Files) {
                 $full = Join-Path $root $file
                 New-Item -ItemType Directory -Path (Split-Path -Parent $full) -Force | Out-Null
                 Set-Content -LiteralPath $full -Value 'fixture' -Encoding utf8NoBOM
@@ -173,51 +177,17 @@ Describe 'downstream: a runnable file is records only where the machinery list n
             $script:HostFixtures += @($root)
             return $root
         }
-        $script:HostFixtures = @()
-        $script:HostFiles = @(
-            '.github/skills/release/scripts/publish.ps1', '.github/skills/release/SKILL.md',
-            '.copilot/skills/distributed-mesh/sync-mesh.ps1', '.copilot/skills/distributed-mesh/sync-mesh.sh',
-            '.copilot/skills/distributed-mesh/SKILL.md',
-            '.codex/agents/reviewer.toml', '.cursor/rules/implementer.mdc',
-            '.claude/skills/specrew-help/SKILL.md', '.claude/skills/specrew-help/scripts/help.ps1',
-            '.github/agents/squad.agent.md', '.github/prompts/speckit.plan.prompt.md',
+        $script:HostRoot = script:New-HostFixture -Name 'plain' -Files @(
             '.claude/hooks/pre.ps1', '.cursor/hooks/run.sh', '.copilot/hooks/x.ps1', '.github/ISSUE_TEMPLATE/check.ps1',
-            '.claude/settings.json', '.claude/settings.local.json', '.cursor/hooks.json', '.copilot/hooks/specrew-refocus.json',
-            '.cursor/mcp.json', '.copilot/mcp-config.json',
-            '.claude/specrew-hook-launch.ps1')
-        $script:HostRoot = script:New-HostFixture -Name 'plain' -Files $script:HostFiles -Markers @('.claude/skills/specrew-help')
+            '.claude/settings.json', '.cursor/hooks.json', '.cursor/mcp.json', '.copilot/mcp-config.json',
+            '.copilot/hooks/specrew-refocus.json', '.claude/specrew-hook-launch.ps1')
     }
 
     AfterAll {
         foreach ($root in @($script:HostFixtures)) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It 'Codex''s example: a project script under a host skill folder with no marker is source' {
-        Test-RecordsOnly -Paths @('.github/skills/release/scripts/publish.ps1') -Root $script:HostRoot |
-            Should -BeFalse -Because '.github/skills is machinery only by its vocabulary name, and a script there can run'
-    }
-
-    It 'the same script under a folder a .specrew-managed marker names stays records (pinned)' {
-        $marked = script:New-HostFixture -Name 'marked' -Files @('.github/skills/release/scripts/publish.ps1') -Markers @('.github/skills/release')
-        Test-RecordsOnly -Paths @('.github/skills/release/scripts/publish.ps1') -Root $marked | Should -BeTrue
-    }
-
-    It 'a marker on the framework subfolder itself names the whole folder (pinned)' {
-        $marked = script:New-HostFixture -Name 'marked-root' -Files @('.github/skills/release/scripts/publish.ps1') -Markers @('.github/skills')
-        Test-RecordsOnly -Paths @('.github/skills/release/scripts/publish.ps1') -Root $marked | Should -BeTrue
-    }
-
-    It 'Specrew''s generated agent files stay records by name (pinned): the Codex agents and the Cursor rules' {
-        Test-RecordsOnly -Paths @('.codex/agents/reviewer.toml') -Root $script:HostRoot | Should -BeTrue -Because 'Install-CodexCrewRuntime writes it'
-        Test-RecordsOnly -Paths @('.cursor/rules/implementer.mdc') -Root $script:HostRoot | Should -BeTrue -Because 'Install-CursorCrewRuntime writes it'
-    }
-
-    It 'an unmarked runnable file another tool deploys in a framework subfolder is source (Squad''s sync-mesh, a known cost)' {
-        Test-RecordsOnly -Paths @('.copilot/skills/distributed-mesh/sync-mesh.ps1') -Root $script:HostRoot | Should -BeFalse
-        Test-RecordsOnly -Paths @('.copilot/skills/distributed-mesh/sync-mesh.sh') -Root $script:HostRoot | Should -BeFalse
-    }
-
-    It 'runnable files in host folders outside the framework subfolders are source' {
+    It 'runnable files in host folders outside the machinery list are source' {
         foreach ($path in @('.claude/hooks/pre.ps1', '.cursor/hooks/run.sh', '.copilot/hooks/x.ps1', '.github/ISSUE_TEMPLATE/check.ps1')) {
             Test-RecordsOnly -Paths @($path) -Root $script:HostRoot | Should -BeFalse -Because "$path can run and no machinery entry names its place"
         }
@@ -227,27 +197,102 @@ Describe 'downstream: a runnable file is records only where the machinery list n
         foreach ($path in @('.claude/settings.json', '.cursor/hooks.json', '.copilot/hooks/specrew-refocus.json', '.cursor/mcp.json', '.copilot/mcp-config.json')) {
             Test-RecordsOnly -Paths @($path) -Root $script:HostRoot | Should -BeFalse -Because "$path names the commands the host runs"
         }
-        Test-RecordsOnly -Paths @('.claude/settings.local.json') -Root $script:HostRoot | Should -BeTrue -Because 'Specrew''s per-user hook config is a literal machinery entry (pinned)'
     }
 
-    It 'record kinds in host folders and a marked skill''s script stay records (pinned)' {
-        foreach ($path in @('.github/skills/release/SKILL.md', '.copilot/skills/distributed-mesh/SKILL.md', '.claude/skills/specrew-help/SKILL.md',
-                '.claude/skills/specrew-help/scripts/help.ps1', '.github/agents/squad.agent.md', '.github/prompts/speckit.plan.prompt.md')) {
-            Test-RecordsOnly -Paths @($path) -Root $script:HostRoot | Should -BeTrue -Because "$path is a deployment write downstream (DRIFT-007's twin)"
+    It 'the deployed Claude launcher is on the downstream machinery list, and not on the source repository''s' {
+        @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $script:HostRoot) | Should -Contain '.claude/specrew-hook-launch.ps1'
+        @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $script:RepoRoot) | Should -Not -Contain '.claude/specrew-hook-launch.ps1'
+    }
+}
+
+Describe 'downstream, through the reviewed-state digest: the sign-off path sees what the records-only check decides (round 3 finding 2)' {
+    BeforeAll {
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/reviewed-state-digest.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1')
+        $script:DigestFixtures = @()
+        # A committed git project. -Source adds both source-repository detection files (Specrew.psd1 and the loader).
+        function script:New-DigestFixture {
+            param([Parameter(Mandatory)][string]$Name, [Parameter(Mandatory)][string[]]$Files, [switch]$Source)
+            $root = Join-Path ([IO.Path]::GetTempPath()) ('fr009-f2d-' + $Name + '-' + [guid]::NewGuid().ToString('N'))
+            $ext = Join-Path $root '.specify/extensions/specrew-speckit/scripts'
+            New-Item -ItemType Directory -Path $ext -Force | Out-Null
+            Copy-Item -LiteralPath (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1') `
+                -Destination (Join-Path $ext 'shared-governance.ps1') -Force
+            $all = @($Files + @('src/app.ps1'))
+            if ($Source) { $all += @('Specrew.psd1', 'scripts/internal/continuous-co-review/_load.ps1') }
+            foreach ($file in $all) {
+                $full = Join-Path $root $file
+                New-Item -ItemType Directory -Path (Split-Path -Parent $full) -Force | Out-Null
+                Set-Content -LiteralPath $full -Value 'v1' -Encoding utf8NoBOM
+            }
+            & git -C $root init -q 2>$null
+            & git -C $root -c user.name=fixture -c user.email=fixture@example.invalid -c core.autocrlf=false add -A 2>$null
+            & git -C $root -c user.name=fixture -c user.email=fixture@example.invalid commit -q -m base 2>$null
+            $script:DigestFixtures += @($root)
+            return $root
+        }
+        # Digest, change one file, digest again, then the check on the real delta between the two.
+        function script:Invoke-ChangeThroughDigest {
+            param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$Path)
+            $before = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $Root -NoCache
+            $before.ok | Should -BeTrue -Because ([string]$before.failure_reason)
+            Set-Content -LiteralPath (Join-Path $Root $Path) -Value 'v2' -Encoding utf8NoBOM
+            $after = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $Root -NoCache
+            $after.ok | Should -BeTrue -Because ([string]$after.failure_reason)
+            $delta = @(Get-ReviewCampaignChangedPathsSinceResult -RepoRoot $Root -ReviewedDigest ([string]$before.tree_id) -CurrentDigest ([string]$after.tree_id))
+            Set-Content -LiteralPath (Join-Path $Root $Path) -Value 'v1' -Encoding utf8NoBOM
+            $recordsOnly = $null
+            if ($delta.Count -gt 0) { $recordsOnly = [bool](Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths $delta -RepoRoot $Root -FeatureId '001-fixture') }
+            return [pscustomobject]@{ Moved = ([string]$after.tree_id -cne [string]$before.tree_id); Delta = $delta; RecordsOnly = $recordsOnly }
+        }
+        $script:Downstream = script:New-DigestFixture -Name 'downstream' -Files @(
+            '.claude/hooks/pre.ps1', '.claude/settings.json', '.claude/notes.md', '.claude/specrew-hook-launch.ps1',
+            '.cursor/mcp.json', '.github/skills/release/scripts/publish.ps1', '.agents/skills/release/scripts/publish.ps1')
+        $script:SourceShaped = script:New-DigestFixture -Name 'source' -Files @('.claude/specrew-hook-launch.ps1') -Source
+    }
+
+    AfterAll {
+        foreach ($root in @($script:DigestFixtures)) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'a script in a host folder outside the machinery list moves the digest and reads as source' {
+        $r = script:Invoke-ChangeThroughDigest -Root $script:Downstream -Path '.claude/hooks/pre.ps1'
+        $r.Moved | Should -BeTrue
+        $r.Delta | Should -Be @('.claude/hooks/pre.ps1')
+        $r.RecordsOnly | Should -BeFalse
+    }
+
+    It 'the project''s own hook and MCP server configuration moves the digest and reads as source' {
+        foreach ($path in @('.claude/settings.json', '.cursor/mcp.json')) {
+            $r = script:Invoke-ChangeThroughDigest -Root $script:Downstream -Path $path
+            $r.Moved | Should -BeTrue -Because $path
+            $r.RecordsOnly | Should -BeFalse -Because "$path names the commands the host runs"
         }
     }
 
-    It 'a deployed record riding with a project script stales' {
-        Test-RecordsOnly -Paths @('.claude/skills/specrew-help/SKILL.md', '.github/skills/release/scripts/publish.ps1') -Root $script:HostRoot | Should -BeFalse
+    It 'a document in a host folder moves the digest and stays records (pinned)' {
+        $r = script:Invoke-ChangeThroughDigest -Root $script:Downstream -Path '.claude/notes.md'
+        $r.Moved | Should -BeTrue
+        $r.RecordsOnly | Should -BeTrue
     }
 
-    It 'the deployed Claude launcher is downstream machinery and stays records' {
-        @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $script:HostRoot) | Should -Contain '.claude/specrew-hook-launch.ps1'
-        Test-RecordsOnly -Paths @('.claude/specrew-hook-launch.ps1') -Root $script:HostRoot | Should -BeTrue
+    It 'the generated Claude launcher is downstream machinery: a change to it does not move the digest' {
+        $r = script:Invoke-ChangeThroughDigest -Root $script:Downstream -Path '.claude/specrew-hook-launch.ps1'
+        $r.Moved | Should -BeFalse -Because 'a redeploy that changes the generated launcher does not stale a review'
     }
 
-    It 'in the Specrew source repository the launcher is still reviewed (pinned)' {
-        @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $script:RepoRoot) | Should -Not -Contain '.claude/specrew-hook-launch.ps1'
-        Test-RecordsOnly -Paths @('.claude/specrew-hook-launch.ps1') -Root $script:RepoRoot | Should -BeFalse
+    It 'in the Specrew source repository a change to the launcher moves the digest and reads as source (pinned)' {
+        $r = script:Invoke-ChangeThroughDigest -Root $script:SourceShaped -Path '.claude/specrew-hook-launch.ps1'
+        $r.Moved | Should -BeTrue
+        $r.RecordsOnly | Should -BeFalse
+    }
+
+    It 'THE RECORDED LIMIT ("203 host folders: record the limit, follow up", 2026-11-23): a project''s own script under a host tool folder does not move the digest, so no review stales; the follow-up turns this case around' {
+        foreach ($path in @('.github/skills/release/scripts/publish.ps1', '.agents/skills/release/scripts/publish.ps1')) {
+            $r = script:Invoke-ChangeThroughDigest -Root $script:Downstream -Path $path
+            $r.Moved | Should -BeFalse -Because "$path is under a folder the downstream strip and digest leave out (the recorded limit)"
+        }
     }
 }
