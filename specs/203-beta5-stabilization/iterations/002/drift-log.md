@@ -1996,3 +1996,53 @@ The following resolution strategies remain available if drift is detected later 
 - **Class closure**: the path that stales a review after its last round is checked with the function before an edit, and proven
   through the digest after the commit. Every other write before the sign-off goes through the same check.
 - **Rework:** unchanged, about 8.7.
+
+### DRIFT-058 — Between the verification round and the pin advance: a stray copy of the review store, the sweep with its reruns, and the later-commit answer
+
+- **A crew mistake in the real checkout** (about 03:04 local on 2026-11-24). While setting up a read-only gate proof, the crew
+  chained a scratch clone, a `cd` and a copy with `&&` and `;`. The clone failed on a Windows long path, so the `cd` was
+  skipped, and the next part, `cp -r` of the review store, ran in the real checkout with a relative destination. It put a
+  copy of the store inside itself: `.specrew/review/authority/authority/campaigns`, 155 files.
+  - Checked, read only: 155 of 155 copies have an original with the same content; no original changed; no other file; the engine
+    reads the same state; the folder is gitignored and the tree clean. The reviewer session read the store's readers on the
+    head: every store read goes through `campaigns/<id>`, and the one whole-store read only counts JSON files, so none takes the
+    copy as facts.
+  - Not deleted: the rule is no recursive delete outside the crew's own scratchpad. It stays until the maintainer says, by exact path.
+  - The rule kept from now on: absolute paths, the PowerShell tool for copies, stop on the first failed step, and check the working
+    folder before each write. The proof was then built in the scratchpad that way.
+- **The gate proof** (after the drift-log commit, on a scratch clone, with a hash-checked copy of the campaign store): the delta
+  since the reviewed digest is this drift log; records-only true; the sign-off gate allows, route `review-current`, reason
+  `records-only-delta-does-not-stale`, with the head's engine and with the pin's. A control, the hand-back note also edited: records-only
+  false, block, `latest-result-not-current`.
+- **The sweep of `f0578d86d`** (03:07:40 to 04:13:33 local): 337 of 339 suites and all ten lanes green, nothing spanned standby,
+  the home hook set unchanged during it.
+  - The crew ran it with the default 900 s suite limit; the sweeps of this iteration ran at 1,500 s. The wrong limit was the crew's.
+  - `validator-hardening-iteration2.ps1` timed out at 900 s; rerun alone at 1,500 s: green in 953 s (951 and 976 s in earlier sweeps).
+  - `feature-018-render-budget.ps1` missed its 1.5 s wall-clock budget (1,782 ms); rerun alone once: green. It failed the same way in
+    two earlier sweeps. The test file is unchanged since `551bf5cde`. The renderer it measures is unchanged too, but loads
+    `shared-governance.ps1`, which 203 grew from 9,278 to 9,583 lines; its load took a median of 72 ms before and 76 ms after (seven runs each).
+  - Both reruns were through the sweep's own runner, by the reviewer session's ruling, with the home unchanged across them.
+- **Codex's `~/.codex/config.toml`** `[hooks.state]` changed since the previous sweep: three trusted hashes, written 2026-11-21 15:07:58 local, before
+  this session's rounds. Nothing was restored. The reviewer session tells the maintainer.
+- **The later-commit answer** (read, then run in scratch clones, with nothing written in the real checkout):
+  - The sign-off gate runs only at the review-signoff sync. The cited-run freshness rule judges the live tree, in scoped runs too,
+    but only for runs a record declares (the evidence marker or the derived block). Prose run ids carry no weight.
+  - With a marker in 002's review record at status `reviewing`, the rule fails on one file, `plan.md` (the sync's own status
+    write is enough); after merging main it fails on 11. Prose only, as 001, 205 and 206 are written, it is silent in both.
+  - So 002's review record carries no marker and no derived block. A dry run of the sign-off sync in a clone reached its stop,
+    with the gate allowing, the validator exit 0 while the status was `executing`, and no marker in the record. At
+    `reviewing`, the validator reports the absent block: a warning when the record's authorship was not observed, as in CI,
+    and an error in the real tree, where the hooks observe this session writing it. It does not block the sync; it fails the
+    local governance check on the record's commits after the approval, as for 205 and 206. Leaving the block out goes to the
+    maintainer with the sign-off.
+  - The same dry run showed that a reviewing iteration needs T027 and T028 in a terminal state.
+  - Merging main (490760725, 15 files, no conflicts) did not break a pull-request-scoped validation of the clone.
+  - The parked plan row must land before the iteration closeout seals the folder.
+- **A finding recorded for the hand-back** (parked until after the sign-off): the validator's result cache (`.specrew/.cache`) is not
+  keyed on the reviewed tree. Warm, it answered 1 changed file where a cold cache answered 11, and replayed an earlier answer again later. Recorded under the maintainer's
+  standing word of 03:39 local on 2026-11-23.
+- **Read before the pin advance:** no unspent stop answer, pause decision or allowance reset remains in the store (defer spent 22:53 local,
+  stop-here spent 2026-11-15, reset spent 22:56), so nothing stored lands by surprise after it. The pin is at `da78b600`,
+  its folder clean.
+- **Class closure**: NONE — the store copy was a crew command, not a product defect, and is not a class in the code; the records-only
+  split and the gate answer are guarded by DRIFT-055's and DRIFT-057's checks.
