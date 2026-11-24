@@ -1957,3 +1957,42 @@ The following resolution strategies remain available if drift is detected later 
   candidates T and U are recorded in the hand-back.
 - **Rework:** about 1.7 SP (about 1.1 for the three findings, about 0.5 for the loader, about 0.1 for the follow-ups and
   the lane naming), so the overrun is about 8.7, not DRIFT-055's 7.0.
+
+### DRIFT-057 — The verification round: both majors resolved, one minor recorded as a follow-up, the campaign ended clean; the records commit after it holds the drift log only
+
+- **The round** (`run-20261124-001634923-89bd2f3a`, Codex, on `f0578d86d`, launched from the pin `da78b600` at 02:16:31 local on
+  2026-11-24): the preflight passed after 2,298.6 s (about 02:54:50), the reviewer started at 02:55:14, the round was terminal at 2,605.7 s
+  and the process ended at 03:00:36 with exit 0. Verdict findings; completion complete, validation valid, currentness
+  current, containment and termination verified. Budget after the maintainer's reset: 1 of 2 rounds used. The home hook
+  set was unchanged across the round, and the watcher ended on its own.
+- **Resolutions, the reviewer's:** `finding-4fa0bbeaf9c0ec00` resolved, `finding-d4b2f612fa8ffcf1` resolved. No stop is open and no
+  finding is open; the loop reads `ended_clean`. `finding-9cc1155f2c83f5f7` is deferred to bug bash 2 (DRIFT-056).
+- **The one new finding, `finding-2f9ca15060fe18b2`, minor, not gating, listed as a follow-up** ("Preserve partial landing outcomes
+  in the failure message", `specrew-review.ps1:1397`). The catch around the whole landing says none of the typed lines was
+  applied and all are kept. The landing writes a campaign fact before it stamps the capture as spent, so a failure after
+  the first write leaves a line applied while the message says none was. It is real, and the crew's: fix 4 (`33a90a5c8`) added
+  the sentence, and it is true only for the unreadable-store case the red case tested.
+  - The reviewer session ruled it recorded as a follow-up and not fixed in 203 (a minor wording defect; a code fix would
+    move the head past the reviewed one and spend the last round), under the maintainer's standing word of 03:39 local on
+    2026-11-23, "You should auto pass any finding: again: pass it". It is telling the maintainer, and relays their words if they want it
+    fixed here.
+  - The crew's inference, not reproduced: the stop text's "is applied at the next review launch" sentence could be shown
+    for a line whose fact is already written, after the same failure.
+  - Candidates: report what was persisted before the failure, or say the application could not be fully confirmed.
+- **The maintainer's decision on the next beta**, typed in the reviewer session at about 02:07 local on 2026-11-24 and
+  relayed: "next beta: wait for 203 to merge before starting anything - but after that continue before the beta release
+  to remove all show stoppers". Nothing starts before 203 merges. After the merge the 206 crew opens a fix feature for
+  the show stoppers, the beta is cut only after that feature merges, and the maintainer confirms the exact set at that
+  feature's scope approval. Their earlier sentence (about 01:28 local) stands in the hand-back.
+- **A wrong list, caught before any edit.** The reviewer session's order for this records commit named the hand-back note, the
+  plan's rework row and the round's result together, and the crew was going to apply it. `Test-ReviewCampaignDeltaIsRecordsOnly`
+  on the head calls `drift-log.md`, `review.md` and `state.md` records, and `handback-to-next-bug-bash.md`, `plan.md` and
+  `review-scope-round-1.md` not: the hand-back is not on the list, and the plan is review input. Committing them after the last
+  round would have staled the reviewed state. The earlier records commits held them because each came before a round. The
+  reviewer session confirmed the list was its own error, made from habit. The calls to the function name the paths to avoid and
+  prove nothing about a commit; the proof is through the digest, after this one.
+- **Parked until after the sign-off boundary sync:** the hand-back entry for the minor and the next-beta decision, and the plan's rework
+  row. Until then this entry is the record.
+- **Class closure**: the path that stales a review after its last round is checked with the function before an edit, and proven
+  through the digest after the commit. Every other write before the sign-off goes through the same check.
+- **Rework:** unchanged, about 8.7.
