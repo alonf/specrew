@@ -241,6 +241,53 @@ try {
     $newest3 = if ($history3s.Count -gt 0) { $history3s[-1] } else { $null }
     Assert-True ($history3s.Count -eq $history0 -or ([string]$newest3.to_boundary -eq 'review-signoff' -and [string]$newest3.turn_identity -notin @($f1.OldTurn, $f1.NewestTurn))) 'whatever the turn end did, the record holds no verdict under another session''s turn'
 
+    # --- A REAL APPROVAL THAT ONLY THE TURN END READS (the reviewer session's question 4) --------------------------------
+    # The prompt hook did not see the message (it is the one that records a typed approval from the prompt itself), so the
+    # turn end reads it from the Codex transcript, where the line carries no record id and no session: it takes the earlier
+    # Claude reservation with the same text, whose turn is already a recorded verdict.
+    # WHAT IS TRUE TODAY, PINNED: the approval is not recorded. That is the claim step's identity (the hand-back entry beside
+    # the bare-marker gap, decided with it), not this guard. What this guard owes is that nothing false is said or registered.
+    # WHAT CLOSES IT: a Codex entry claims only a Codex row. Then this case records the verdict under its own turn, and the
+    # pinned assertion below is replaced by its inverse.
+    Write-Host 'Case 3 (Codex): a real approval read only at the turn end is never recorded under, or registered as, another session''s turn'
+    $f3 = New-CaptureFixture -Name 'codex-turn-end'
+    $c3 = New-Conversation -HostKind codex -Fixture $f3
+    $crossing3 = Open-Crossing -Fixture $f3
+    $history0 = @(Get-History -Fixture $f3).Count
+    $rows3 = @(Get-LedgerRows -Fixture $f3).Count
+    Add-Message -Conversation $c3 -Role assistant -Text ("The packet for review-signoff.`n`n<!-- SPECREW-VERDICT-BOUNDARY: before-implement -> review-signoff @ {0} -->" -f $crossing3)
+    $c3.Turn = [guid]::NewGuid().ToString()
+    Add-Message -Conversation $c3 -Role user -Text $phrase
+    $s3t = Invoke-Stop -Conversation $c3 -Reply 'Recorded.'
+    $h3 = @(Get-History -Fixture $f3)
+    $foreign3t = @(Get-MintedVerdictRows -Fixture $f3 -Skip $rows3 -HostKind codex | Where-Object { [string]$_.turn_id -in @($f3.OldTurn, $f3.NewestTurn) })
+    Assert-True ($s3t.Exit -eq 0 -and $foreign3t.Count -eq 0) ('no earlier Claude turn is registered as a verdict Codex minted at that turn end (got {0})' -f $foreign3t.Count)
+    Assert-True ($h3.Count -eq $history0 -or [string]$h3[-1].turn_identity -notin @($f3.OldTurn, $f3.NewestTurn)) 'the record holds no verdict under another session''s turn'
+    Assert-True ($h3.Count -eq $history0 -and -not $s3t.Out.Contains($captured)) ('TODAY the approval read only at the turn end is not recorded, and nothing says it was (history {0} -> {1}); pinned, closes with the claim step''s fix' -f $history0, $h3.Count)
+    $said3 = @([regex]::Matches($s3t.Out, 'Specrew: [^"\\]{0,400}') | ForEach-Object { $_.Value })
+    Write-Host ('  what the turn end said: {0}' -f $(if ($said3.Count -gt 0) { $said3 -join ' | ' } else { '(nothing)' }))
+    # The human sends the phrase again. Its prompt hook reads the transcript's first human turn after the packet's marker,
+    # the unrecorded one, and the re-sent message (newest first) is the entry that takes the Claude reservation, so at the
+    # prompt nothing is recorded: what the hook says must agree, and say so plainly.
+    $rows3b = @(Get-LedgerRows -Fixture $f3).Count
+    $again3 = Invoke-Prompt -Conversation $c3 -Text $phrase
+    $h3b = @(Get-History -Fixture $f3)
+    Assert-True ($again3.Exit -eq 0 -and -not ($again3.Out.Contains($captured) -and $h3b.Count -eq $history0)) ('the phrase sent again is not told it was captured unless it was recorded (history {0} -> {1}; said captured: {2})' -f $history0, $h3b.Count, $again3.Out.Contains($captured))
+    Assert-True ($h3b.Count -ne $history0 -or $again3.Out.Contains("NOT recorded as a verdict for 'before-implement -> review-signoff'")) 'when its prompt records nothing, the hook says it was not recorded'
+    $foreign3b = @(Get-MintedVerdictRows -Fixture $f3 -Skip $rows3b -HostKind codex | Where-Object { [string]$_.turn_id -in @($f3.OldTurn, $f3.NewestTurn) })
+    Assert-True ($foreign3b.Count -eq 0) ('and no earlier Claude turn is registered for it (got {0})' -f $foreign3b.Count)
+    $said3b = @([regex]::Matches($again3.Out, 'Specrew: [^"\\]{0,500}') | ForEach-Object { $_.Value })
+    Write-Host ('  what the prompt hook said to the phrase sent again: {0}' -f $(if ($said3b.Count -gt 0) { $said3b -join ' | ' } else { '(nothing)' }))
+    # That turn's end: the first phrase now resolves to its own Codex reservation and is recorded once, under that turn.
+    $rows3c = @(Get-LedgerRows -Fixture $f3).Count
+    $s3c = Invoke-Stop -Conversation $c3 -Reply 'Noted.'
+    $h3c = @(Get-History -Fixture $f3)
+    $foreign3c = @(Get-MintedVerdictRows -Fixture $f3 -Skip $rows3c -HostKind codex | Where-Object { [string]$_.turn_id -in @($f3.OldTurn, $f3.NewestTurn) })
+    Assert-True ($s3c.Exit -eq 0 -and $h3c.Count -eq ($history0 + 1) -and [string]$h3c[-1].to_boundary -eq 'review-signoff' -and [string]$h3c[-1].turn_identity -notin @('', $f3.OldTurn, $f3.NewestTurn) -and $foreign3c.Count -eq 0) ('the turn end of the phrase sent again records the approval once, under a Codex turn of this session (history {0} -> {1})' -f $history0, $h3c.Count)
+    # And the phrase once more answers already approved and records nothing.
+    $once3 = Invoke-Prompt -Conversation $c3 -Text $phrase
+    Assert-True ($once3.Exit -eq 0 -and $once3.Out.Contains($alreadyApproved) -and -not $once3.Out.Contains($captured) -and @(Get-History -Fixture $f3).Count -eq ($history0 + 1)) 'the phrase once more answers already approved and records nothing'
+
     # --- CONTROLS: the normal capture on each host, and the second bare phrase ------------------------------------------
     foreach ($hostKind in @('codex', 'claude', 'copilot')) {
         Write-Host ("Case 2 ({0}): the normal capture records and says so; the bare phrase after it answers already approved" -f $hostKind)
