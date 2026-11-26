@@ -239,6 +239,39 @@
       "label": "Feature 203 iteration 001, added 2026-11-07 with T002's follow-up (B5F-033; 203 DRIFT-047). validate-governance-changed-only was red from 040fb169 and in no lane: its fixture copies this repository's .specify, whose install record no longer matched the mirror synced in every commit. Own lane because the suite alone takes about 670 s. Also proves a hand edit to a deployed file, with its source unchanged, still fails the validator (W43)."
     },
     {
+      "command_id": "f203-i002-capture-line",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-File",
+        "tests/integration/codex-capture-line-agrees-with-record.tests.ps1"
+      ],
+      "timeout_seconds": 600,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 203 iteration 002, added 2026-11-26 with the maintainer's 'Fix codex' (about 02:57 local, relayed by the reviewer session; its ruling: the guard in 203, the cause to the hand-back). A hook that says a verdict was captured has recorded one: the part-D shape on Codex through the deployed hooks (the false 'Verdict captured' line and the foreign minted rows), with the normal capture and the second bare phrase on Codex, Claude and Copilot beside it. Own lane because the suite runs fifteen deployed hook processes across three hosts, about 190 s."
+    },
+    {
       "command_id": "f203-i001-carried",
       "executable": "pwsh",
       "arguments": [
