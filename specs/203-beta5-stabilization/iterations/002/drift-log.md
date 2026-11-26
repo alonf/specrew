@@ -2135,3 +2135,35 @@ The following resolution strategies remain available if drift is detected later 
   path for the prompt and turn-end hooks. The guard is pinned by case 1 and by case 3's first two steps. The recovery
   writer's sibling is unreachable today and recorded above. The identity cause is the hand-back entry.
 - **Rework**: fix 5 is one more fix cycle after the verification round. The parked rework row in the plan takes it.
+
+### DRIFT-060 — The reviewer session's question on the fix: the same verdict's second capture at its turn end returns before the guard
+
+- **The question** (the reviewer session, reading `31f0a7aa4`): one verdict reaches the writer twice by design, from the
+  prompt hook and again at the turn end (`shared-governance.ps1:4758-4798`). If the second call reached the guarded
+  block, the entry would be in the before-set, and a normal approval's turn end would write `VERDICT_NOT_RECORDED`. The
+  controls said only that the turn end records nothing more.
+- **The answer, by test, not by reading.** The second call returns `not-pending` at `HandoverStore.ps1:1443`, the last
+  line of the captured branch, before the guarded write.
+  - At the turn end the record has already moved, so the last authorized boundary is the verdict's own, no crossing is
+    pending, and neither :1271's condition nor :1430's order test holds.
+  - Read first from kept fixtures (all six turn ends: captured, not authorized, `not-pending`), then pinned in
+    `f49b3bf51`, tests only. On Codex, Claude and Copilot, at the capture turn's end and at the "already approved"
+    turn's end, three checks each:
+    - the capture's own reason, asked for directly as the handover provider calls it at Stop, because the hooks do not
+      print it;
+    - no `VERDICT_NOT_RECORDED` in the hook's output;
+    - no `verdict-not-recorded` event in the journal.
+  - The positive control: where the guard fires (case 3, the phrase sent again), the warning reaches the hook's stderr
+    and the event the journal.
+  - 50 of 50, the home hook set unchanged, 266 s alone (157 to 237 s before the twelve extra in-process calls). The
+    reviewer session gives the maintainer that number with the 600 s question.
+- **A correction to the crew's message to the reviewer session.** The 203 lanes' limits are 180, 270 (both class-guard
+  lanes), 360 (carried), 600 (authority-sender), 900 (verdict-review, budget), 1200 (validator-scope) and 1500
+  (f203-i001-suites and T008). The crew had sent "180, 600, 900, 1200", with T008 at 900. The new lane's 600 s and its
+  reason are unchanged; it is still the crew's proposal.
+- **The reviewer session's rulings, routine:** the sibling in `Write-SpecrewTypedAct` stays recorded and unfixed (no real
+  path reaches it); the scope file's header counts stay as they are; the scope file's fix 5 row names `f49b3bf51`, so the
+  round reads one head. The round needs no typed line (the budget pays, T008), and it launches on the reviewer session's
+  go, after CI on this head and the maintainer's answer on the lane limit.
+- **Class closure**: NONE — no new defect; the guard's boundary with the writer's by-design second call is now pinned by
+  `f49b3bf51`.
