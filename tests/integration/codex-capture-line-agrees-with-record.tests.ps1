@@ -145,6 +145,29 @@ function Get-MintedVerdictRows {
     @(Get-LedgerRows -Fixture $Fixture | Select-Object -Skip $Skip | Where-Object { [string]$_.host_kind -eq $HostKind -and [string]$_.minted -match 'boundary-verdict' })
 }
 
+function Get-NotRecordedJournalCount {
+    # The guard's 'verdict-not-recorded' events in the project's handover journal.
+    param($Fixture)
+    $journal = Join-Path $Fixture.Root '.specrew\runtime\handover-journal.jsonl'
+    if (-not (Test-Path -LiteralPath $journal)) { return 0 }
+    return @(Get-Content -LiteralPath $journal | Where-Object { $_ -match '"event"\s*:\s*"verdict-not-recorded"' }).Count
+}
+
+function Get-TurnEndCaptureReason {
+    # The capture's own reason at this turn end, as the handover provider calls it at Stop (this repository's engine, the
+    # transcript as the turn end saw it, no prompt text). The hooks do not print the reason, so it is asked for directly.
+    # One verdict reaches the capture at the prompt and again at the turn end by design (shared-governance.ps1, the writer's
+    # idempotence note); this is how a suite sees which line the second call returns from.
+    param($Conversation)
+    $f = $Conversation.Fixture
+    $lastAuth = [string](Get-Enforcement -Fixture $f).last_authorized_boundary
+    $cmd = "`$ErrorActionPreference='Stop'; . '$repoRoot\extensions\specrew-speckit\scripts\shared-governance.ps1'; foreach (`$n in 'HandoverStore','ClassificationEngine','ProjectMetadataAccessor','ConversationCaptureAccessor','HumanAuthorityStore') { . (Join-Path '$repoRoot\scripts\internal\bootstrap' (`$n + '.ps1')) }; `$ErrorActionPreference='Stop'; `$o = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot '$($f.Root)' -TranscriptPath '$($Conversation.Transcript)' -LastUserMessage '' -LastAuthorizedBoundary '$lastAuth' -Source 'Stop' -HostKind '$($Conversation.HostKind)' -SessionId '$($Conversation.Session)'; 'REASON=' + [string]`$o.reason"
+    $out = @(& pwsh -NoProfile -NonInteractive -Command $cmd 2>&1 | ForEach-Object { [string]$_ })
+    $line = @($out | Where-Object { $_ -like 'REASON=*' } | Select-Object -Last 1)
+    $warn = @($out | Where-Object { $_ -match 'VERDICT_NOT_RECORDED' })
+    return [pscustomobject]@{ Reason = $(if ($line.Count) { $line[0].Substring(7) } else { '(none: ' + (($out -join ' ') -replace '\s+', ' ') + ')' }); NotRecordedWarned = ($warn.Count -gt 0) }
+}
+
 function Open-Crossing {
     # The crossing writer the sign-off sync calls (before-implement -> review-signoff), in this repository's engine.
     param($Fixture)
@@ -270,8 +293,12 @@ try {
     # the unrecorded one, and the re-sent message (newest first) is the entry that takes the Claude reservation, so at the
     # prompt nothing is recorded: what the hook says must agree, and say so plainly.
     $rows3b = @(Get-LedgerRows -Fixture $f3).Count
+    $journal3b = Get-NotRecordedJournalCount -Fixture $f3
     $again3 = Invoke-Prompt -Conversation $c3 -Text $phrase
     $h3b = @(Get-History -Fixture $f3)
+    # The positive control for case 2's turn-end assertions: where the guard fires, its warning reaches the hook's stderr and
+    # its event the journal, so their absence there is a reading, not a blind spot.
+    Assert-True ($h3b.Count -ne $history0 -or ($again3.Err -match 'VERDICT_NOT_RECORDED' -and (Get-NotRecordedJournalCount -Fixture $f3) -gt $journal3b)) 'where the guard fires, the hook''s stderr carries VERDICT_NOT_RECORDED and the journal a verdict-not-recorded event'
     Assert-True ($again3.Exit -eq 0 -and -not ($again3.Out.Contains($captured) -and $h3b.Count -eq $history0)) ('the phrase sent again is not told it was captured unless it was recorded (history {0} -> {1}; said captured: {2})' -f $history0, $h3b.Count, $again3.Out.Contains($captured))
     Assert-True ($h3b.Count -ne $history0 -or $again3.Out.Contains("NOT recorded as a verdict for 'before-implement -> review-signoff'")) 'when its prompt records nothing, the hook says it was not recorded'
     $foreign3b = @(Get-MintedVerdictRows -Fixture $f3 -Skip $rows3b -HostKind codex | Where-Object { [string]$_.turn_id -in @($f3.OldTurn, $f3.NewestTurn) })
@@ -302,10 +329,22 @@ try {
         Assert-True ($p.Out.Contains($captured)) ("{0}: the prompt hook says the verdict was captured" -f $hostKind)
         $s = Invoke-Stop -Conversation $c2 -Reply 'Recorded. The retro begins.'
         Assert-True ($s.Exit -eq 0 -and @(Get-History -Fixture $f2).Count -eq ($history0 + 1)) ("{0}: the turn end records it no second time" -f $hostKind)
+        # The same verdict reaches the capture again at this turn end, by design (the reviewer session's question on
+        # 31f0a7aa4). It must not reach the guard and be reported as not recorded: the record already moved, so no crossing
+        # is pending and the capture returns 'not-pending' (HandoverStore.ps1, the last line of the captured branch) before
+        # the guarded write.
+        $turnEnd = Get-TurnEndCaptureReason -Conversation $c2
+        Assert-True ($turnEnd.Reason -ceq 'not-pending' -and -not $turnEnd.NotRecordedWarned) ("{0}: at the capture turn's end the capture's reason is 'not-pending' (got '{1}')" -f $hostKind, $turnEnd.Reason)
+        Assert-True (-not (($s.Out + $s.Err) -match 'VERDICT_NOT_RECORDED')) ("{0}: and that turn end's hook says nothing of VERDICT_NOT_RECORDED" -f $hostKind)
+        Assert-True ((Get-NotRecordedJournalCount -Fixture $f2) -eq 0) ("{0}: and the journal holds no verdict-not-recorded event" -f $hostKind)
         $again = Invoke-Prompt -Conversation $c2 -Text $phrase
         Assert-True ($again.Exit -eq 0 -and $again.Out.Contains($alreadyApproved) -and -not $again.Out.Contains($captured) -and @(Get-History -Fixture $f2).Count -eq ($history0 + 1)) ("{0}: the bare phrase after the recorded verdict answers already approved and records nothing" -f $hostKind)
-        $null = Invoke-Stop -Conversation $c2 -Reply 'It is already approved.'
+        $sAgain = Invoke-Stop -Conversation $c2 -Reply 'It is already approved.'
         Assert-True (@(Get-History -Fixture $f2).Count -eq ($history0 + 1)) ("{0}: and its turn end records nothing" -f $hostKind)
+        $turnEndAgain = Get-TurnEndCaptureReason -Conversation $c2
+        Assert-True ($turnEndAgain.Reason -ceq 'not-pending' -and -not $turnEndAgain.NotRecordedWarned) ("{0}: at the already-approved turn's end the capture's reason is 'not-pending' (got '{1}')" -f $hostKind, $turnEndAgain.Reason)
+        Assert-True (-not (($sAgain.Out + $sAgain.Err) -match 'VERDICT_NOT_RECORDED')) ("{0}: and that turn end's hook says nothing of VERDICT_NOT_RECORDED" -f $hostKind)
+        Assert-True ((Get-NotRecordedJournalCount -Fixture $f2) -eq 0) ("{0}: and the journal still holds no verdict-not-recorded event" -f $hostKind)
     }
 }
 finally {
