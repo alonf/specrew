@@ -2046,3 +2046,92 @@ The following resolution strategies remain available if drift is detected later 
   its folder clean.
 - **Class closure**: NONE — the store copy was a crew command, not a product defect, and is not a class in the code; the records-only
   split and the gate answer are guarded by DRIFT-055's and DRIFT-057's checks.
+
+### DRIFT-059 — The pin advance, then fix 5: a hook said "Verdict captured" on Codex with nothing recorded; the maintainer's "Fix codex"
+
+- **The advance.** The maintainer typed `advance the pin` in this session at 00:29:52 local on 2026-11-26. It resolves as
+  typed by the human.
+  - The pin moved from `da78b600` to `f0578d86d` at 00:30:26 local (`.specrew/runtime/live-engine.json`, recorded
+    2026-11-25T22:30:26Z). The bindings were updated for all five hosts, the pin folder was clean before and after, and the
+    home hook set was unchanged.
+  - The live check on the new pin, at its first Stop, was clean: no error and no block, 13.6 s (9.3 to 9.7 s before). The
+    reviewer session's message resolved as a peer, not typed by the human. It shared its message id with the maintainer's
+    typed line, and each resolved to its own record (T020's case, seen live).
+  - Two costs went to the parked hand-back: the sender lookup took 15.8 s, and the peer name came back empty although the
+    record carries `attachment.origin.name`.
+- **Found while preparing the T028 walk, on 203's engine, in a scratch copy** (part D of the reviewer session's question 3,
+  01:13 local).
+  - The shape: an assistant message holds a bare review-signoff marker. The phrase typed while nothing waits is refused.
+    The crossing opens, and the human's next, ordinary message makes the Codex prompt hook print "Verdict captured:
+    approved for review-signoff ... begins in this turn" while nothing was recorded.
+  - The reviewer session ruled the family a hand-back item: entry A, the early approval, already on main and narrowed by
+    203; entry B, this false line; entry C, a skipped conformance check.
+  - The maintainer then typed "Fix codex" in the reviewer session at about 02:57 local. That answered the session's
+    sentence "If you want the Codex part fixed in 203 first, say so here; it would cost a code change and the last review
+    round". The reviewer session relayed it.
+  - Its scope ruling: entry B only, and the hook's line agrees with the record. Of the two parts the crew traced, the
+    guard lands and the cause goes to the hand-back, decided with entry A.
+- **The cause, traced read only** (a temporary trace in the scratch copy's own engine, removed after).
+  - The marker reader read the earlier phrase from the Codex transcript. A Codex transcript line carries no record id and
+    no session, so the claim step (`HumanAuthorityStore.ps1:1703-1720`) let it take the newest prompt-event reservation
+    with the same text, from any session and host.
+  - Codex's own reservations carry no prompt event, so only other hosts' rows are candidates. What it took was row 289,
+    the maintainer's iteration-001 sign-off typed in this Claude session (2026-11-15 18:44 local), which is verdict #6 in
+    the history.
+  - The writer re-derived that turn, found it already recorded, and handed back verdict #6 without writing. The capture
+    discarded the result (`| Out-Null`), set authorized, and registered the history's newest turn (the 11-16
+    before-implement verdict) as minted by Codex.
+  - Three such rows were written: at the refused phrase's turn end (01:13:31; with no stored crossing, the capture's pair
+    from the labels reached the writer), and at the next message's prompt and turn end.
+  - Claude entries resolve through their own hook output. Copilot cites the prompt at prompt entry.
+- **Fix 5, test first.**
+  - Red `33ad1b966`: the new suite `tests/integration/codex-capture-line-agrees-with-record.tests.ps1` runs through the
+    deployed hooks of each host (the real deployer, a redirected home, the recorded payloads). 4 of 23 assertions fail,
+    all in case 1: the false line and the three foreign rows.
+  - Red `303771843`: case 3 added, 8 of 31 fail.
+  - Fix `31f0a7aa4`, green 31 of 31, in `Invoke-SpecrewBoundaryVerdictCapture`:
+    - the authorization ids of the stored verdicts are taken before the write;
+    - authorized only when an entry for this crossing's pair exists afterwards that was not there before;
+    - the ledger takes the turn on that entry, and nothing when nothing was written;
+    - otherwise WARN `VERDICT_NOT_RECORDED`, a `verdict-not-recorded` journal event, and, when the reply carries the
+      phrase, "NOT recorded ... because it was matched to an approval already on record from an earlier decision ...
+      send: approved for <to>".
+  - The claim step is left as it is, deliberately.
+  - The controls on Codex, Claude and Copilot hold: the normal capture records once and says so; the bare phrase after it
+    answers "already approved" and records nothing, so the walk's step 8 is unchanged; the phrase with nothing waiting is
+    refused.
+- **The reviewer session's question 4, answered by case 3.** In a project with the earlier Claude reservation, a real Codex
+  approval that only the turn end reads from the transcript:
+  - is not recorded at that turn end. That was already true before the fix, and nothing is said there;
+  - when sent again, its prompt says it was not recorded (before the fix, it said "captured");
+  - that turn's end records it once, under a Codex turn of the session, and the phrase after it is answered "already
+    approved".
+  - What the human does: send the phrase again, possibly more than once where several earlier Claude reservations hold
+    the same text.
+  - This project is exposed today (row 289). A phrase typed at the prompt is not, because the capture cites the prompt
+    itself there.
+- **Checks.**
+  - The batch on the fix: 67 suites that load the changed capture, both lanes' suites and the new one, 67 of 67 green,
+    home unchanged, no PSScriptAnalyzer errors.
+  - All 11 lanes in the review layout, exit 0 on `31f0a7aa4`, home unchanged.
+  - Pushed `469d115e0..31f0a7aa4` on the reviewer session's word.
+  - CI on `31f0a7aa4`: Test, Specrew CI (the Deterministic gate and the Contract lane ran and passed) and Cross-Platform
+    Validation, all success.
+- **The new lane `f203-i002-capture-line` has a 600 s limit: the crew's proposal**, taken from `f203-i001-authority-sender`,
+  the lane the suite would otherwise have joined (measured 157 to 237 s alone, 186 s in the lane run). It is not yet the
+  maintainer's: the reviewer session has put it to them, and their answer, with its time, is recorded when relayed. A
+  different number is a commit before the round.
+- **A sibling of the same shape, recorded, not fixed.** `Write-SpecrewTypedAct` (`HumanAuthorityStore.ps1:2086-2092`) also
+  sets `Written` on the writer's silence for a boundary verdict. Its one production caller, the turn end's recovery
+  (`HandoverStore.ps1:2427`), passes `-ExceptBoundaryVerdict`, so that branch is not reached on a real path today. Put to
+  the reviewer session.
+- **The walk is on hold.** It runs on the engine that carries the fix, after the last round, the sweep and the next
+  `advance the pin`. The copies `cop` and `cdx` are untouched until the reviewer session says whether the maintainer used
+  them. The walk's own record (the smoke runs, the departures from the lines, and the crew's errors in preparing it) comes
+  with the walk.
+- **Parked until after the sign-off boundary sync:** the hand-back entry for the claim step ("a Codex transcript entry takes
+  another session's reservation by text"), beside entries A to C and the live check's two costs.
+- **Class closure**: a capture's outcome is now read from the record, not from the writer's return, on the one shared write
+  path for the prompt and turn-end hooks. The guard is pinned by case 1 and by case 3's first two steps. The recovery
+  writer's sibling is unreachable today and recorded above. The identity cause is the hand-back entry.
+- **Rework**: fix 5 is one more fix cycle after the verification round. The parked rework row in the plan takes it.

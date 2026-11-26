@@ -15,12 +15,14 @@ it comes first in the review frame. It adds to the spec and plan and does not re
     re-review them as new.
     That is about where to spend effort, not about silence: a defect you can prove in them is still reportable.
 - **Reviewed head:** the commit that carries this version of the file, or later records. Rounds 1 and 2 reviewed
-  `103c4247a` and `2f1f87309`, round 3 `23a32b6dc`, round 4 `b797c6ab9`; the fixes of their findings, below, are code.
+  `103c4247a` and `2f1f87309`, round 3 `23a32b6dc`, round 4 `b797c6ab9`, the verification round `f0578d86d`; the fixes
+  of their findings, below, are code, and so is fix 5, found after the verification round.
 - **The iteration's contract:** `specs/203-beta5-stabilization/spec.md` and
   `specs/203-beta5-stabilization/iterations/002/plan.md`. `.specify/**` is excluded from the frozen tree; its copies of
   the extension scripts are mirrors checked by their hash record. Review the sources under `extensions/`.
-- **This round reviews the source.** The hooks and the review rounds run from the engine pinned at `da78b600`
-  (iteration 001's), so iteration 002's changes are not live during the campaign; the pin advances after sign-off.
+- **This round reviews the source.** The hooks and the review rounds run from the engine pinned at `f0578d86d`
+  (iteration 002 through round 4's fixes; advanced from iteration 001's `da78b600` on 2026-11-26, 00:30 local), so
+  fix 5 is not live during this round; the pin advances again after it.
 
 ## What Changed, by Task
 
@@ -42,6 +44,7 @@ it comes first in the review frame. It adds to the spec and plan and does not re
 | DRIFT-048 | A review link's four-slash file URL reads as its local path on Linux and macOS, not as a UNC host (FR-046 rework) | `extensions/specrew-speckit/scripts/turn-end-store.ps1` (`6fd9b6518`), `tests/unit/review-link-file-url-local-path.tests.ps1` (`7823c0cfd`) |
 | DRIFT-050 | SC-001's fixture without its own feature claim, and a case pinning the claim decline (test-only) | `tests/integration/project-path-resolution-regression.ps1`, `tests/unit/sc001-fixture-identity.tests.ps1`, `tests/unit/every-suite-is-named-by-a-lane.tests.ps1` |
 | Round 4's fixes | Who could have typed a transcript record is answered in one place, and every caller takes it; the empty findings list stays a refusal outside the human-acceptance alternative; the lease-handoff failure says what the stop wait found; typed stop lines land through the real launcher, and the stop text names a waiting or unapplied line | `scripts/internal/bootstrap/HumanAuthorityStore.ps1` (`1b3a43cbb`), `scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1` (`e0fbdfb26`), `co-review-service.ps1` (`0c101a987`), `review-campaign-orchestrator.ps1`, `worktree-navigator.ps1`, `scripts/specrew-review.ps1` (`33a90a5c8`); `tests/unit/authorization-consumers.Tests.ps1`, `transcript-turn-author.Tests.ps1`, `review-end-one-approval.Tests.ps1`, `review-stop-answers-launcher.Tests.ps1`, `typed-act-classifier.Tests.ps1`, `tests/continuous-co-review/unit/co-review-service.Tests.ps1` |
+| Fix 5 (the maintainer's "Fix codex") | A verdict counts only when the record holds a new entry for its crossing: the capture reads its outcome from the record, not from the writer's return; the ledger registers the turn of the entry just written, or nothing; a reply carrying the phrase that recorded nothing is told so | `scripts/internal/bootstrap/HandoverStore.ps1` (`31f0a7aa4`); `tests/integration/codex-capture-line-agrees-with-record.tests.ps1` (red `33ad1b966`, `303771843`), and its lane in `.specrew/verification-plan.json`, which the frozen tree strips |
 | Other | A source checkout's build id is eight characters (`5cec4bf60`); three test fixes for timing and the sealed iteration (`eee6946a6`, `a0c2e6046`, `2d6590f61`) | `scripts/internal/version-check.ps1`; `tests/continuous-co-review/unit/review-posix-runtime.Tests.ps1`, `tests/integration/self-repo-review-integrity.tests.ps1`, `tools/maintenance/sweep/sweep-driver.tests.ps1` |
 
 ## Found in Earlier Rounds
@@ -94,6 +97,18 @@ repeated the open question above:
   plain launch (the maintainer's "land it with a preloaded launch, fix the loader in 203", 22:52 local). Red
   `ff7defea3`, fix `33a90a5c8`; the pin does not have it.
 
+The verification round (`f0578d86d`, Codex) resolved both of round 4's majors and found one minor,
+`finding-2f9ca15060fe18b2` (`specrew-review.ps1:1397`: after a partial landing, the failure message says none of the
+typed lines was applied). It is recorded as a follow-up by the reviewer session's ruling, under the maintainer's
+standing word, and is not fixed here (DRIFT-057).
+
+Fix 5 was found after it, by the crew, while preparing the three-host walk on the advanced pin (DRIFT-059). On Codex,
+with a bare marker in an assistant message and an earlier phrase in the transcript, the prompt hook said "Verdict
+captured: approved for review-signoff" while nothing was recorded. It also registered another session's Claude turn as a
+verdict Codex minted. The writer had handed back an older verdict without writing, and the capture set authorized on
+its return. The maintainer typed "Fix codex" (2026-11-26, about 02:57 local). The reviewer session ruled the guard into
+203 and the cause into the hand-back. Red `33ad1b966` (4 of 23) and `303771843` (8 of 31), fix `31f0a7aa4`.
+
 The two T022 findings were one defect: the records-only decision asked where a path is and not what it is. The fix
 closes the class, not the instance. Every way `Test-ReviewCampaignDeltaIsRecordsOnly` can answer "records" is listed
 in the inventory in `23056509c`'s commit message and in the iteration's drift log (DRIFT-052), row by row, with what now
@@ -114,6 +129,22 @@ something that runs can still read as records.
 
 ## What to Attack First
 
+This round's focus is fix 5 (`31f0a7aa4`, against `f0578d86d`): `git diff f0578d86d -- scripts/internal/bootstrap/HandoverStore.ps1`.
+Items 1 to 6 below were read by the earlier rounds and stand.
+
+0. **A verdict said to be captured that was not, or the reverse** (fix 5). In `Invoke-SpecrewBoundaryVerdictCapture`:
+   - **The guard:** `Get-SpecrewVerdictEntryIdSet` before the write, `Find-SpecrewVerdictEntryWrittenFor` after it. Is there
+     an entry the writer adds that the before-set or the pair test misses (a legacy entry without an id, a retroactive
+     verdict, a cycle reset, two writers on one crossing)? Or a write that happened and is reported as not recorded?
+   - **The registration:** the ledger takes the turn on the entry just written, and nothing when nothing was written. Is
+     there a path where a turn is still registered as minted without its verdict?
+   - **The new line** in `Get-SpecrewVerdictCaptureDisclosure` (reason `verdict-not-recorded`). Is it said where it is not
+     true, or missing where it is? An ordinary message must stay silent.
+   - **Deliberately left:** the cause, the claim step in `Resolve-SpecrewTranscriptEntryActIdentity`
+     (`HumanAuthorityStore.ps1:1703-1720`), where a Codex transcript entry takes another session's reservation by text. It
+     is the hand-back entry "a Codex transcript entry takes another session's reservation by text", decided with the
+     bare-marker gap below. Case 3 of the new suite pins what it still causes. Report a defect in the guard, not the claim
+     step's absence of a fix.
 1. **The sign-off gate accepting what it must not** (T022). In `review-signoff-evidence-gate.ps1` and the campaign
    orchestrator: a difference after the reviewed digest that is not records-only but passes as records (a script, a
    lens, a skill or a `.specify` file under a records path); a human-accepted disposition that covers a later digest it
@@ -160,6 +191,14 @@ deferred work and the known items named here: a new failure you find in the code
   - the tool folders `.specify`, `.specrew` and `.squad`.
   `finding-9cc1155f2c83f5f7` is deferred for this list, to bug bash 2, by the maintainer's typed line (2026-11-23 20:04
   local). The follow-up is a proposal candidate in the hand-back.
+- **Decided by the reviewer session's ruling on the maintainer's "Fix codex" (2026-11-26), hand-back items:**
+  - the claim step's cause above;
+  - the early approval: a phrase typed while nothing waits is credited after a bare marker once the crossing opens (on
+    Claude). The bare marker still captures (DRIFT-199-I002-016, pinned in `crossing-mint-gate.tests.ps1` case 4c);
+  - the conformance check skipped when the Stop hook's check times out after a recorded verdict;
+  - `Write-SpecrewTypedAct`'s boundary-verdict branch setting `Written` on the writer's return, which its one production
+    caller never reaches (`-ExceptBoundaryVerdict`).
+- `finding-2f9ca15060fe18b2`, the verification round's minor: a follow-up (DRIFT-057).
 - The hook and MCP server configuration names are a list of names. A new host or a new configuration file needs a new
   entry; a guard that derives them from the host manifests is a hand-back line.
 
