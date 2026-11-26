@@ -932,6 +932,14 @@ function Get-SpecrewVerdictCaptureDisclosure {
         Write-SpecrewVerdictDisclosureJournal -ProjectRoot $ProjectRoot -Action 'other-boundary-named' -From $from -To $to -LeadingText ([string]$named[0]) -NowUtc $NowUtc -Source $Source
         return $message
     }
+    # Feature 203 iteration 002 ("Fix codex", 2026-11-26): the reply is this crossing's approval, and the capture found the
+    # turn it read resolved to an approval already on record, so nothing was written. Said here, in the turn, instead of the
+    # "captured" line the hook used to print on the writer's silence. Measured on Codex: the turn end of this reply records
+    # the waiting approval once, so a later send of the phrase is answered "already approved".
+    if ([string]$CaptureReason -ceq 'verdict-not-recorded') {
+        Write-SpecrewVerdictDisclosureJournal -ProjectRoot $ProjectRoot -Action 'verdict-not-recorded' -From $from -To $to -LeadingText '' -NowUtc $NowUtc -Source $Source
+        return ("Specrew: your reply was received but NOT recorded as a verdict for '{0} -> {1}', because it was matched to an approval already on record from an earlier decision. Nothing you wrote is lost and no approval was changed. To authorize this crossing, send: {2}" -f $from, $to, $phrase)
+    }
     # B5F-044 (maintainer ruling 2026-11-11): AN APPROVAL INSIDE A PASTE IS SAID TO BE INSIDE THE PASTE. Read on the raw
     # message, the sentence below quoted the paste tag as "what comes before the phrase" and told the human to put the
     # phrase first, which leaves it inside the paste. On a host that marks pastes, when the phrase is in a paste and not in
@@ -1136,6 +1144,46 @@ function Write-SpecrewOutOfTailVerdictReport {
     return (Write-SpecrewAuthorityNotRecordedReport -ProjectRoot $ProjectRoot -Shape $shape -EntryKey $key -HostKind $HostKind -SessionId $SessionId -NowUtc $NowUtc)
 }
 
+function Get-SpecrewVerdictEntryIdSet {
+    # The authorization ids of every stored verdict entry (the raw history, an id derived for a legacy entry without one),
+    # taken before a write so the entry the write added can be told from the ones it found ("Fix codex", 2026-11-26).
+    [OutputType([System.Collections.Generic.HashSet[string]])]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $ids = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $state = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+    if ($null -ne $state.State -and $state.State.Contains('verdict_history')) {
+        foreach ($entry in @($state.State['verdict_history'])) {
+            $id = Get-SpecrewBoundaryAuthorizationEntryId -Entry $entry
+            if (-not [string]::IsNullOrWhiteSpace([string]$id)) { [void]$ids.Add([string]$id) }
+        }
+    }
+    return , $ids
+}
+
+function Find-SpecrewVerdictEntryWrittenFor {
+    # The stored verdict entry for the crossing <FromBoundary> -> <ToBoundary> that was not among EntriesBefore, or $null when
+    # the write added none. A writer that returned without writing (an older verdict handed back) is $null here.
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyCollection()][System.Collections.Generic.HashSet[string]]$EntriesBefore,
+        [AllowNull()][AllowEmptyString()][string]$FromBoundary,
+        [Parameter(Mandatory)][string]$ToBoundary
+    )
+    $canonical = { param([string]$b) if ([string]::IsNullOrWhiteSpace($b)) { '' } else { [string](Normalize-SpecrewCanonicalBoundaryType -Boundary $b) } }
+    $from = & $canonical $FromBoundary
+    $to = & $canonical $ToBoundary
+    $state = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+    if ($null -eq $state.State -or -not $state.State.Contains('verdict_history')) { return $null }
+    $history = @($state.State['verdict_history'])
+    for ($i = $history.Count - 1; $i -ge 0; $i--) {
+        $map = ConvertTo-SpecrewBoundaryMap -Value $history[$i]
+        if ($null -eq $map) { continue }
+        if ($EntriesBefore.Contains([string](Get-SpecrewBoundaryAuthorizationEntryId -Entry $map))) { continue }
+        if ((& $canonical ([string]$map['from_boundary'])) -ceq $from -and (& $canonical ([string]$map['to_boundary'])) -ceq $to) { return $map }
+    }
+    return $null
+}
+
 function Invoke-SpecrewBoundaryVerdictCapture {
     # THE verdict-authority write path, shared by Stop and prompt-entry hooks. Stop is still the backstop, but
     # UserPromptSubmit/PreInvocation captures immediately after the human types the verdict so a weak host cannot
@@ -1328,22 +1376,42 @@ function Invoke-SpecrewBoundaryVerdictCapture {
                 $citation.TurnIdentity = [string]$MessageId
                 $citation.PromptText = $LastUserMessage
             }
-            Add-SpecrewBoundaryAuthorization -ProjectRoot $ProjectRoot `
+            # Feature 203 iteration 002 (the maintainer's "Fix codex", 2026-11-26; the reviewer session's ruling): THE OUTCOME IS
+            # THE RECORD'S, NEVER THE WRITER'S SILENCE. The writer returns without writing when the turn it re-derives is
+            # already a recorded verdict, and hands back that older entry. On Codex a transcript line carries no record id
+            # and no session, so its entry could take an earlier Claude reservation with the same text (the claim step in
+            # Resolve-SpecrewTranscriptEntryActIdentity, a hand-back item); the writer then returned iteration 001's sign-off,
+            # this function said "authorized", the prompt hook said "Verdict captured", and the newest verdict's turn was
+            # registered as minted by Codex. A verdict counts here only when an entry for THIS crossing exists after the
+            # write that was not there before it: verdict entries carry no crossing id, and while a crossing is pending its
+            # from-boundary is the last authorized one, so no older entry for the same pair can be the newest - a new entry
+            # for the pair is this capture's, or another writer's for the same crossing in the same moment.
+            $entriesBefore = Get-SpecrewVerdictEntryIdSet -ProjectRoot $ProjectRoot
+            $null = Add-SpecrewBoundaryAuthorization -ProjectRoot $ProjectRoot `
                 -CurrentBoundary $pendingCrossing.PendingFromBoundary -AuthorizedBoundary $pendingCrossing.PendingToBoundary `
                 -AuthorizingHuman 'unattributed' -VerdictText $captured.VerdictText `
-                -EvidenceSource $evidenceSource -Kind $authorizationKind -HostKind $HostKind @citation | Out-Null
+                -EvidenceSource $evidenceSource -Kind $authorizationKind -HostKind $HostKind @citation
+            $recorded = Find-SpecrewVerdictEntryWrittenFor -ProjectRoot $ProjectRoot -EntriesBefore $entriesBefore `
+                -FromBoundary ([string]$pendingCrossing.PendingFromBoundary) -ToBoundary ([string]$pendingCrossing.PendingToBoundary)
+            if ($null -eq $recorded) {
+                [Console]::Error.WriteLine(("[specrew-handover] WARN VERDICT_NOT_RECORDED captured '{0}' for '{1}->{2}', but no verdict for that crossing was written: the turn it was read from resolved to an approval already on record. NOT authorizing." -f [string]$captured.VerdictText, $actualFrom, $actualTo))
+                try {
+                    $nrJournal = Join-Path $ProjectRoot '.specrew/runtime/handover-journal.jsonl'
+                    $nrDir = Split-Path -Parent $nrJournal
+                    if ($nrDir -and -not (Test-Path -LiteralPath $nrDir)) { New-Item -ItemType Directory -Path $nrDir -Force | Out-Null }
+                    (([pscustomobject]@{ event = 'verdict-not-recorded'; recorded_at = $NowUtc; verdict_text = [string]$captured.VerdictText; from = $actualFrom; to = $actualTo; cited_turn = [string]$citation.TurnIdentity; host = $HostKind; source = $Source }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $nrJournal -Encoding UTF8
+                }
+                catch { $null = $_ }
+                $result.reason = 'verdict-not-recorded'
+                return $result
+            }
             # Feature 203 T013 (B5F-066; T013 triage, gap 2): a verdict read from the transcript is registered on the turn
             # ledger with the transcript it came from, as Write-SpecrewTypedAct does, so the sender check finds its turn when
-            # the verdict is used. The prompt hook registers the turns it reserves; this is the turn it did not see.
+            # the verdict is used. The prompt hook registers the turns it reserves; this is the turn it did not see. The turn
+            # is the one on the entry just written ("Fix codex": the newest entry was another session's turn when nothing was).
             if (-not [string]::IsNullOrWhiteSpace([string]$citation.TranscriptPath) -and (Get-Command Register-SpecrewExhaustedTurn -ErrorAction SilentlyContinue)) {
                 try {
-                    $recorded = $null
-                    $contextFile = Join-Path $ProjectRoot '.specrew/start-context.json'
-                    if (Test-Path -LiteralPath $contextFile -PathType Leaf) {
-                        $recordedContext = Get-Content -LiteralPath $contextFile -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
-                        $recorded = @($recordedContext.boundary_enforcement.verdict_history)[-1]
-                    }
-                    $recordedTurn = if ($null -ne $recorded -and $recorded.PSObject.Properties['turn_identity']) { [string]$recorded.turn_identity } else { '' }
+                    $recordedTurn = if ($recorded.Contains('turn_identity')) { [string]$recorded['turn_identity'] } else { '' }
                     if (-not [string]::IsNullOrWhiteSpace($recordedTurn)) {
                         $null = Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId $recordedTurn -HostKind $HostKind -SourceEvent $Source `
                             -MintedWriters 'boundary-verdict' -ContentHash (Get-SpecrewHumanAuthorityHash -Text ([string]$captured.VerdictText).Trim()) `
